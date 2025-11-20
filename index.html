@@ -4,11 +4,54 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Bert's Inkscriptions 🐔🖋️</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bungee&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f7f7f7; }
-        .card { box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            /* UPDATED BACKGROUND STYLES */
+            background-image: 
+                url('bg.png'), /* Layer 1: The Image (Using simple relative path) */
+                linear-gradient(135deg, #a855f7, #c084fc); /* Layer 2: The Gradient */
+            
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            background-color: #a855f7; /* Fallback color */
+            
+            color: #e0e0e0; 
+            position: relative;
+            overflow-x: hidden; 
+        }
+
+        /* NEW CUSTOM STYLE FOR H1 TITLE (Graffiti Font & White Shadowed Color) */
+        .graffiti-title {
+            font-family: 'Bungee', cursive;
+            color: #ffffff !important; 
+            text-shadow: 2px 2px #9333ea, 4px 4px #7c3aed; 
+        }
+        
+        /* NEW CUSTOM STYLE FOR ANY TEXT THAT NEEDS THE GRAFFITI FONT */
+        .graffiti-font {
+            font-family: 'Bungee', cursive;
+        }
+
+        .card { 
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3); /* Darker shadow for dark background */
+            background-color: rgba(255, 255, 255, 0.05); /* Slightly transparent card background */
+            backdrop-filter: blur(10px); /* Frosted glass effect */
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        /* ADDED HOVER EFFECT */
+        .card-hover { 
+            transition: transform 0.3s ease, box-shadow 0.3s ease; 
+        }
+        .card-hover:hover {
+            transform: translateY(-5px); /* Lift the card slightly */
+            box-shadow: 0 15px 35px rgba(147, 51, 234, 0.4); /* Purple glow effect */
+        }
         /* --- PRIMARY BUTTON (PURPLE) --- */
         .btn-primary { background-color: #9333ea; transition: background-color 0.3s; }
         .btn-primary:hover { background-color: #7c3aed; }
@@ -18,13 +61,44 @@
         .btn-primary-loading { opacity: 0.7; cursor: not-allowed; }
         .ascii-art { font-family: 'Courier New', Courier, monospace; white-space: pre; line-height: 1.0; overflow-x: auto; }
         .pending-card { opacity: 0.6; filter: grayscale(1); transition: opacity 0.5s; }
+
+        /* Adjust text colors for dark background */
+        .text-gray-800 { color: #e0e0e0; }
+        .text-gray-600 { color: #b0b0b0; }
+        .text-gray-700 { color: #d0d0d0; }
+        .text-gray-500 { color: #a0a0a0; }
+        .border-gray-200 { border-color: rgba(255, 255, 255, 0.15); }
+        .bg-gray-50 { background-color: rgba(255, 255, 255, 0.08); }
+        .border-gray-300 { border-color: rgba(255, 255, 255, 0.25); }
+        .bg-gray-100 { background-color: rgba(255, 255, 255, 0.1); }
+
+        /* Ensure violet elements retain their color */
+        .text-violet-800 { color: #d8b4fe; } 
+        .bg-violet-50 { background-color: rgba(138, 43, 226, 0.2); } 
+        .border-violet-200 { border-color: rgba(138, 43, 226, 0.4); }
+        .text-violet-600 { color: #c084fc; } /* Custom color restored */
+        .focus\:ring-violet-500:focus { --tw-ring-color: #c084fc; }
+        .border-violet-500 { border-color: #c084fc; }
+        .text-purple-400 { color: #c084fc; } 
+        .text-violet-500 { color: #a855f7; } 
+
+
+        input, textarea {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #e0e0e0;
+        }
+        input::placeholder, textarea::placeholder {
+            color: #b0b0b0;
+        }
+        /* Ensure disconnect button remains visible */
+        #disconnect-btn { background-color: #3f0d12; color: #f87171; border-color: #b91c1c; }
     </style>
 </head>
 <body class="min-h-screen p-4 flex flex-col items-center">
 
     <div class="w-full max-w-xl mb-8 text-center mt-8">
-        <h1 class="text-4xl font-bold text-gray-800">Bert's Inkscriptions 🐔🖋️</h1>
-        <p class="text-gray-600 mt-2">Permanent artifacts inked on chain.</p>
+        <h1 class="text-4xl font-bold graffiti-title">Bert's Inkscriptions 🐔🖋️</h1>
+        <p class="text-white mt-2">Permanent artifacts inked on chain.</p>
     </div>
 
     <div class="w-full max-w-xl bg-white p-6 md:p-8 rounded-xl card space-y-6 mb-12">
@@ -40,7 +114,7 @@
         <div class="border-t border-gray-200 pt-4 space-y-4">
             <div class="flex justify-between items-end">
                 <div><p class="text-lg font-semibold text-gray-700">Inkscription Cost</p></div>
-                <div class="text-right"><p class="text-2xl font-extrabold text-violet-600">1000 BERT</p></div>
+                <div class="text-right"><p class="text-2xl font-extrabold graffiti-font text-violet-600">1000 BERT</p></div>
             </div>
             <p class="text-xs text-gray-500 flex justify-between bg-gray-50 p-2 rounded">
                 <span>Your Balance:</span>
@@ -77,7 +151,7 @@
 
     <div class="w-full max-w-4xl">
         <div class="flex items-center justify-between mb-6">
-            <h2 class="text-2xl font-bold text-gray-800">🏛️ Live Gallery</h2>
+            <h2 class="text-2xl font-bold text-white">🏛️ Live Gallery</h2>
             <button id="refresh-btn" class="text-sm bg-white border border-gray-300 px-3 py-1 rounded hover:bg-gray-50">↻ Refresh</button>
         </div>
         
@@ -190,7 +264,7 @@
 
                 // Fetch live data (uses dedicated readProvider now)
                 await fetchBalance();
-                await initGallery();
+                await fetchGallery(); 
                 calcGas();
             } catch (err) {
                 console.error('rebuildConnection error:', err);
@@ -295,7 +369,8 @@
                 ui.btnText.textContent = "Minting...";
                 pendingTxHash = tx.hash;
 
-                createGalleryCard(text, tx.hash, "Pending...", true);
+                // Index is unknown for a pending transaction
+                createGalleryCard(text, tx.hash, "Pending...", true, '---'); 
                 ui.empty.classList.add('hidden');
 
                 ui.statusMsg.textContent = `⏳ TRANSACTION PENDING\nHash: ${tx.hash}`;
@@ -340,71 +415,48 @@
         // ============================================================
         ui.refresh.addEventListener('click', fetchGallery);
 
-        async function initGallery() {
-            // *** MODIFICATION: Use dedicated JSON RPC Provider for read-only ops ***
-            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
-            if (!readProvider) return; 
-            
-            ui.grid.innerHTML = '';
-            fetchedHashes.clear();
-            ui.loader.classList.remove('hidden');
-
-            try {
-                // 1. Fetch Guaranteed Mints First
-                for(const hash of GUARANTEED_MINTS) {
-                    await decodeAndRenderTx(hash, true, readProvider); 
-                }
-
-                // 2. Fetch Recent Events
-                await fetchGallery();
-
-            } catch (e) {
-                console.error('initGallery error:', e);
-            } finally {
-                ui.loader.classList.add('hidden');
-                // *** FIX: If still empty, ensure the guaranteed mint is fetched again ***
-                if (ui.grid.children.length === 0 && GUARANTEED_MINTS.length > 0) {
-                    for(const hash of GUARANTEED_MINTS) {
-                        await decodeAndRenderTx(hash, true, readProvider); 
-                    }
-                     if (ui.grid.children.length > 0) ui.empty.classList.add('hidden');
-                }
-            }
-        }
-
         async function fetchGallery() {
-            // *** MODIFICATION: Create a dedicated read-only provider ***
             const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
             if (!readProvider) return; 
             
             ui.loader.classList.remove('hidden');
 
             try {
-                const currentBlock = await readProvider.getBlockNumber(); // Use readProvider
+                const currentBlock = await readProvider.getBlockNumber();
                 const fromBlock = Math.max(0, currentBlock - 5000); 
                 
-                // Use a stable, read-only contract instance for queryFilter
-                const stableContract = new window.ethers.Contract(BERT_TOKEN_ADDRESS, BERT_ABI_SNIPPET, readProvider); // Use readProvider
+                const stableContract = new window.ethers.Contract(BERT_TOKEN_ADDRESS, BERT_ABI_SNIPPET, readProvider);
                 const filter = stableContract.filters.Transfer(null, BURN_ADDRESS); 
                 
-                // Get events from the RPC node
                 const events = await stableContract.queryFilter(filter, fromBlock, currentBlock);
                 
+                // *** NEW: Calculate total count for numbering ***
+                const totalInscriptions = events.length + GUARANTEED_MINTS.length;
+                let inscriptionCounter = totalInscriptions;
+                // ----------------------------------------------
+
                 if (pendingTxHash) removeGalleryCard(pendingTxHash);
 
-                // Clear and re-render the whole grid for correct order
                 ui.grid.innerHTML = '';
                 fetchedHashes.clear();
+                
+                // *** PROMISE.ALL MODIFICATION ***
+                const renderPromises = [];
 
-                // Re-add guaranteed mints
+                // 1. Re-add guaranteed mints
                 for(const hash of GUARANTEED_MINTS) {
-                    await decodeAndRenderTx(hash, true, readProvider); // Pass readProvider
+                    // Collect promise
+                    renderPromises.push(decodeAndRenderTx(hash, true, readProvider, inscriptionCounter--));
                 }
                 
-                // Add new events, filtering out the guaranteed ones we just added
+                // 2. Add new events
                 for (const evt of events.reverse()) {
-                    await decodeEvent(evt, true, readProvider); // Pass readProvider
+                    // Collect promise
+                    renderPromises.push(decodeEvent(evt, true, readProvider, inscriptionCounter--)); 
                 }
+                
+                // *** AWAIT ALL RENDERING PROMISES before updating UI ***
+                await Promise.all(renderPromises);
 
                 if (ui.grid.children.length === 0) {
                     ui.empty.classList.remove('hidden');
@@ -414,15 +466,15 @@
 
             } catch (e) {
                 console.error('fetchGallery error:', e);
-                // If queryFilter fails, we rely on the initGallery's forced render
             } finally {
-                ui.loader.classList.add('hidden');
+                // This ensures the loader is hidden upon completion, regardless of success/failure
+                ui.loader.classList.add('hidden'); 
             }
         }
 
-        // *** MODIFICATION: Updated signature to accept the provider ***
-        async function decodeAndRenderTx(hash, prepend = false, currentProvider = null) {
-            const p = currentProvider || provider; // Use passed provider or default wallet provider
+        // *** MODIFIED to return the promise/result of the rendering task ***
+        async function decodeAndRenderTx(hash, prepend = false, currentProvider = null, index = '---') {
+            const p = currentProvider || provider;
              if (!p || fetchedHashes.has(hash)) return;
 
              try {
@@ -438,19 +490,21 @@
                     let content = str;
                     try { content = JSON.parse(str).text; } catch(e){}
                     
-                    createGalleryCard(content, tx.hash, tx.blockNumber || '---', prepend);
+                    createGalleryCard(content, tx.hash, tx.blockNumber || '---', prepend, index); // Pass index here
                     fetchedHashes.add(tx.hash);
+                    return true; // Return a success indicator
                 }
             } catch (e) {
                 console.warn("Could not decode TX for hash:", hash, e);
             }
+            return false;
         }
 
-        // *** MODIFICATION: Updated signature to accept the provider ***
-        async function decodeEvent(evt, prepend = false, currentProvider = null) {
+        // *** MODIFIED to return the promise/result of the rendering task ***
+        async function decodeEvent(evt, prepend = false, currentProvider = null, index = '---') {
             if (!evt.transactionHash || fetchedHashes.has(evt.transactionHash)) return;
             
-            await decodeAndRenderTx(evt.transactionHash, prepend, currentProvider);
+            return decodeAndRenderTx(evt.transactionHash, prepend, currentProvider, index); // Return the promise
         }
 
         function removeGalleryCard(hash) {
@@ -458,7 +512,8 @@
             if (card) card.remove();
         }
 
-        function createGalleryCard(art, hash, block, prepend = false) {
+        // *** MODIFIED to accept and display index parameter ***
+        function createGalleryCard(art, hash, block, prepend = false, index = '---') {
             const safeArt = (art || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
             const isPending = block === "Pending...";
             const badge = isPending ? "bg-yellow-100 text-yellow-800" : "bg-gray-100 text-gray-600";
@@ -467,9 +522,13 @@
 
             const div = document.createElement('div');
             div.id = `card-${hash}`; 
-            div.className = `bg-white p-4 rounded-lg shadow border border-gray-200 flex flex-col animate-fade-in ${isPending ? 'pending-card' : ''}`;
+            // Added card-hover class
+            div.className = `bg-white p-4 rounded-lg shadow border border-gray-200 flex flex-col animate-fade-in ${isPending ? 'pending-card' : ''} card-hover`; 
             div.innerHTML = `
                 <div class="bg-gray-900 text-purple-400 p-4 rounded text-xs overflow-auto ascii-art mb-3 flex-grow" style="max-height: 300px;">${safeArt}</div>
+                
+                <div class="text-xl font-extrabold text-violet-500 mb-2">#${index}</div> 
+                
                 <div class="mt-auto pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500">
                     <span class="px-2 py-1 rounded ${badge}">Block: ${block}</span>
                     <a href="https://explorer.inkonchain.com/tx/${hash}" target="_blank" class="text-blue-500 hover:underline">View TX ↗</a>
@@ -484,7 +543,6 @@
         // 5. UTILS (MODIFIED FOR STABLE JSON RPC PROVIDER)
         // ============================================================
         async function fetchBalance() {
-            // *** MODIFICATION: Create a dedicated read-only provider ***
             const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
 
             if(!readProvider || !currentAccount) { 
@@ -492,10 +550,7 @@
                  return;
             }
             try {
-                // Instantiate a new read-only contract with the stable readProvider
                 const stableReadContract = new window.ethers.Contract(CONFIRMED_BERT_ADDRESS, BERT_ABI_SNIPPET, readProvider);
-                
-                // Fetch the balance
                 const bal = await stableReadContract.balanceOf(currentAccount);
                 
                 if (bal === undefined || bal === null) {
@@ -503,7 +558,6 @@
                     return;
                 }
 
-                // Format the balance from BigInt to a string with 2 decimal places
                 const formattedBalance = parseFloat(window.ethers.formatUnits(bal, 18)).toFixed(2);
                 
                 if (formattedBalance === "0.00") {
@@ -512,7 +566,6 @@
                     ui.balance.textContent = formattedBalance + " BERT";
                 }
             } catch(e){
-                // If the fetch fails (RPC/network/ABI error)
                 console.error('fetchBalance failed:', e);
                 ui.balance.textContent = "---"; 
             }
@@ -520,7 +573,6 @@
 
         ui.input.addEventListener('input', calcGas);
         function calcGas() {
-            // *** MODIFICATION: Create a dedicated read-only provider ***
             const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
 
             if(!readProvider) {
@@ -534,7 +586,6 @@
             
             const gas = BigInt(65000) + BigInt(bytes.length * 16); 
 
-            // Use readProvider here
             readProvider.getFeeData().then(f => {
                 const gasPrice = f.maxFeePerGas || f.gasPrice || BigInt(0);
                 try {
@@ -551,15 +602,14 @@
         ui.manualBtn.addEventListener('click', async () => {
             const hash = ui.manualInput.value.trim();
             
-            // *** MODIFICATION: Create a dedicated read-only provider ***
             const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
             if(!hash || !readProvider) return alert("Connect wallet or network issue.");
             
             ui.manualBtn.textContent = "Searching...";
             
             try {
-                // Pass readProvider
-                await decodeAndRenderTx(hash, true, readProvider); 
+                // Pass '---' for the index as it's an external hash lookup
+                await decodeAndRenderTx(hash, true, readProvider, '---'); 
                 
                 if (ui.grid.children.length > 0) {
                      ui.empty.classList.add('hidden');
@@ -580,15 +630,19 @@
         (async function init() {
             if (window.ethereum) {
                 try {
-                    // Aggressively check for connected accounts
                     const acc = await window.ethereum.request({ method: 'eth_accounts' });
                     
                     if (acc && acc.length > 0) {
-                        // If accounts are already connected, force a full connect/rebuild sequence
-                        await connectWallet();
+                        await rebuildConnection(acc[0]);
+                        
+                        // NOTE: If the grid is empty after connection, force a final fetch.
+                        if (ui.grid.children.length === 0) {
+                            await fetchGallery();
+                        }
                     }
                 } catch (err) {
                     console.error('init eth_accounts error', err);
+                    ui.loader.classList.add('hidden'); 
                 }
             } else {
                 handleDisconnect();
