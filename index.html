@@ -10,6 +10,7 @@
     <style>
         body { 
             font-family: 'Inter', sans-serif; 
+            
             /* UPDATED BACKGROUND STYLES */
             background-image: 
                 url('bg.png'), /* Layer 1: The Image (Using simple relative path) */
@@ -76,7 +77,7 @@
         .text-violet-800 { color: #d8b4fe; } 
         .bg-violet-50 { background-color: rgba(138, 43, 226, 0.2); } 
         .border-violet-200 { border-color: rgba(138, 43, 226, 0.4); }
-        .text-violet-600 { color: #c084fc; } /* Custom color restored */
+        .text-violet-600 { color: #c084fc; } 
         .focus\:ring-violet-500:focus { --tw-ring-color: #c084fc; }
         .border-violet-500 { border-color: #c084fc; }
         .text-purple-400 { color: #c084fc; } 
@@ -90,8 +91,7 @@
         input::placeholder, textarea::placeholder {
             color: #b0b0b0;
         }
-        /* Ensure disconnect button remains visible */
-        #disconnect-btn { background-color: #3f0d12; color: #f87171; border-color: #b91c1c; }
+        /* REMOVED custom red styles for disconnect button */
     </style>
 </head>
 <body class="min-h-screen p-4 flex flex-col items-center">
@@ -108,7 +108,7 @@
                 <p class="text-xs font-bold text-violet-800 uppercase tracking-wide">Connected As</p>
                 <p id="address-display" class="font-mono text-sm font-bold text-gray-800">...</p>
             </div>
-            <button id="disconnect-btn" class="text-xs bg-white border border-red-200 text-red-600 font-bold px-3 py-1.5 rounded hover:bg-red-50 transition">Disconnect</button>
+            <button id="disconnect-btn" class="bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold px-3 py-1.5 rounded transition">Disconnect</button>
         </div>
 
         <div class="border-t border-gray-200 pt-4 space-y-4">
@@ -318,12 +318,30 @@
         // ============================================================
         if (window.ethereum) {
             window.ethereum.on('accountsChanged', async (accounts) => {
-                console.log("MetaMask accountsChanged event fired:", accounts);
+                console.log("Rabby accountsChanged event fired:", accounts);
+                
+                // --- RABBY FIX: Attempt to force disconnect to clear cached session state ---
+                if (window.ethereum.disconnect) {
+                    try {
+                        await window.ethereum.disconnect(); 
+                        console.log("Forced disconnect successful.");
+                    } catch (e) {
+                        console.warn("Forced disconnect failed (this is often fine):", e);
+                    }
+                }
+                // -----------------------------------------------------------------
+
                 if (!accounts || accounts.length === 0) {
                     handleDisconnect();
                     return;
                 }
-                await rebuildConnection(accounts[0]);
+                
+                // *** NEW DELAY FIX ***
+                // Add a small delay to give the wallet extension time to push the new state to the provider.
+                setTimeout(async () => {
+                    await rebuildConnection(accounts[0]);
+                    console.log("Wallet address updated after 100ms delay.");
+                }, 100);
             });
 
             window.ethereum.on('chainChanged', (chainId) => {
