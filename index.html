@@ -91,7 +91,7 @@
         input::placeholder, textarea::placeholder {
             color: #b0b0b0;
         }
-        /* REMOVED custom red styles for disconnect button */
+        /* Ensure disconnect button remains visible */
     </style>
 </head>
 <body class="min-h-screen p-4 flex flex-col items-center">
@@ -228,15 +228,18 @@
             }
 
             try {
-                // *** STRICT RE-INITIALIZATION (Wallet Provider for Signing) ***
+                // *** 1. INSTANTIATE PROVIDER (Avoid repeated instantiation inside listeners) ***
+                // This is needed for the contract instantiation below.
                 provider = new window.ethers.BrowserProvider(window.ethereum);
                 signer = await provider.getSigner();
 
-                // --- PRIORITY ADDRESS LOGIC ---
+                // --- 2. PRIORITY ADDRESS LOGIC (Fixes Problem #2) ---
                 let definitiveAccount;
                 if (forcedAccount) {
+                    // FIX: Use the address provided by the accountsChanged event (which is correct)
                     definitiveAccount = forcedAccount;
                 } else {
+                    // Fallback to query eth_accounts (standard connection path)
                     const accounts = await window.ethereum.request({ method: 'eth_accounts' });
                     if (accounts && accounts.length > 0) {
                         definitiveAccount = accounts[0];
@@ -246,7 +249,7 @@
                     }
                 }
                 
-                // Set the current account state and update the UI
+                // 3. Set the current account state and update the UI
                 currentAccount = window.ethers.getAddress(definitiveAccount);
                 // ---------------------------------------------------
 
@@ -255,7 +258,7 @@
 
                 // Update UI elements 
                 ui.header.classList.remove('hidden');
-                ui.address.textContent = currentAccount || 'Unknown';
+                ui.address.textContent = currentAccount || 'Unknown'; // This updates the address display
 
                 ui.btn.disabled = false;
                 ui.btnText.textContent = `MINT INKSCRIPTION (BURN ${MINT_FEE_AMOUNT} BERT)`;
@@ -318,34 +321,26 @@
         // ============================================================
         if (window.ethereum) {
             window.ethereum.on('accountsChanged', async (accounts) => {
-                console.log("Rabby accountsChanged event fired:", accounts);
+                console.log("Wallet accountsChanged event fired:", accounts);
                 
-                // --- RABBY FIX: Attempt to force disconnect to clear cached session state ---
-                if (window.ethereum.disconnect) {
-                    try {
-                        await window.ethereum.disconnect(); 
-                        console.log("Forced disconnect successful.");
-                    } catch (e) {
-                        console.warn("Forced disconnect failed (this is often fine):", e);
-                    }
-                }
-                // -----------------------------------------------------------------
+                // --- FIX #1: REMOVE DISCONNECT CALL ---
+                // The problematic window.ethereum.disconnect() call has been removed.
 
                 if (!accounts || accounts.length === 0) {
                     handleDisconnect();
                     return;
                 }
                 
-                // *** NEW DELAY FIX ***
-                // Add a small delay to give the wallet extension time to push the new state to the provider.
+                // *** FIX #2 & #3 DEFENSE: DELAYED REBUILD ***
+                // Add a small delay to defeat the Chrome throttling/caching (Problem #2 and #3 defense).
                 setTimeout(async () => {
-                    await rebuildConnection(accounts[0]);
+                    await rebuildConnection(accounts[0]); // Use the correct address from the event payload
                     console.log("Wallet address updated after 100ms delay.");
                 }, 100);
             });
 
             window.ethereum.on('chainChanged', (chainId) => {
-                console.log("MetaMask chainChanged event fired:", chainId);
+                console.log("Chain changed event fired:", chainId);
                 window.location.reload();
             });
         }
