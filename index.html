@@ -140,8 +140,13 @@
             <button id="disconnect-btn" class="bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold px-3 py-1.5 rounded transition">Disconnect</button>
         </div>
 
-        <div class="pt-4 space-y-4">
+        <div class="pt-0 space-y-4">
             
+            <div class="flex flex-col items-center justify-center -mt-8 mb-1"> 
+                <img src="burning_chicken.png" alt="Burning Chicken" class="h-10 w-10 mt-1 mb-2"> 
+                <p class="text-sm font-medium text-black">Burn BERT, ink history</p>
+            </div>
+
             <p class="text-lg font-extrabold text-gray-700 flex justify-between items-center pb-2">
                 <span class="graffiti-font text-violet-500">Cumulative Tendie Count 🍗:</span>
                 <span id="total-burn-display" class="graffiti-font font-extrabold text-red-500">0 BERT 🔥</span>
@@ -196,7 +201,7 @@
     <div class="w-full max-w-4xl">
         <div class="flex items-center justify-between mb-6">
             <h2 class="text-2xl font-bold text-white">🏛️ Live Gallery</h2>
-            <button id="refresh-btn" class="text-sm bg-white border border-gray-300 px-3 py-1 rounded hover:bg-gray-50">↻ Refresh</button>
+            <button id="refresh-btn" class="text-black text-sm bg-white border border-gray-300 px-3 py-1 rounded hover:bg-gray-50">↻ Refresh</button>
         </div>
         
         <div id="gallery-loader" class="text-center py-10 hidden">
@@ -370,7 +375,7 @@
                 // Fetch live data (uses dedicated readProvider now)
                 await fetchBalance();
                 // When connected, we fetch the gallery here
-                await fetchGallery(); 
+                await fetchGallery(); // <-- RE-INSERTED: Ensure gallery loads after successful connection setup
                 calcGas();
             } catch (err) {
                 console.error('rebuildConnection error:', err);
@@ -780,8 +785,8 @@
         // 6. INIT: check connected accounts on load
         // ============================================================
         (async function init() {
-            // *** FIX: Always fetch gallery and burn metric on init, regardless of wallet status ***
-            await fetchGallery(); 
+            // *** FIX: Gallery fetching is now done conditionally for better load behavior. ***
+            // await fetchGallery(); // REMOVED
 
             if (window.ethereum) {
                 try {
@@ -789,18 +794,20 @@
                     
                     if (acc && acc.length > 0) {
                         await rebuildConnection(acc[0]);
-                        
-                        // Gallery already fetched above, but we leave it in rebuildConnection for post-connection updates
-                        // if (ui.grid.children.length === 0) {
-                        //     await fetchGallery();
-                        // }
+                    } else {
+                        // FALLBACK: If wallet is installed but not connected, load the gallery anyway
+                        await fetchGallery(); 
                     }
                 } catch (err) {
                     console.error('init eth_accounts error', err);
                     ui.loader.classList.add('hidden'); 
+                    // FALLBACK: If eth_accounts fails for any reason, load the gallery anyway
+                    await fetchGallery(); 
                 }
             } else {
                 handleDisconnect();
+                // FALLBACK: If no wallet is installed, load the gallery to show burned history
+                await fetchGallery();
             }
         })();
 
