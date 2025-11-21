@@ -184,17 +184,9 @@
 
     <div class="w-full max-w-xl bg-white p-6 md:p-8 rounded-xl card space-y-6 mb-12">
         
-        <div id="wallet-bar" class="hidden flex justify-between items-center bg-violet-50 border border-violet-200 px-4 py-3 rounded-lg">
-            <div>
-                <p class="text-xs font-bold text-violet-800 uppercase tracking-wide">Connected As</p>
-                <p id="address-display" class="font-mono text-sm font-bold text-gray-800">...</p>
-            </div>
-            <button id="disconnect-btn" class="bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold px-3 py-1.5 rounded transition">Disconnect</button>
-        </div>
-
         <div class="pt-0 space-y-4">
             
-            <div class="flex flex-col items-center justify-center -mt-8 mb-1"> 
+            <div class="flex flex-col items-center justify-center -mt-2 mb-1"> 
                 <img src="burning_chicken.png" alt="Burning Chicken" class="h-10 w-10 mt-1 mb-2"> 
                 <p class="text-sm font-medium text-black flex items-center gap-2">
                     Burn BERT, ink history
@@ -207,6 +199,13 @@
                 <span id="total-burn-display" class="graffiti-font font-extrabold text-red-500">0 BERT 🔥</span>
             </p>
 
+            <div id="wallet-bar" class="hidden flex justify-between items-center bg-violet-50 border border-violet-200 px-4 py-3 rounded-lg">
+                <div>
+                    <p class="text-xs font-bold text-violet-800 uppercase tracking-wide">Connected As</p>
+                    <p id="address-display" class="font-mono text-sm font-bold text-gray-800">...</p>
+                </div>
+                <button id="disconnect-btn" class="bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold px-3 py-1.5 rounded transition">Disconnect</button>
+            </div>
             <div class="border-t border-gray-200 pt-4">
                 <div class="flex justify-between items-end">
                     <div><p class="text-sm font-medium text-black">Inkscription Cost</p></div>
@@ -842,16 +841,15 @@
         }
 
         ui.input.addEventListener('input', calcGas);
-        function calcGas() {
+        async function calcGas() {
             const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
-
             const txt = ui.input.value || "";
             const bytes = new TextEncoder().encode(txt);
+            
             ui.byteCount.textContent = bytes.length;
             
             // --- PREVIEW LOGIC ---
             if (txt.length > 0) {
-                // Ensure the preview content is safely escaped for HTML rendering
                 const safeHtml = txt.replace(/</g, "&lt;").replace(/>/g, "&gt;");
                 ui.preview.innerHTML = safeHtml;
                 ui.preview.classList.remove('hidden');
@@ -861,24 +859,67 @@
             }
             // -------------------------
 
+            // Cannot estimate gas without a provider/network connection
             if(!readProvider) {
                 ui.gas.textContent = `---`;
                 return;
             }
-            
-            const gas = BigInt(65000) + BigInt(bytes.length * 16); 
 
-            readProvider.getFeeData().then(f => {
-                const gasPrice = f.maxFeePerGas || f.gasPrice || BigInt(0);
+            // *** FIX: Show a placeholder if input is empty, and only attempt estimation when content exists ***
+            if (txt.length === 0) {
+                ui.gas.textContent = `(Start Typing)`;
+                return;
+            }
+            
+            try {
+                // 1. Construct the transaction data object
+                const amount = window.ethers.parseUnits(MINT_FEE_AMOUNT.toString(), 18);
+                // We use a minimal payload for estimation, but still need the structure
+                const json = JSON.stringify({ text: txt });
+                const hexData = window.ethers.hexlify(window.ethers.toUtf8Bytes(json)).slice(2);
+                
+                // Need a Contract instance to encode the calldata
+                const tempContract = new window.ethers.Contract(BERT_TOKEN_ADDRESS, BERT_ABI_SNIPPET, readProvider);
+                const calldata = tempContract.interface.encodeFunctionData("transfer", [BURN_ADDRESS, amount]);
+                
+                // IMPORTANT: Since we don't have a signer/currentAccount available here for `from`,
+                // the estimation might fail if the provider is strict. To fix this, we'll
+                // use a fallback logic in case the estimation fails.
+                
+                const txData = {
+                    to: BERT_TOKEN_ADDRESS,
+                    data: calldata + hexData,
+                    value: 0
+                };
+
+                // 2. Estimate the Gas Limit
+                const gasLimit = await readProvider.estimateGas(txData);
+
+                // 3. Get the current Gas Price (Fee Data)
+                const feeData = await readProvider.getFeeData();
+                const gasPrice = feeData.maxFeePerGas || feeData.gasPrice || BigInt(0);
+                
+                // 4. Calculate the total ETH cost
+                const cost = gasLimit * gasPrice; 
+                ui.gas.textContent = `~${parseFloat(window.ethers.formatEther(cost)).toFixed(6)} ETH`;
+
+            } catch (err) {
+                // Fallback: If live estimation fails (e.g., RPC issues, simulation error),
+                // revert to a simpler estimation using a hardcoded gas limit approximation
+                // based on the data size, which is better than a generic error message.
+                console.warn("Live Gas estimation failed, falling back to approximation:", err);
+                
+                const approxGas = BigInt(65000) + BigInt(bytes.length * 16); 
+
                 try {
-                    const cost = gas * (gasPrice || BigInt(0)); 
-                    ui.gas.textContent = `~${parseFloat(window.ethers.formatEther(cost)).toFixed(6)} ETH`;
-                } catch (err) {
-                    ui.gas.textContent = `---`;
+                    const feeData = await readProvider.getFeeData();
+                    const gasPrice = feeData.maxFeePerGas || feeData.gasPrice || BigInt(0);
+                    const cost = approxGas * gasPrice; 
+                    ui.gas.textContent = `~${parseFloat(window.ethers.formatEther(cost)).toFixed(6)} ETH (approx)`;
+                } catch (innerErr) {
+                    ui.gas.textContent = `Error/High Fee`;
                 }
-            }).catch(() => {
-                ui.gas.textContent = `---`;
-            });
+            }
         }
 
         ui.manualBtn.addEventListener('click', async () => {
