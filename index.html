@@ -119,6 +119,58 @@
         #inscription-input::placeholder {
              color: #4b5563; /* Use a medium gray for placeholder */
         }
+
+        /* --- NEW MODAL STYLES --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            display: none; /* Controlled by JS */
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .modal-content {
+            background-color: #ffffff;
+            color: #000000;
+            padding: 25px;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 95%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 10px 20px rgba(147, 51, 234, 0.4);
+            animation: fadeIn 0.3s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .faq-heading {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: #9333ea; /* Purple color matching the title */
+            margin-top: 1rem;
+            border-bottom: 1px solid #d8b4fe;
+            padding-bottom: 0.25rem;
+        }
+        .faq-answer p {
+            margin-top: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .faq-answer ul {
+            list-style: disc;
+            margin-left: 20px;
+        }
+        .faq-answer strong {
+            color: #4c1d95; /* Darker purple emphasis, default is fine */
+        }
+        /* -------------------------- */
         
         /* Ensure disconnect button remains visible */
     </style>
@@ -144,7 +196,10 @@
             
             <div class="flex flex-col items-center justify-center -mt-8 mb-1"> 
                 <img src="burning_chicken.png" alt="Burning Chicken" class="h-10 w-10 mt-1 mb-2"> 
-                <p class="text-sm font-medium text-black">Burn BERT, ink history</p>
+                <p class="text-sm font-medium text-black flex items-center gap-2">
+                    Burn BERT, ink history
+                    <button id="faq-btn" class="text-xs text-violet-600 font-bold hover:text-violet-700 transition underline">FAQ</button>
+                </p>
             </div>
 
             <p class="text-lg font-extrabold text-gray-700 flex justify-between items-center pb-2">
@@ -213,6 +268,19 @@
         <div id="gallery-empty" class="text-center py-10 text-gray-400 hidden">No inscriptions found.</div>
     </div>
 
+    <div id="faq-modal-overlay" class="modal-overlay">
+        <div id="faq-modal-content" class="modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-violet-600">Bert's Inkscriptions FAQ</h2>
+                <button id="close-faq-btn" class="text-gray-500 hover:text-gray-700 text-2xl font-bold">×</button>
+            </div>
+            <div id="faq-body">
+                </div>
+            <div class="mt-4 pt-4 border-t border-gray-200">
+                <button onclick="closeFaqModal()" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 rounded transition">Close</button>
+            </div>
+        </div>
+    </div>
     <script>
         // Global storage for inscription content
         window.tempInscriptionContent = {};
@@ -268,6 +336,63 @@
             URL.revokeObjectURL(blobUrl);
             // -------------------------------------------------------------------
         }
+
+        // --- NEW FAQ MODAL FUNCTIONS ---
+        function openFaqModal() {
+            document.getElementById('faq-modal-overlay').style.display = 'flex';
+        }
+
+        function closeFaqModal() {
+            document.getElementById('faq-modal-overlay').style.display = 'none';
+        }
+
+        // Initialize FAQ modal listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            const faqBtn = document.getElementById('faq-btn');
+            const closeBtn = document.getElementById('close-faq-btn');
+            const overlay = document.getElementById('faq-modal-overlay');
+            const faqBody = document.getElementById('faq-body');
+
+            // --- FAQ CONTENT STRING (FINAL STYLING APPLIED) ---
+            const faqContent = `
+                <h3 class="faq-heading">Q1: What exactly is an Inkscription?</h3>
+                <div class="faq-answer">
+                    <p>An <span style="color: #9333ea;">Inkscription</span> is a permanent, immutable artifact etched directly onto the blockchain. When you create an <span style="color: #9333ea;">Inkscription</span>, you're burning a fixed amount of <span style="color: #9333ea;">BERT</span> tokens and using the transaction's calldata to embed text or data (like ASCII art) into the network's history forever. It's essentially a decentralized, permanent record stored on the chain.</p>
+                </div>
+                
+                <h3 class="faq-heading">Q2: How do I create an Inkscription?</h3>
+                <div class="faq-answer">
+                    <p>Creating an <span style="color: #9333ea;">Inkscription</span> involves four simple steps:</p>
+                    <ul>
+                        <li><span style="color: #9333ea;">Connect Wallet:</span> Click the "Connect Wallet" button and ensure you have enough <span style="color: #9333ea;">BERT</span> tokens (1000 <span style="color: #9333ea;">BERT</span> per <span style="color: #9333ea;">inkscription</span>) and a small amount of ETH for gas.</li>
+                        <li><span style="color: #9333ea;">Compose Content:</span> Enter your desired text, lore, or ASCII art into the "<span style="color: #000000 !important;">Your Permanent</span> <span style="color: #9333ea;">Inkscription</span>" box. For ASCII Art: We recommend an image-to-ASCII web tool such as <a href="https://www.asciiart.eu/image-to-ascii" target="_blank" class="text-violet-500 hover:text-violet-700 underline">asciiart.eu/image-to-ascii</a> or similar. There you can upload and fine-tune an image to create your perfect <span style="color: #9333ea;">inkscription</span> content.</li>
+                        <li><span style="color: #9333ea;">Check Cost:</span> Review the <span style="color: #000000 !important;">Est. Gas</span> display to see the estimated ETH transaction cost.</li>
+                        <li><span style="color: #9333ea;">Mint:</span> Click the <span style="color: #9333ea;">"MINT INKSCRIPTION"</span> button and confirm the transaction (which includes the <span style="color: #9333ea;">BERT</span> token burn and the <span style="color: #9333ea;">inkscription</span> data) in your wallet. Once confirmed, your unique artifact will appear in the Live Gallery!</li>
+                    </ul>
+                </div>
+
+                <h3 class="faq-heading">Q3: What are some use cases for Inkscriptions?</h3>
+                <div class="faq-answer">
+                    <p><span style="color: #9333ea;">Inkscriptions</span> are used for creating permanent digital records and decentralized art. Common use cases include:</p>
+                    <ul>
+                        <li><span style="color: #9333ea;">Permanent Lore:</span> Etching founding statements, memorable quotes, or community histories that cannot be edited or erased.</li>
+                        <li><span style="color: #9333ea;">Digital Graffiti/Art:</span> Inscribing custom <span style="color: #000000 !important;">ASCII art</span>, pixel art, or unique digital signatures directly into the blockchain.</li>
+                        <li><span style="color: #9333ea;">Decentralized Data:</span> Embedding small but critical pieces of data, such as contract metadata, verification keys, or time-stamped proof-of-existence records.</li>
+                        <li><span style="color: #9333ea;">Flexing:</span> Publicly demonstrating the burning of <span style="color: #9333ea;">BERT</span> tokens to prove dedication to the ecosystem.</li>
+                    </ul>
+                </div>
+            `;
+            
+            // Inject content and set up listeners
+            faqBody.innerHTML = faqContent;
+
+            if (faqBtn) faqBtn.addEventListener('click', openFaqModal);
+            if (closeBtn) closeBtn.addEventListener('click', closeFaqModal);
+            if (overlay) overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) closeFaqModal();
+            });
+        });
+        // ---------------------------------
     </script>
     
     <script type="module">
@@ -375,7 +500,7 @@
                 // Fetch live data (uses dedicated readProvider now)
                 await fetchBalance();
                 // When connected, we fetch the gallery here
-                await fetchGallery(); // <-- RE-INSERTED: Ensure gallery loads after successful connection setup
+                await fetchGallery(); // <-- Ensure gallery loads after successful connection setup
                 calcGas();
             } catch (err) {
                 console.error('rebuildConnection error:', err);
