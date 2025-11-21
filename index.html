@@ -83,7 +83,7 @@
         .text-purple-400 { color: #c084fc; } 
         .text-violet-500 { color: #a855f7; } 
 
-
+        /* Overriding global input/textarea styles */
         input, textarea {
             background-color: rgba(255, 255, 255, 0.1);
             color: #e0e0e0;
@@ -91,6 +91,17 @@
         input::placeholder, textarea::placeholder {
             color: #b0b0b0;
         }
+        
+        /* >>> NEW ADDITION: FORCE INSCRIPTION INPUT TEXT TO BLACK <<< */
+        #inscription-input {
+            background-color: #ffffff; /* Make the input background white for contrast */
+            color: #000000; /* Set text color to black */
+        }
+        /* Set placeholder color for the now white background */
+        #inscription-input::placeholder {
+             color: #4b5563; /* Use a medium gray for placeholder */
+        }
+        
         /* Ensure disconnect button remains visible */
     </style>
 </head>
@@ -125,6 +136,10 @@
         <div class="space-y-2">
             <label class="block text-sm font-medium text-gray-700">Your Permanent Inkscription</label>
             <textarea id="inscription-input" rows="6" placeholder="Etch your lore or paste your ASCII art here..." class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 font-mono text-xs"></textarea>
+            
+            <div id="preview-box" class="hidden bg-gray-900 text-purple-400 p-4 rounded text-xs overflow-auto ascii-art" style="min-height: 100px;">
+                </div>
+
             <div class="flex justify-between items-center text-xs bg-gray-50 p-2 rounded border border-gray-200">
                 <span class="text-gray-600">Size: <span id="byte-count" class="font-bold">0</span> bytes</span>
                 <span class="text-gray-600">Est. Gas: <span id="gas-display" class="font-bold text-blue-600">---</span></span>
@@ -164,6 +179,59 @@
         <div id="gallery-empty" class="text-center py-10 text-gray-400 hidden">No inscriptions found.</div>
     </div>
 
+    <script>
+        // Global storage for inscription content
+        window.tempInscriptionContent = {};
+
+        // Helper function to safely open the full view
+        function viewFullInscription(hash) {
+            const art = window.tempInscriptionContent[hash];
+            if (!art) {
+                alert("Error: Could not find inscription content.");
+                return;
+            }
+
+            // --- FIX: Using a secure Blob URL for the new window content ---
+            const htmlContent = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Full Inscription View: ${hash.substring(0, 10)}...</title>
+                    <style>
+                        body { 
+                            background-color: #000000; /* FIX: Changed to Black */
+                            color: #c084fc; 
+                            font-family: 'Courier New', Courier, monospace; 
+                            white-space: pre-wrap; 
+                            padding: 20px;
+                        }
+                    </style>
+                </head>
+                <body>
+                    ${art.replace(/</g, "&lt;").replace(/>/g, "&gt;")}
+                </body>
+                </html>
+            `;
+            
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const blobUrl = URL.createObjectURL(blob);
+            
+            // 1. Create a temporary invisible link element
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.target = '_blank'; 
+            
+            // 2. Append, click, and remove the link instantly (Guaranteed to bypass blockers)
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            // Clean up the URL to prevent memory leaks
+            URL.revokeObjectURL(blobUrl);
+            // -------------------------------------------------------------------
+        }
+    </script>
+    
     <script type="module">
         // *** This simple import structure works best for local testing ***
         import { 
@@ -201,6 +269,7 @@
             disconnect: $('disconnect-btn'),
             balance: $('balance-display'),
             input: $('inscription-input'),
+            preview: $('preview-box'), 
             byteCount: $('byte-count'),
             gas: $('gas-display'),
             btn: $('main-btn'),
@@ -228,18 +297,15 @@
             }
 
             try {
-                // *** 1. INSTANTIATE PROVIDER (Avoid repeated instantiation inside listeners) ***
-                // This is needed for the contract instantiation below.
+                // *** STRICT RE-INITIALIZATION (Wallet Provider for Signing) ***
                 provider = new window.ethers.BrowserProvider(window.ethereum);
                 signer = await provider.getSigner();
 
-                // --- 2. PRIORITY ADDRESS LOGIC (Fixes Problem #2) ---
+                // --- PRIORITY ADDRESS LOGIC ---
                 let definitiveAccount;
                 if (forcedAccount) {
-                    // FIX: Use the address provided by the accountsChanged event (which is correct)
                     definitiveAccount = forcedAccount;
                 } else {
-                    // Fallback to query eth_accounts (standard connection path)
                     const accounts = await window.ethereum.request({ method: 'eth_accounts' });
                     if (accounts && accounts.length > 0) {
                         definitiveAccount = accounts[0];
@@ -249,7 +315,7 @@
                     }
                 }
                 
-                // 3. Set the current account state and update the UI
+                // Set the current account state and update the UI
                 currentAccount = window.ethers.getAddress(definitiveAccount);
                 // ---------------------------------------------------
 
@@ -258,7 +324,7 @@
 
                 // Update UI elements 
                 ui.header.classList.remove('hidden');
-                ui.address.textContent = currentAccount || 'Unknown'; // This updates the address display
+                ui.address.textContent = currentAccount || 'Unknown';
 
                 ui.btn.disabled = false;
                 ui.btnText.textContent = `MINT INKSCRIPTION (BURN ${MINT_FEE_AMOUNT} BERT)`;
@@ -323,18 +389,24 @@
             window.ethereum.on('accountsChanged', async (accounts) => {
                 console.log("Wallet accountsChanged event fired:", accounts);
                 
-                // --- FIX #1: REMOVE DISCONNECT CALL ---
-                // The problematic window.ethereum.disconnect() call has been removed.
+                // --- SYNCHRONIZATION FIXES ---
+                if (window.ethereum.disconnect) {
+                    try {
+                        await window.ethereum.disconnect(); 
+                        console.log("Forced disconnect successful.");
+                    } catch (e) {
+                        console.warn("Forced disconnect failed (this is often fine):", e);
+                    }
+                }
 
                 if (!accounts || accounts.length === 0) {
                     handleDisconnect();
                     return;
                 }
                 
-                // *** FIX #2 & #3 DEFENSE: DELAYED REBUILD ***
-                // Add a small delay to defeat the Chrome throttling/caching (Problem #2 and #3 defense).
+                // *** DELAYED REBUILD FIX ***
                 setTimeout(async () => {
-                    await rebuildConnection(accounts[0]); // Use the correct address from the event payload
+                    await rebuildConnection(accounts[0]);
                     console.log("Wallet address updated after 100ms delay.");
                 }, 100);
             });
@@ -399,7 +471,7 @@
                 ui.btn.disabled = false;
                 ui.spinner.classList.add('hidden');
                 ui.btn.classList.remove('btn-primary-loading');
-                ui.btnText.textContent = `MINT INSCRIPTION (${MINT_FEE_AMOUNT} BERT)`;
+                ui.btnText.textContent = `MINT INKSCRIPTION (BURN ${MINT_FEE_AMOUNT} BERT)`;
                 
                 ui.input.value = '';
                 calcGas();
@@ -525,11 +597,15 @@
             if (card) card.remove();
         }
 
-        // *** MODIFIED to accept and display index parameter ***
+        // *** MODIFIED to accept and display index parameter and include new view button ***
         function createGalleryCard(art, hash, block, prepend = false, index = '---') {
             const safeArt = (art || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
             const isPending = block === "Pending...";
             const badge = isPending ? "bg-yellow-100 text-yellow-800" : "bg-gray-100 text-gray-600";
+            
+            // --- NEW: Store content in a global cache keyed by hash ---
+            window.tempInscriptionContent[hash] = art; 
+            // --------------------------------------------------------
 
             removeGalleryCard(hash); 
 
@@ -542,10 +618,14 @@
                 
                 <div class="text-xl font-extrabold text-violet-500 mb-2">#${index}</div> 
                 
-                <div class="mt-auto pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500">
+                <div class="pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500 mb-2">
                     <span class="px-2 py-1 rounded ${badge}">Block: ${block}</span>
                     <a href="https://explorer.inkonchain.com/tx/${hash}" target="_blank" class="text-blue-500 hover:underline">View TX ↗</a>
                 </div>
+                <button onclick="viewFullInscription('${hash}')" 
+                        class="w-full bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold py-1 px-2 rounded transition mt-2">
+                    View Full Content
+                </button>
             `;
             
             if (prepend) ui.grid.prepend(div); 
@@ -588,14 +668,26 @@
         function calcGas() {
             const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
 
-            if(!readProvider) {
-                ui.byteCount.textContent = new TextEncoder().encode(ui.input.value || "").length;
-                ui.gas.textContent = `---`;
-                return;
-            }
             const txt = ui.input.value || "";
             const bytes = new TextEncoder().encode(txt);
             ui.byteCount.textContent = bytes.length;
+            
+            // --- PREVIEW LOGIC ---
+            if (txt.length > 0) {
+                // Ensure the preview content is safely escaped for HTML rendering
+                const safeHtml = txt.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                ui.preview.innerHTML = safeHtml;
+                ui.preview.classList.remove('hidden');
+            } else {
+                ui.preview.classList.add('hidden');
+                ui.preview.innerHTML = '';
+            }
+            // -------------------------
+
+            if(!readProvider) {
+                ui.gas.textContent = `---`;
+                return;
+            }
             
             const gas = BigInt(65000) + BigInt(bytes.length * 16); 
 
