@@ -65,8 +65,8 @@
             font-family: 'Courier New', Courier, monospace; 
             white-space: pre; 
             overflow-x: auto; 
-            /* >>> REVISED FIX: Rely on aggressive line-height for square look <<< */
-            line-height: 0.8; /* Aggressively compress vertical spacing */
+            /* >>> CRITICAL FIX: Changed line-height from 0.8 to 1.2 to expand vertical spacing for a square look <<< */
+            line-height: 1.2; /* Increased vertical spacing for 1:1 ratio (square look) */
             letter-spacing: normal; /* Revert explicit letter-spacing */
             font-size: 13px; /* Default monospace font size */
         }
@@ -113,7 +113,7 @@
             font-family: 'Courier New', Courier, monospace; 
             font-size: 13px;
             letter-spacing: normal; /* Revert explicit letter-spacing */
-            line-height: 0.8; /* Aggressively compress vertical spacing */
+            line-height: 1.2; /* MATCH: Increased vertical spacing for 1:1 ratio (square look) */
         }
         /* Set placeholder color for the now white background */
         #inscription-input::placeholder {
@@ -166,7 +166,7 @@
             <label class="block text-sm font-medium text-black">Your Permanent Inkscription</label>
             <textarea id="inscription-input" rows="6" placeholder="Etch your lore or paste your ASCII art here..." class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 font-mono text-xs"></textarea>
             
-            <div id="preview-box" class="hidden bg-gray-900 text-purple-400 p-4 rounded text-xs overflow-auto ascii-art" style="min-height: 100px;">
+            <div id="preview-box" class="hidden bg-gray-900 text-purple-400 p-4 rounded overflow-auto ascii-art" style="min-height: 100px;">
                 </div>
 
             <div class="flex justify-between items-center text-xs bg-gray-50 p-2 rounded border border-gray-200">
@@ -236,7 +236,7 @@
                             /* Ensure the full screen view uses the same ratio fix */
                             font-size: 13px;
                             letter-spacing: normal;
-                            line-height: 0.8;
+                            line-height: 1.2; /* MATCH: Increased vertical spacing for 1:1 ratio (square look) */
                         }
                     </style>
                 </head>
