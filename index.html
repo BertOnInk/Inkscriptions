@@ -60,7 +60,17 @@
         .spinner { border-top-color: #fff; border-right-color: transparent; -webkit-animation: spin 1s linear infinite; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .btn-primary-loading { opacity: 0.7; cursor: not-allowed; }
-        .ascii-art { font-family: 'Courier New', Courier, monospace; white-space: pre; line-height: 1.0; overflow-x: auto; }
+        
+        .ascii-art { 
+            font-family: 'Courier New', Courier, monospace; 
+            white-space: pre; 
+            overflow-x: auto; 
+            /* >>> REVISED FIX: Rely on aggressive line-height for square look <<< */
+            line-height: 0.8; /* Aggressively compress vertical spacing */
+            letter-spacing: normal; /* Revert explicit letter-spacing */
+            font-size: 13px; /* Default monospace font size */
+        }
+        
         .pending-card { opacity: 0.6; filter: grayscale(1); transition: opacity 0.5s; }
 
         /* Adjust text colors for dark background */
@@ -82,6 +92,9 @@
         .border-violet-500 { border-color: #c084fc; }
         .text-purple-400 { color: #c084fc; } 
         .text-violet-500 { color: #a855f7; } 
+        
+        /* Utility to force black text for contrast */
+        .text-black { color: #000000 !important; }
 
         /* Overriding global input/textarea styles */
         input, textarea {
@@ -92,10 +105,15 @@
             color: #b0b0b0;
         }
         
-        /* >>> NEW ADDITION: FORCE INSCRIPTION INPUT TEXT TO BLACK <<< */
+        /* >>> MODIFICATION: Force inscription input text to black/white for contrast <<< */
         #inscription-input {
             background-color: #ffffff; /* Make the input background white for contrast */
             color: #000000; /* Set text color to black */
+            /* >>> CRITICAL FIX: Apply same square ratio settings to the input box <<< */
+            font-family: 'Courier New', Courier, monospace; 
+            font-size: 13px;
+            letter-spacing: normal; /* Revert explicit letter-spacing */
+            line-height: 0.8; /* Aggressively compress vertical spacing */
         }
         /* Set placeholder color for the now white background */
         #inscription-input::placeholder {
@@ -122,11 +140,22 @@
             <button id="disconnect-btn" class="bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold px-3 py-1.5 rounded transition">Disconnect</button>
         </div>
 
-        <div class="border-t border-gray-200 pt-4 space-y-4">
-            <div class="flex justify-between items-end">
-                <div><p class="text-lg font-semibold text-gray-700">Inkscription Cost</p></div>
-                <div class="text-right"><p class="text-2xl font-extrabold graffiti-font text-violet-600">1000 BERT</p></div>
+        <div class="pt-4 space-y-4">
+            
+            <p class="text-lg font-extrabold text-gray-700 flex justify-between items-center pb-2">
+                <span class="graffiti-font text-violet-500">Cumulative Tendie Count 🍗:</span>
+                <span id="total-burn-display" class="graffiti-font font-extrabold text-red-500">0 BERT 🔥</span>
+            </p>
+
+            <div class="border-t border-gray-200 pt-4">
+                <div class="flex justify-between items-end">
+                    <div><p class="text-sm font-medium text-black">Inkscription Cost</p></div>
+                    <div class="text-right">
+                        <p class="text-sm font-medium text-black">1000 BERT</p>
+                    </div>
+                </div>
             </div>
+            
             <p class="text-xs text-gray-500 flex justify-between bg-gray-50 p-2 rounded">
                 <span>Your Balance:</span>
                 <span id="balance-display" class="font-mono font-bold text-gray-800">---</span>
@@ -134,7 +163,7 @@
         </div>
         
         <div class="space-y-2">
-            <label class="block text-sm font-medium text-gray-700">Your Permanent Inkscription</label>
+            <label class="block text-sm font-medium text-black">Your Permanent Inkscription</label>
             <textarea id="inscription-input" rows="6" placeholder="Etch your lore or paste your ASCII art here..." class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 font-mono text-xs"></textarea>
             
             <div id="preview-box" class="hidden bg-gray-900 text-purple-400 p-4 rounded text-xs overflow-auto ascii-art" style="min-height: 100px;">
@@ -204,6 +233,10 @@
                             font-family: 'Courier New', Courier, monospace; 
                             white-space: pre-wrap; 
                             padding: 20px;
+                            /* Ensure the full screen view uses the same ratio fix */
+                            font-size: 13px;
+                            letter-spacing: normal;
+                            line-height: 0.8;
                         }
                     </style>
                 </head>
@@ -268,7 +301,10 @@
             address: $('address-display'),
             disconnect: $('disconnect-btn'),
             balance: $('balance-display'),
+            // >>> Total Burn Display
+            totalBurn: $('total-burn-display'), 
             input: $('inscription-input'),
+            // >>> Preview Box
             preview: $('preview-box'), 
             byteCount: $('byte-count'),
             gas: $('gas-display'),
@@ -333,6 +369,7 @@
 
                 // Fetch live data (uses dedicated readProvider now)
                 await fetchBalance();
+                // When connected, we fetch the gallery here
                 await fetchGallery(); 
                 calcGas();
             } catch (err) {
@@ -348,6 +385,8 @@
             contract = null;
             pendingTxHash = null;
             fetchedHashes.clear(); 
+            
+            // Note: Total burn display is now handled by fetchGallery() on init if not connected.
 
             ui.header.classList.add('hidden');
             ui.balance.textContent = "---";
@@ -515,10 +554,16 @@
                 
                 const events = await stableContract.queryFilter(filter, fromBlock, currentBlock);
                 
-                // *** NEW: Calculate total count for numbering ***
+                // *** CALCULATE AND DISPLAY BURN METRIC ***
                 const totalInscriptions = events.length + GUARANTEED_MINTS.length;
                 let inscriptionCounter = totalInscriptions;
-                // ----------------------------------------------
+                
+                // CALCULATE TOTAL BURNED
+                const totalBurned = totalInscriptions * MINT_FEE_AMOUNT;
+                
+                // >>> UPDATE TEXT FORMAT AND CONTENT (Red, Graffiti font, Fire emoji added)
+                ui.totalBurn.textContent = `${totalBurned.toLocaleString()} BERT 🔥`;
+                // ------------------------------------------
 
                 if (pendingTxHash) removeGalleryCard(pendingTxHash);
 
@@ -551,6 +596,8 @@
 
             } catch (e) {
                 console.error('fetchGallery error:', e);
+                // Set to 0 on failure to avoid confusion
+                ui.totalBurn.textContent = `0 BERT 🔥`; 
             } finally {
                 // This ensures the loader is hidden upon completion, regardless of success/failure
                 ui.loader.classList.add('hidden'); 
@@ -733,6 +780,9 @@
         // 6. INIT: check connected accounts on load
         // ============================================================
         (async function init() {
+            // *** FIX: Always fetch gallery and burn metric on init, regardless of wallet status ***
+            await fetchGallery(); 
+
             if (window.ethereum) {
                 try {
                     const acc = await window.ethereum.request({ method: 'eth_accounts' });
@@ -740,10 +790,10 @@
                     if (acc && acc.length > 0) {
                         await rebuildConnection(acc[0]);
                         
-                        // NOTE: If the grid is empty after connection, force a final fetch.
-                        if (ui.grid.children.length === 0) {
-                            await fetchGallery();
-                        }
+                        // Gallery already fetched above, but we leave it in rebuildConnection for post-connection updates
+                        // if (ui.grid.children.length === 0) {
+                        //     await fetchGallery();
+                        // }
                     }
                 } catch (err) {
                     console.error('init eth_accounts error', err);
