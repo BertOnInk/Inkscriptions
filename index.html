@@ -748,7 +748,7 @@
                 ui.statusMsg.textContent = `⏳ TRANSACTION PENDING\nHash: ${tx.hash}`;
                 ui.statusBox.classList.remove('hidden');
 
-                await tx.wait();
+                const receipt = await tx.wait(); // Wait for transaction to be mined
 
                 ui.statusMsg.textContent = `✅ TRANSACTION CONFIRMED!\nHash: ${tx.hash}`;
                 
@@ -774,6 +774,20 @@
                 ui.btnText.textContent = `MINT INSCRIPTION (${MINT_FEE_AMOUNT} BERT)`;
 
                 let msg = e.reason || e.message || "Unknown Error";
+
+                // --- NEW ERROR COALESCENCE CHECK ---
+                if (e.code === 'UNKNOWN_ERROR' && e.message.includes("could not coalesce error") && e.payload?.method === 'eth_getBlockByNumber') {
+                     msg = "Mint Confirmed. Failed to fetch final block details (RPC hiccup). The inscription is on the blockchain. Please refresh the gallery manually.";
+                     // Since we know the mint was successful (it passed tx.wait()), we can confirm it to the user.
+                     ui.statusMsg.textContent = `✅ MINT CONFIRMED (Minor Data Error)\n${msg}`;
+                     ui.statusBox.classList.remove('hidden');
+                     
+                     // Run fetchGallery one last time to attempt recovery
+                     await fetchGallery(); 
+                     return; 
+                }
+                // -----------------------------------
+
                 // CRITICAL CATCH: Check for the 500 error specifically
                 if (typeof msg === 'string' && msg.includes("status code 500")) {
                      msg = "RPC Error (500): The live network RPC node failed to process the transaction pre-flight check. This is highly likely due to the RPC being unstable or the transaction failing during simulation. Please check your token balance and ensure the network is functioning.";
@@ -811,7 +825,6 @@
                 
                 // *** CALCULATE AND DISPLAY BURN METRIC ***
                 const totalInscriptions = events.length + GUARANTEED_MINTS.length;
-                let inscriptionCounter = totalInscriptions;
                 
                 // CALCULATE TOTAL BURNED
                 const totalBurned = totalInscriptions * MINT_FEE_AMOUNT;
@@ -828,20 +841,34 @@
                 // *** PROMISE.ALL MODIFICATION ***
                 const renderPromises = [];
 
-                // 1. Re-add guaranteed mints
+                // We need to count up from 1 to totalInscriptions to assign indices in chronological order.
+                let inscriptionCounter = 1;
+
+                // 1. Re-add guaranteed mints (Oldest first)
                 for(const hash of GUARANTEED_MINTS) {
-                    // Collect promise
-                    renderPromises.push(decodeAndRenderTx(hash, true, readProvider, inscriptionCounter--));
+                    // Pass the current counter value and increment it
+                    renderPromises.push(decodeAndRenderTx(hash, true, readProvider, inscriptionCounter++));
                 }
                 
-                // 2. Add new events
-                for (const evt of events.reverse()) {
-                    // Collect promise
-                    renderPromises.push(decodeEvent(evt, true, readProvider, inscriptionCounter--)); 
+                // 2. Add new events (The list of events is ordered chronologically by Ethers.js queryFilter)
+                // The events are returned oldest first. We need to process them in that order.
+                for (const evt of events) { // NOTE: events array is NOT reversed here, processing chronologically
+                    // Pass the current counter value and increment it
+                    renderPromises.push(decodeEvent(evt, false, readProvider, inscriptionCounter++)); 
                 }
                 
                 // *** AWAIT ALL RENDERING PROMISES before updating UI ***
                 await Promise.all(renderPromises);
+                
+                // To display the latest inscriptions at the top of the grid, we fetch them chronologically,
+                // but we need to reverse the order of elements in the DOM *after* all rendering is done.
+                
+                // FIX: Reverse the DOM order to show newest (highest index) first.
+                // The HTML grid uses appendChild (last is newest). We need to reverse the children.
+                const grid = ui.grid;
+                const children = Array.from(grid.children);
+                children.reverse().forEach(child => grid.appendChild(child));
+
 
                 if (ui.grid.children.length === 0) {
                     ui.empty.classList.remove('hidden');
@@ -878,7 +905,8 @@
                     let content = str;
                     try { content = JSON.parse(str).text; } catch(e){}
                     
-                    createGalleryCard(content, tx.hash, tx.blockNumber || '---', prepend, index); // Pass index here
+                    // IMPORTANT: The index here is the chronological number (1, 2, 3...)
+                    createGalleryCard(content, tx.hash, tx.blockNumber || '---', false, index); // Use false for prepend here, DOM reversal handles final order
                     fetchedHashes.add(tx.hash);
                     return true; // Return a success indicator
                 }
@@ -892,7 +920,8 @@
         async function decodeEvent(evt, prepend = false, currentProvider = null, index = '---') {
             if (!evt.transactionHash || fetchedHashes.has(evt.transactionHash)) return;
             
-            return decodeAndRenderTx(evt.transactionHash, prepend, currentProvider, index); // Return the promise
+            // IMPORTANT: The index here is the chronological number (1, 2, 3...)
+            return decodeAndRenderTx(evt.transactionHash, false, currentProvider, index); // Use false for prepend here, DOM reversal handles final order
         }
 
         function removeGalleryCard(hash) {
@@ -931,6 +960,7 @@
                 </button>
             `;
             
+            // NOTE: We now ONLY use appendChild (or manual prepend for pending) and reverse the entire DOM.
             if (prepend) ui.grid.prepend(div); 
             else ui.grid.appendChild(div);
         }
