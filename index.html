@@ -184,9 +184,17 @@
 
     <div class="w-full max-w-xl bg-white p-6 md:p-8 rounded-xl card space-y-6 mb-12">
         
+        <div id="wallet-bar" class="hidden flex justify-between items-center bg-violet-50 border border-violet-200 px-4 py-3 rounded-lg">
+            <div>
+                <p class="text-xs font-bold text-violet-800 uppercase tracking-wide">Connected As</p>
+                <p id="address-display" class="font-mono text-sm font-bold text-gray-800">...</p>
+            </div>
+            <button id="disconnect-btn" class="bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold px-3 py-1.5 rounded transition">Disconnect</button>
+        </div>
+
         <div class="pt-0 space-y-4">
             
-            <div class="flex flex-col items-center justify-center -mt-2 mb-1"> 
+            <div class="flex flex-col items-center justify-center -mt-6 mb-1"> 
                 <img src="burning_chicken.png" alt="Burning Chicken" class="h-10 w-10 mt-1 mb-2"> 
                 <p class="text-sm font-medium text-black flex items-center gap-2">
                     Burn BERT, ink history
@@ -199,13 +207,6 @@
                 <span id="total-burn-display" class="graffiti-font font-extrabold text-red-500">0 BERT 🔥</span>
             </p>
 
-            <div id="wallet-bar" class="hidden flex justify-between items-center bg-violet-50 border border-violet-200 px-4 py-3 rounded-lg">
-                <div>
-                    <p class="text-xs font-bold text-violet-800 uppercase tracking-wide">Connected As</p>
-                    <p id="address-display" class="font-mono text-sm font-bold text-gray-800">...</p>
-                </div>
-                <button id="disconnect-btn" class="bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold px-3 py-1.5 rounded transition">Disconnect</button>
-            </div>
             <div class="border-t border-gray-200 pt-4">
                 <div class="flex justify-between items-end">
                     <div><p class="text-sm font-medium text-black">Inkscription Cost</p></div>
@@ -255,7 +256,7 @@
     <div class="w-full max-w-4xl">
         <div class="flex items-center justify-between mb-6">
             <h2 class="text-2xl font-bold text-white">🏛️ Live Gallery</h2>
-            <button id="refresh-btn" class="text-black text-sm bg-white border border-gray-300 px-3 py-1 rounded hover:bg-gray-50">↻ Refresh</button>
+            <button id="refresh-btn" class="text-black text-sm bg-white border border border-gray-300 px-3 py-1 rounded hover:bg-gray-50">↻ Refresh</button>
         </div>
         
         <div id="gallery-loader" class="text-center py-10 hidden">
@@ -354,9 +355,9 @@
 
             // --- FAQ CONTENT STRING (FINAL STYLING APPLIED) ---
             const faqContent = `
-                <h3 class="faq-heading">Q1: What exactly is an Inkscription?</h3>
+                <h3 class="faq-heading">Q1: What exactly is a Bert's Inkscription?</h3>
                 <div class="faq-answer">
-                    <p>An <span style="color: #9333ea;">Inkscription</span> is a permanent, immutable artifact etched directly onto the blockchain. When you create an <span style="color: #9333ea;">Inkscription</span>, you're burning a fixed amount of <span style="color: #9333ea;">BERT</span> tokens and using the transaction's calldata to embed text or data (like ASCII art) into the network's history forever. It's essentially a decentralized, permanent record stored on the chain.</p>
+                    <p>An <span style="color: #9333ea;">Inkscription</span> is a <strong>permanent, immutable artifact etched directly onto the blockchain</strong>. When you create an <span style="color: #9333ea;">Inkscription</span>, you're <strong>burning a fixed amount of BERT tokens</strong> and using the transaction's calldata to embed text or data (like ASCII art) into the network's history forever. It's essentially a decentralized, permanent record stored on the chain.</p>
                 </div>
                 
                 <h3 class="faq-heading">Q2: How do I create an Inkscription?</h3>
@@ -364,7 +365,8 @@
                     <p>Creating an <span style="color: #9333ea;">Inkscription</span> involves four simple steps:</p>
                     <ul>
                         <li><span style="color: #9333ea;">Connect Wallet:</span> Click the "Connect Wallet" button and ensure you have enough <span style="color: #9333ea;">BERT</span> tokens (1000 <span style="color: #9333ea;">BERT</span> per <span style="color: #9333ea;">inkscription</span>) and a small amount of ETH for gas.</li>
-                        <li><span style="color: #9333ea;">Compose Content:</span> Enter your desired text, lore, or ASCII art into the "<span style="color: #000000 !important;">Your Permanent</span> <span style="color: #9333ea;">Inkscription</span>" box. For ASCII Art: We recommend an image-to-ASCII web tool such as <a href="https://www.asciiart.eu/image-to-ascii" target="_blank" class="text-violet-500 hover:text-violet-700 underline">asciiart.eu/image-to-ascii</a> or similar. There you can upload and fine-tune an image to create your perfect <span style="color: #9333ea;">inkscription</span> content.</li>
+                        <li><span style="color: #9333ea;">Compose Content:</span> Enter your desired text, lore, or ASCII art into the "<span style="color: #000000 !important;">Your Permanent</span> <span style="color: #9333ea;">Inkscription</span>" box.</li>
+                        <li><span style="color: #9333ea;">For ASCII Art:</span> We recommend an image-to-ASCII web tool such as <a href="https://www.asciiart.eu/image-to-ascii" target="_blank" class="text-violet-500 hover:text-violet-700 underline">asciiart.eu/image-to-ascii</a> or similar. There you can upload and fine-tune an image to create your perfect <span style="color: #9333ea;">inkscription</span> content.</li>
                         <li><span style="color: #9333ea;">Check Cost:</span> Review the <span style="color: #000000 !important;">Est. Gas</span> display to see the estimated ETH transaction cost.</li>
                         <li><span style="color: #9333ea;">Mint:</span> Click the <span style="color: #9333ea;">"MINT INKSCRIPTION"</span> button and confirm the transaction (which includes the <span style="color: #9333ea;">BERT</span> token burn and the <span style="color: #9333ea;">inkscription</span> data) in your wallet. Once confirmed, your unique artifact will appear in the Live Gallery!</li>
                     </ul>
@@ -534,23 +536,16 @@
                 return;
             }
             try {
-                // Request accounts. This will trigger MetaMask/Rabby to connect/confirm/unlock
+                // Request accounts. This will trigger MetaMask to connect/confirm
                 const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                
                 if (accounts && accounts.length > 0) {
                     await rebuildConnection(accounts[0]);
-                } else {
-                    // This scenario is rare but covers cases where the request returns an empty array
-                    handleDisconnect();
                 }
                 return accounts;
             } catch (e) {
                 console.error('connectWallet error', e);
                 if (e.code === 4001) {
-                    alert('Please connect to your wallet to use this dApp (request denied).');
-                } else {
-                    // This catches general RPC or connection errors, often related to wallet being closed/locked
-                    alert('Connection failed. Please ensure your wallet (Rabby/MetaMask) is unlocked and try again.');
+                    alert('Please connect to your wallet to use this dApp.');
                 }
                 handleDisconnect(); 
                 return [];
@@ -600,28 +595,12 @@
         ui.disconnect.addEventListener('click', handleDisconnect);
 
         // ============================================================
-        // 3. MINTING (Uses wallet's signer, now with locked wallet check)
+        // 3. MINTING (Transaction Logic FIX)
         // ============================================================
         async function mintInscription() {
             const text = ui.input.value.trim();
             if (!text) return alert("Please enter text");
-            
-            // --- MODIFIED CHECK FOR WALLET STATUS ---
-            if (!currentAccount) {
-                 return alert("Wallet not connected. Please click 'Connect Wallet' first.");
-            }
-            if (!signer) {
-                // If currentAccount is set but signer failed (likely due to wallet being locked), rebuild
-                console.warn("Signer object is missing. Attempting to re-acquire signer.");
-                // This call attempts to recreate the Ethers signer, which might prompt an unlock
-                await rebuildConnection(currentAccount);
-                if (!signer) {
-                    // If re-acquisition didn't help, alert the user to unlock manually.
-                    alert("Wallet is currently locked or requires attention. Please unlock your wallet and try again.");
-                    return; 
-                }
-            }
-            // ----------------------------------------
+            if (!signer || !contract) return alert("Connect wallet first");
 
             try {
                 ui.btn.disabled = true;
@@ -633,14 +612,25 @@
 
                 const amount = window.ethers.parseUnits(MINT_FEE_AMOUNT.toString(), 18);
                 const json = JSON.stringify({ text: text });
-                const hexData = window.ethers.hexlify(window.ethers.toUtf8Bytes(json)).slice(2);
+                
+                // 1. Get the inscription data, ensuring it has the 0x prefix.
+                const inscriptionPayload = window.ethers.hexlify(window.ethers.toUtf8Bytes(json));
+                
+                // 2. Encode the standard ERC-20 transfer call.
                 const calldata = contract.interface.encodeFunctionData("transfer", [BURN_ADDRESS, amount]);
 
+                // 3. Combine: Standard call + RAW inscription payload (stripping the call's 0x prefix).
+                const finalData = calldata + inscriptionPayload.slice(2); 
+
+                // --- TRANSACTION SEND FIX ---
                 const tx = await signer.sendTransaction({
                     to: BERT_TOKEN_ADDRESS,
-                    data: calldata + hexData,
-                    value: 0
+                    data: finalData, // Use the correctly concatenated string
+                    value: 0,
+                    // Add a fixed gas limit to prevent UNPREDICTABLE_GAS_LIMIT errors (Status 500 cause)
+                    gasLimit: 80000 
                 });
+                // -----------------------------
 
                 ui.btnText.textContent = "Minting...";
                 pendingTxHash = tx.hash;
@@ -864,15 +854,16 @@
         }
 
         ui.input.addEventListener('input', calcGas);
-        async function calcGas() {
+        function calcGas() {
             const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+
             const txt = ui.input.value || "";
             const bytes = new TextEncoder().encode(txt);
-            
             ui.byteCount.textContent = bytes.length;
             
             // --- PREVIEW LOGIC ---
             if (txt.length > 0) {
+                // Ensure the preview content is safely escaped for HTML rendering
                 const safeHtml = txt.replace(/</g, "&lt;").replace(/>/g, "&gt;");
                 ui.preview.innerHTML = safeHtml;
                 ui.preview.classList.remove('hidden');
@@ -882,59 +873,24 @@
             }
             // -------------------------
 
-            // Cannot estimate gas without a provider/network connection
             if(!readProvider) {
                 ui.gas.textContent = `---`;
                 return;
             }
-
-            // --- FIX: Show placeholder if input is empty ---
-            if (txt.length === 0) {
-                ui.gas.textContent = `(Start Typing)`;
-                return;
-            }
             
-            try {
-                // 1. Construct the transaction data object
-                const amount = window.ethers.parseUnits(MINT_FEE_AMOUNT.toString(), 18);
-                const json = JSON.stringify({ text: txt });
-                const hexData = window.ethers.hexlify(window.ethers.toUtf8Bytes(json)).slice(2);
-                
-                const tempContract = new window.ethers.Contract(BERT_TOKEN_ADDRESS, BERT_ABI_SNIPPET, readProvider);
-                const calldata = tempContract.interface.encodeFunctionData("transfer", [BURN_ADDRESS, amount]);
-                
-                const txData = {
-                    to: BERT_TOKEN_ADDRESS,
-                    data: calldata + hexData,
-                    value: 0
-                };
+            const gas = BigInt(65000) + BigInt(bytes.length * 16); 
 
-                // 2. Estimate the Gas Limit
-                const gasLimit = await readProvider.estimateGas(txData);
-
-                // 3. Get the current Gas Price (Fee Data)
-                const feeData = await readProvider.getFeeData();
-                const gasPrice = feeData.maxFeePerGas || feeData.gasPrice || BigInt(0);
-                
-                // 4. Calculate the total ETH cost
-                const cost = gasLimit * gasPrice; 
-                ui.gas.textContent = `~${parseFloat(window.ethers.formatEther(cost)).toFixed(6)} ETH`;
-
-            } catch (err) {
-                // Fallback: If live estimation fails (e.g., RPC issues, simulation error)
-                console.warn("Live Gas estimation failed, falling back to approximation:", err);
-                
-                const approxGas = BigInt(65000) + BigInt(bytes.length * 16); 
-
+            readProvider.getFeeData().then(f => {
+                const gasPrice = f.maxFeePerGas || f.gasPrice || BigInt(0);
                 try {
-                    const feeData = await readProvider.getFeeData();
-                    const gasPrice = feeData.maxFeePerGas || feeData.gasPrice || BigInt(0);
-                    const cost = approxGas * gasPrice; 
-                    ui.gas.textContent = `~${parseFloat(window.ethers.formatEther(cost)).toFixed(6)} ETH (approx)`;
-                } catch (innerErr) {
-                    ui.gas.textContent = `Error/High Fee`;
+                    const cost = gas * (gasPrice || BigInt(0)); 
+                    ui.gas.textContent = `~${parseFloat(window.ethers.formatEther(cost)).toFixed(6)} ETH`;
+                } catch (err) {
+                    ui.gas.textContent = `---`;
                 }
-            }
+            }).catch(() => {
+                ui.gas.textContent = `---`;
+            });
         }
 
         ui.manualBtn.addEventListener('click', async () => {
@@ -963,24 +919,32 @@
         });
 
         // ============================================================
-        // 6. INIT: check connected accounts on load (Simplified)
+        // 6. INIT: check connected accounts on load
         // ============================================================
         (async function init() {
-            // Only fetch gallery on load. We rely on the user clicking "Connect Wallet"
-            // to trigger eth_requestAccounts for a session.
-            await fetchGallery(); 
-            
-            // Check for existing session automatically, only if Ethereum is available
+            // *** FIX: Gallery fetching is now done conditionally for better load behavior. ***
+            // await fetchGallery(); // REMOVED
+
             if (window.ethereum) {
                 try {
                     const acc = await window.ethereum.request({ method: 'eth_accounts' });
+                    
                     if (acc && acc.length > 0) {
-                        // If permission already exists, rebuild connection silently
                         await rebuildConnection(acc[0]);
+                    } else {
+                        // FALLBACK: If wallet is installed but not connected, load the gallery anyway
+                        await fetchGallery(); 
                     }
                 } catch (err) {
                     console.error('init eth_accounts error', err);
+                    ui.loader.classList.add('hidden'); 
+                    // FALLBACK: If eth_accounts fails for any reason, load the gallery anyway
+                    await fetchGallery(); 
                 }
+            } else {
+                handleDisconnect();
+                // FALLBACK: If no wallet is installed, load the gallery to show burned history
+                await fetchGallery();
             }
         })();
 
