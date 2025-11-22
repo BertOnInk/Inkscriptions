@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Bert's Inkscriptions 🐔🖋️</title>
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; connect-src *;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; connect-src *; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com;">
     <link href="https://fonts.googleapis.com/css2?family=Bungee&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
@@ -858,6 +858,11 @@
         function calcGas() {
             const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
 
+            if(!readProvider) {
+                ui.gas.textContent = `---`;
+                return;
+            }
+            
             const txt = ui.input.value || "";
             const bytes = new TextEncoder().encode(txt);
             ui.byteCount.textContent = bytes.length;
@@ -874,11 +879,6 @@
             }
             // -------------------------
 
-            if(!readProvider) {
-                ui.gas.textContent = `---`;
-                return;
-            }
-            
             const gas = BigInt(65000) + BigInt(bytes.length * 16); 
 
             readProvider.getFeeData().then(f => {
