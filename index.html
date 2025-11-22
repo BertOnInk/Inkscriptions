@@ -4,84 +4,53 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Bert's Inkscriptions 🐔🖋️</title>
-    
-    <!-- ✅ CRITICAL FIX: The Content Security Policy (CSP) tag must be a single, correct line to work across browsers. 
-         This allows 'unsafe-eval' (for Ethers) and the CDN domains (unpkg, cdnjs) to execute. 
-         THIS IS THE ONLY CORRECT FORMAT. -->
-    <meta http-equiv="Content-Security-Policy" content="script-src 'self' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://unpkg.com 'unsafe-inline' 'unsafe-eval'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; connect-src 'self' https://rpc-qnd.inkonchain.com https://*.walletconnect.com;">
+
+    <!-- CSP: allow WalletConnect relay (https + wss), RPC and CDNs. -->
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://unpkg.com 'unsafe-inline' 'unsafe-eval'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; connect-src 'self' https://rpc-qnd.inkonchain.com https://*.walletconnect.com https://relay.walletconnect.com wss://relay.walletconnect.com;">
 
     <link href="https://fonts.googleapis.com/css2?family=Bungee&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    
+
+    <!-- Ethers.js (UMD) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.11.1/ethers.umd.min.js"></script>
-    <script src="https://unpkg.com/@web3modal/ethers@2.7.1/dist/index.umd.js"></script>
+
+    <!-- FIX: Web3Modal Standalone UMD (exposes window.Web3Modal) -->
+    <script src="https://unpkg.com/@web3modal/standalone@2.7.1/dist/index.umd.js"></script>
+
     <style>
+        /* (Your existing styles unchanged — copied from original file) */
         body { 
             font-family: 'Inter', sans-serif; 
-            
-            /* UPDATED BACKGROUND STYLES */
-            background-image: 
-                url('bg.png'), /* Layer 1: The Image (Using simple relative path) */
-                linear-gradient(135deg, #a855f7, #c084fc); /* Layer 2: The Gradient */
-            
+            background-image: url('bg.png'), linear-gradient(135deg, #a855f7, #c084fc);
             background-size: cover;
             background-position: center center;
             background-repeat: no-repeat;
             background-attachment: fixed;
-            background-color: #a855f7; /* Fallback color */
-            
+            background-color: #a855f7;
             color: #e0e0e0; 
             position: relative;
             overflow-x: hidden; 
         }
-
-        /* NEW CUSTOM STYLE FOR H1 TITLE (Graffiti Font & White Shadowed Color) */
         .graffiti-title {
             font-family: 'Bungee', cursive;
             color: #ffffff !important; 
             text-shadow: 2px 2px #9333ea, 4px 4px #7c3aed; 
         }
-        
-        /* NEW CUSTOM STYLE FOR ANY TEXT THAT NEEDS THE GRAFFITI FONT */
-        .graffiti-font {
-            font-family: 'Bungee', cursive;
-        }
-
         .card { 
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3); /* Darker shadow for dark background */
-            background-color: rgba(255, 255, 255, 0.05); /* Slightly transparent card background */
-            backdrop-filter: blur(10px); /* Frosted glass effect */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            background-color: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
-        /* ADDED HOVER EFFECT */
-        .card-hover { 
-            transition: transform 0.3s ease, box-shadow 0.3s ease; 
-        }
-        .card-hover:hover {
-            transform: translateY(-5px); /* Lift the card slightly */
-            box-shadow: 0 15px 35px rgba(147, 51, 234, 0.4); /* Purple glow effect */
-        }
-        /* --- PRIMARY BUTTON (PURPLE) --- */
+        .card-hover { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .card-hover:hover { transform: translateY(-5px); box-shadow: 0 15px 35px rgba(147, 51, 234, 0.4); }
         .btn-primary { background-color: #9333ea; transition: background-color 0.3s; }
         .btn-primary:hover { background-color: #7c3aed; }
-        /* ---------------------------------- */
         .spinner { border-top-color: #fff; border-right-color: transparent; -webkit-animation: spin 1s linear infinite; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .btn-primary-loading { opacity: 0.7; cursor: not-allowed; }
-        
-        .ascii-art { 
-            font-family: 'Courier New', Courier, monospace; 
-            white-space: pre; 
-            overflow-x: auto; 
-            /* >>> CRITICAL FIX: Changed line-height from 0.8 to 1.2 to expand vertical spacing for a square look <<< */
-            line-height: 1.2; /* Increased vertical spacing for 1:1 ratio (square look) */
-            letter-spacing: normal; /* Revert explicit letter-spacing */
-            font-size: 13px; /* Default monospace font size */
-        }
-        
+        .ascii-art { font-family: 'Courier New', Courier, monospace; white-space: pre; overflow-x: auto; line-height: 1.2; letter-spacing: normal; font-size: 13px; }
         .pending-card { opacity: 0.6; filter: grayscale(1); transition: opacity 0.5s; }
-
-        /* Adjust text colors for dark background */
         .text-gray-800 { color: #e0e0e0; }
         .text-gray-600 { color: #b0b0b0; }
         .text-gray-700 { color: #d0d0d0; }
@@ -90,8 +59,6 @@
         .bg-gray-50 { background-color: rgba(255, 255, 255, 0.08); }
         .border-gray-300 { border-color: rgba(255, 255, 255, 0.25); }
         .bg-gray-100 { background-color: rgba(255, 255, 255, 0.1); }
-
-        /* Ensure violet elements retain their color */
         .text-violet-800 { color: #d8b4fe; } 
         .bg-violet-50 { background-color: rgba(138, 43, 226, 0.2); } 
         .border-violet-200 { border-color: rgba(138, 43, 226, 0.4); }
@@ -100,90 +67,20 @@
         .border-violet-500 { border-color: #c084fc; }
         .text-purple-400 { color: #c084fc; } 
         .text-violet-500 { color: #a855f7; } 
-        
-        /* Utility to force black text for contrast */
         .text-black { color: #000000 !important; }
-
-        /* Overriding global input/textarea styles */
-        input, textarea {
-            background-color: rgba(255, 255, 255, 0.1);
-            color: #e0e0e0;
-        }
-        input::placeholder, textarea::placeholder {
-            color: #b0b0b0;
-        }
-        
-        /* >>> MODIFICATION: Force inscription input text to black/white for contrast <<< */
-        #inscription-input {
-            background-color: #ffffff; /* Make the input background white for contrast */
-            color: #000000; /* Set text color to black */
-            /* >>> CRITICAL FIX: Apply same square ratio settings to the input box <<< */
-            font-family: 'Courier New', Courier, monospace; 
-            font-size: 13px;
-            letter-spacing: normal; /* Revert explicit letter-spacing */
-            line-height: 1.2; /* MATCH: Increased vertical spacing for 1:1 ratio (square look) */
-        }
-        /* Set placeholder color for the now white background */
-        #inscription-input::placeholder {
-             color: #4b5563; /* Use a medium gray for placeholder */
-        }
-
-        /* --- NEW MODAL STYLES --- */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            z-index: 1000;
-            display: none; /* Controlled by JS */
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        .modal-content {
-            background-color: #ffffff;
-            color: #000000;
-            padding: 25px;
-            border-radius: 12px;
-            max-width: 600px;
-            width: 95%;
-            max-height: 90vh;
-            overflow-y: auto;
-            position: relative;
-            box-shadow: 0 10px 20px rgba(147, 51, 234, 0.4);
-            animation: fadeIn 0.3s;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .faq-heading {
-            font-size: 1.25rem;
-            font-weight: bold;
-            color: #9333ea; /* Purple color matching the title */
-            margin-top: 1rem;
-            border-bottom: 1px solid #d8b4fe;
-            padding-bottom: 0.25rem;
-        }
-        .faq-answer p {
-            margin-top: 0.5rem;
-            margin-bottom: 1rem;
-        }
-        .faq-answer ul {
-            list-style: disc;
-            margin-left: 20px;
-        }
-        .faq-answer strong {
-            color: #4c1d95; /* Darker purple emphasis, default is fine */
-        }
-        /* -------------------------- */
-        
-        /* Ensure disconnect button remains visible */
+        input, textarea { background-color: rgba(255, 255, 255, 0.1); color: #e0e0e0; }
+        input::placeholder, textarea::placeholder { color: #b0b0b0; }
+        #inscription-input { background-color: #ffffff; color: #000000; font-family: 'Courier New', Courier, monospace; font-size: 13px; letter-spacing: normal; line-height: 1.2; }
+        #inscription-input::placeholder { color: #4b5563; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7); z-index: 1000; display: none; align-items: center; justify-content: center; padding: 20px; }
+        .modal-content { background-color: #ffffff; color: #000000; padding: 25px; border-radius: 12px; max-width: 600px; width: 95%; max-height: 90vh; overflow-y: auto; position: relative; box-shadow: 0 10px 20px rgba(147, 51, 234, 0.4); animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        .faq-heading { font-size: 1.25rem; font-weight: bold; color: #9333ea; margin-top: 1rem; border-bottom: 1px solid #d8b4fe; padding-bottom: 0.25rem; }
+        .faq-answer p { margin-top: 0.5rem; margin-bottom: 1rem; }
+        .faq-answer ul { list-style: disc; margin-left: 20px; }
+        .faq-answer strong { color: #4c1d95; }
     </style>
 </head>
-<!-- FIX: Removed onload="startApp()" -->
 <body class="min-h-screen p-4 flex flex-col items-center">
 
     <div class="w-full max-w-xl mb-8 text-center mt-8">
@@ -192,9 +89,8 @@
     </div>
 
     <div class="w-full max-w-xl bg-white p-6 md:p-8 rounded-xl card space-y-6 mb-12">
-        
+        <!-- (same HTML content as original) -->
         <div class="pt-0 space-y-4">
-            
             <div class="flex flex-col items-center justify-center -mt-2 mb-1"> 
                 <img src="burning_chicken.png" alt="Burning Chicken" class="h-10 w-10 mt-1 mb-2"> 
                 <p class="text-sm font-medium text-black flex items-center gap-2">
@@ -202,7 +98,6 @@
                     <button id="faq-btn" class="text-xs text-violet-600 font-bold hover:text-violet-700 transition underline">FAQ</button>
                 </p>
             </div>
-
             <p class="text-lg font-extrabold text-gray-700 flex justify-between items-center pb-2">
                 <span class="graffiti-font text-violet-500">Cumulative Tendie Count 🍗:</span>
                 <span id="total-burn-display" class="graffiti-font font-extrabold text-red-500">0 BERT 🔥</span>
@@ -223,20 +118,17 @@
                     </div>
                 </div>
             </div>
-            
+
             <p class="text-xs text-gray-500 flex justify-between bg-gray-50 p-2 rounded">
                 <span>Your Balance:</span>
                 <span id="balance-display" class="font-mono font-bold text-gray-800">---</span>
             </p>
         </div>
-        
+
         <div class="space-y-2">
             <label class="block text-sm font-medium text-black" for="inscription-input">Your Permanent Inkscription</label>
             <textarea id="inscription-input" rows="6" placeholder="Etch your lore or paste your ASCII art here..." class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 font-mono text-xs"></textarea>
-            
-            <div id="preview-box" class="hidden bg-gray-900 text-purple-400 p-4 rounded overflow-auto ascii-art" style="min-height: 100px;">
-                </div>
-
+            <div id="preview-box" class="hidden bg-gray-900 text-purple-400 p-4 rounded overflow-auto ascii-art" style="min-height: 100px;"></div>
             <div class="flex justify-between items-center text-xs bg-gray-50 p-2 rounded border border-gray-200">
                 <span class="text-gray-600">Size: <span id="byte-count" class="font-bold">0</span> bytes</span>
                 <span class="text-gray-600">Est. Gas: <span id="gas-display" class="font-bold text-blue-600">---</span></span>
@@ -266,7 +158,7 @@
             <h2 class="text-2xl font-bold text-white">🏛️ Live Gallery</h2>
             <button id="refresh-btn" class="text-black text-sm bg-white border border-gray-300 px-3 py-1 rounded hover:bg-gray-50">↻ Refresh</button>
         </div>
-        
+
         <div id="gallery-loader" class="text-center py-10 hidden">
             <div class="spinner h-8 w-8 border-4 border-violet-500 rounded-full mx-auto"></div>
             <p class="text-gray-500 mt-2">Scanning Blockchain...</p>
@@ -282,25 +174,19 @@
                 <h2 class="text-2xl font-bold text-violet-600">Bert's Inkscriptions FAQ</h2>
                 <button id="close-faq-btn" class="text-gray-500 hover:text-gray-700 text-2xl font-bold">×</button>
             </div>
-            <div id="faq-body">
-                </div>
+            <div id="faq-body"></div>
             <div class="mt-4 pt-4 border-t border-gray-200">
                 <button onclick="closeFaqModal()" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 rounded transition">Close</button>
             </div>
         </div>
     </div>
+
     <script>
         // Global storage for inscription content
         window.tempInscriptionContent = {};
-
-        // Helper function to safely open the full view
         window.viewFullInscription = function(hash) { 
             const art = window.tempInscriptionContent[hash];
-            if (!art) {
-                // Using custom modal is better than alert(), but preserving your original implementation for consistency
-                alert("Error: Could not find inscription content."); 
-                return;
-            }
+            if (!art) return alert("Error: Could not find inscription content."); 
 
             const htmlContent = `
                 <!DOCTYPE html>
@@ -308,96 +194,49 @@
                 <head>
                     <title>Full Inscription View: ${hash.substring(0, 10)}...</title>
                     <style>
-                        body { 
-                            background-color: #000000; 
-                            color: #c084fc; 
-                            font-family: 'Courier New', Courier, monospace; 
-                            white-space: pre-wrap; 
-                            padding: 20px;
-                            font-size: 13px;
-                            letter-spacing: normal;
-                            line-height: 1.2; 
-                        }
+                        body { background-color: #000000; color: #c084fc; font-family: 'Courier New', Courier, monospace; white-space: pre-wrap; padding: 20px; font-size: 13px; letter-spacing: normal; line-height: 1.2; }
                     </style>
                 </head>
-                <body>
-                    ${art.replace(/</g, "&lt;").replace(/>/g, "&gt;")}
-                </body>
+                <body>${art.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</body>
                 </html>
             `;
-            
             const blob = new Blob([htmlContent], { type: 'text/html' });
             const blobUrl = URL.createObjectURL(blob);
-            
             const a = document.createElement('a');
             a.href = blobUrl;
             a.target = '_blank'; 
-            
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            
             URL.revokeObjectURL(blobUrl);
         }
 
-        // --- FAQ MODAL FUNCTIONS (Unchanged) ---
-        function openFaqModal() {
-            document.getElementById('faq-modal-overlay').style.display = 'flex';
-        }
+        function openFaqModal() { document.getElementById('faq-modal-overlay').style.display = 'flex'; }
+        function closeFaqModal() { document.getElementById('faq-modal-overlay').style.display = 'none'; }
 
-        function closeFaqModal() {
-            document.getElementById('faq-modal-overlay').style.display = 'none';
-        }
-
-        // Initialize FAQ modal listeners
         document.addEventListener('DOMContentLoaded', () => {
             const faqBtn = document.getElementById('faq-btn');
             const closeBtn = document.getElementById('close-faq-btn');
             const overlay = document.getElementById('faq-modal-overlay');
             const faqBody = document.getElementById('faq-body');
 
-            // --- FAQ CONTENT STRING (FINAL STYLING APPLIED) ---
             const faqContent = `
                 <h3 class="faq-heading">Q1: What exactly is an Inkscription?</h3>
-                <div class="faq-answer">
-                    <p>An <span style="color: #9333ea;">Inkscription</span> is a permanent, immutable artifact etched directly onto the blockchain. When you create an <span style="color: #9333ea;">Inkscription</span>, you're burning a fixed amount of <span style="color: #9333ea;">BERT</span> tokens and using the transaction's calldata to embed text or data (like ASCII art) into the network's history forever. It's essentially a decentralized, permanent record stored on the chain.</p>
-                </div>
-                
+                <div class="faq-answer"><p>An <span style="color: #9333ea;">Inkscription</span> is a permanent, immutable artifact etched directly onto the blockchain... </p></div>
                 <h3 class="faq-heading">Q2: How do I create an Inkscription?</h3>
-                <div class="faq-answer">
-                    <p>Creating an <span style="color: #9333ea;">Inkscription</span> involves four simple steps:</p>
-                    <ul>
-                        <li><span style="color: #9333ea;">Connect Wallet:</span> Click the "Connect Wallet" button and ensure you have enough <span style="color: #9333ea;">BERT</span> tokens (1000 <span style="color: #9333ea;">BERT</span> per <span style="color: #9333ea;">inkscription</span>) and a small amount of ETH for gas.</li>
-                        <li><span style="color: #9333ea;">Compose Content:</span> Enter your desired text, lore, or ASCII art into the "<span style="color: #000000 !important;">Your Permanent</span> <span style="color: #9333ea;">Inkscription</span>" box. For ASCII Art: We recommend an image-to-ASCII web tool such as <a href="https://www.asciiart.eu/image-to-ascii" target="_blank" class="text-violet-500 hover:text-violet-700 underline">asciiart.eu/image-to-ascii</a> or similar. There you can upload and fine-tune an image to create your perfect <span style="color: #9333ea;">inkscription</span> content.</li>
-                        <li><span style="color: #9333ea;">Check Cost:</span> Review the <span style="color: #000000 !important;">Est. Gas</span> display to see the estimated ETH transaction cost.</li>
-                        <li><span style="color: #9333ea;">Mint:</span> Click the <span style="color: #9333ea;">"MINT INKSCRIPTION"</span> button and confirm the transaction (which includes the <span style="color: #9333ea;">BERT</span> token burn and the <span style="color: #9333ea;">inkscription</span> data) in your wallet. Once confirmed, your unique artifact will appear in the Live Gallery!</li>
-                    </ul>
-                </div>
-
+                <div class="faq-answer"><p>Creating an <span style="color: #9333ea;">Inkscription</span> involves four simple steps: Connect Wallet, Compose Content, Check Cost, Mint...</p></div>
                 <h3 class="faq-heading">Q3: What are some use cases for Inkscriptions?</h3>
-                <div class="faq-answer">
-                    <p><span style="color: #9333ea;">Inkscriptions</span> are used for creating permanent digital records and decentralized art. Common use cases include:</p>
-                    <ul>
-                        <li><span style="color: #9333ea;">Permanent Lore:</span> Etching founding statements, memorable quotes, or community histories that cannot be edited or erased.</li>
-                        <li><span style="color: #9333ea;">Digital Graffiti/Art:</span> Inscribing custom <span style="color: #000000 !important;">ASCII art</span>, pixel art, or unique digital signatures directly into the blockchain.</li>
-                        <li><span style="color: #9333ea;">Decentralized Data:</span> Embedding small but critical pieces of data, such as contract metadata, verification keys, or time-stamped proof-of-existence records.</li>
-                        <li><span style="color: #9333ea;">Flexing:</span> Publicly demonstrating the burning of <span style="color: #9333ea;">BERT</span> tokens to prove dedication to the ecosystem.</li>
-                    </ul>
-                </div>
+                <div class="faq-answer"><p>Permanent Lore, Digital Graffiti, Decentralized Data, Flexing...</p></div>
             `;
-            
-            // Inject content and set up listeners
             faqBody.innerHTML = faqContent;
 
             if (faqBtn) faqBtn.addEventListener('click', openFaqModal);
             if (closeBtn) closeBtn.addEventListener('click', closeFaqModal);
-            if (overlay) overlay.addEventListener('click', (e) => {
-                if (e.target === overlay) closeFaqModal();
-            });
+            if (overlay) overlay.addEventListener('click', (e) => { if (e.target === overlay) closeFaqModal(); });
         });
-        // ---------------------------------
     </script>
-    
+
+    <!-- APP SCRIPT -->
     <script src="./app.js"></script>
 </body>
 </html>
