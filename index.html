@@ -5,11 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Bert's Inkscriptions 🐔🖋️</title>
     
-    <!-- CSP META TAG REMOVED: GitHub's server-side header overrides it. Relying on script externalization + onload. -->
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com 'unsafe-inline' 'unsafe-eval'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; connect-src 'self' https://rpc-qnd.inkonchain.com;">
 
     <link href="https://fonts.googleapis.com/css2?family=Bungee&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Ethers.js must load first -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
     <style>
         body { 
@@ -179,7 +178,6 @@
         /* Ensure disconnect button remains visible */
     </style>
 </head>
-<!-- CRITICAL FIX: Use onload to call the startApp function in app.js -->
 <body class="min-h-screen p-4 flex flex-col items-center" onload="startApp()">
 
     <div class="w-full max-w-xl mb-8 text-center mt-8">
@@ -290,7 +288,7 @@
         window.tempInscriptionContent = {};
 
         // Helper function to safely open the full view
-        function viewFullInscription(hash) {
+        window.viewFullInscription = function(hash) { // Function must be global/on window object to be called from onclick
             const art = window.tempInscriptionContent[hash];
             if (!art) {
                 alert("Error: Could not find inscription content.");
@@ -399,7 +397,6 @@
         // ---------------------------------
     </script>
     
-    <!-- External script must load after Ethers.js, and will execute its window.startApp() via the body onload -->
     <script src="./app.js"></script>
 </body>
 </html>
