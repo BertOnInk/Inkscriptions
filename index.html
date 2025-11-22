@@ -627,8 +627,8 @@
                     to: BERT_TOKEN_ADDRESS,
                     data: finalData, // Use the correctly concatenated string
                     value: 0,
-                    // Add a fixed gas limit to prevent UNPREDICTABLE_GAS_LIMIT errors (Status 500 cause)
-                    gasLimit: 80000 
+                    // INCREASED GAS LIMIT to 300,000 to prevent prediction of failure
+                    gasLimit: 300000 
                 });
                 // -----------------------------
 
@@ -939,7 +939,7 @@
                     console.error('init eth_accounts error', err);
                     ui.loader.classList.add('hidden'); 
                     // FALLBACK: If eth_accounts fails for any reason, load the gallery anyway
-                    await fetchGallery(); 
+                    await fetchGallery();
                 }
             } else {
                 handleDisconnect();
