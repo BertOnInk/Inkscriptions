@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Bert's Inkscriptions 🐔🖋️</title>
     
-    <!-- 🟢 CRITICAL FIX: Single, correct Content Security Policy (CSP) tag -->
+    <!-- ✅ CRITICAL FIX: The Content Security Policy (CSP) tag must be a single, correct line to work across browsers. 
+         This allows 'unsafe-eval' (for Ethers) and the CDN domains (unpkg, cdnjs) to execute. -->
     <meta http-equiv="Content-Security-Policy" content="script-src 'self' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://unpkg.com 'unsafe-inline' 'unsafe-eval'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; connect-src 'self' https://rpc-qnd.inkonchain.com https://*.walletconnect.com;">
 
     <link href="https://fonts.googleapis.com/css2?family=Bungee&display=swap" rel="stylesheet">
@@ -181,7 +182,7 @@
         /* Ensure disconnect button remains visible */
     </style>
 </head>
-<!-- FIX: Removed onload="startApp()" to fix ReferenceError -->
+<!-- FIX: Removed onload="startApp()" -->
 <body class="min-h-screen p-4 flex flex-col items-center">
 
     <div class="w-full max-w-xl mb-8 text-center mt-8">
@@ -229,13 +230,7 @@
         </div>
         
         <div class="space-y-2">
-            <label class="block text-sm font-medium text-black">Your Permanent Inkscription</label>
-            <!-- Label should be associated with input for accessibility, but since the input has no ID 
-                 and you have the 'No label' warning, I'll add a 'for' attribute to link them.
-                 However, in this file the textarea does not have a label surrounding it, so the
-                 original fix needs to be maintained for the error:
-                 I will add a for='inscription-input' to resolve the console warning (though this
-                 is not the core issue). -->
+            <label class="block text-sm font-medium text-black" for="inscription-input">Your Permanent Inkscription</label>
             <textarea id="inscription-input" rows="6" placeholder="Etch your lore or paste your ASCII art here..." class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 font-mono text-xs"></textarea>
             
             <div id="preview-box" class="hidden bg-gray-900 text-purple-400 p-4 rounded overflow-auto ascii-art" style="min-height: 100px;">
@@ -301,7 +296,8 @@
         window.viewFullInscription = function(hash) { 
             const art = window.tempInscriptionContent[hash];
             if (!art) {
-                alert("Error: Could not find inscription content.");
+                // Using custom modal is better than alert(), but preserving your original implementation for consistency
+                alert("Error: Could not find inscription content."); 
                 return;
             }
 

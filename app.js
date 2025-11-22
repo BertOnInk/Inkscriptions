@@ -92,23 +92,29 @@ async function initializeWeb3Modal() {
     };
     // ----------------------------------------------------------------------------------------------------
 
-    if (typeof window.Web3Modal === 'undefined' || typeof window.ethers === 'undefined') {
+    let WcModalConstructor = window.Web3Modal;
+
+    // FIX 1: Defensive check for common alternative global name
+    if (typeof WcModalConstructor === 'undefined' && typeof window.WalletConnectModal !== 'undefined') {
+        WcModalConstructor = window.WalletConnectModal;
+    }
+
+    if (typeof WcModalConstructor === 'undefined' || typeof window.ethers === 'undefined') {
+        // This log is correct if the libraries failed to load/execute due to CSP or environment settings.
         console.error('WalletConnect or Ethers.js library not loaded. Check index.html CDNs.');
-        // If the libraries are not found, the alert will fire.
         return; 
     }
     
     // Check if the projectId is valid, otherwise Web3Modal might fail silently
     if (!projectId || projectId === 'YOUR_PROJECT_ID') {
         console.error('WalletConnect Project ID is missing or invalid.');
-        // If we can't initialize, we return, which will cause 'connectWallet' to alert.
         return; 
     }
     
     try {
-        // Defensive initialization using the hexadecimal Chain ID where possible
-        web3Modal = new window.Web3Modal.Web3Modal({
-            ethersConfig: window.Web3Modal.EthersConfig,
+        // FIX 2: Use the defensively found constructor
+        web3Modal = new WcModalConstructor.Web3Modal({
+            ethersConfig: WcModalConstructor.EthersConfig,
             // Using Hex Chain ID in the main config for maximum compatibility
             chainId: INK_CHAIN_ID_HEX, 
             projectId,
@@ -124,8 +130,8 @@ async function initializeWeb3Modal() {
         console.log("WalletConnect Web3Modal initialized successfully.");
 
     } catch (initError) {
-        console.error("WalletConnect initialization failed during Web3Modal creation:", initError);
-        // Ensure web3Modal is null if initialization failed
+        // Log any initialization error that occurs during object creation
+        console.error("WalletConnect initialization failed during Web3Modal creation (Fatal):", initError);
         web3Modal = null; 
     }
 }
@@ -265,7 +271,8 @@ async function connectWallet() {
              errorMsg += e.message || "Unknown error occurred.";
         }
         
-        alert(errorMsg);
+        // This alert is what you are seeing when connectWallet fails internally
+        alert(errorMsg); 
         handleDisconnect(); 
     }
 }
