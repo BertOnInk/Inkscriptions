@@ -4,53 +4,76 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Bert's Inkscriptions 🐔🖋️</title>
-
-    <!-- CSP: allow WalletConnect relay (https + wss), RPC and CDNs. -->
-    <meta http-equiv="Content-Security-Policy" content="script-src 'self' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://unpkg.com 'unsafe-inline' 'unsafe-eval'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; connect-src 'self' https://rpc-qnd.inkonchain.com https://*.walletconnect.com https://relay.walletconnect.com wss://relay.walletconnect.com;">
-
     <link href="https://fonts.googleapis.com/css2?family=Bungee&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- Ethers.js (UMD) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.11.1/ethers.umd.min.js"></script>
-
-    <!-- FIX: Web3Modal Standalone UMD (exposes window.Web3Modal) -->
-    <script src="https://unpkg.com/@web3modal/standalone@2.7.1/dist/index.umd.js"></script>
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
     <style>
-        /* (Your existing styles unchanged — copied from original file) */
         body { 
             font-family: 'Inter', sans-serif; 
-            background-image: url('bg.png'), linear-gradient(135deg, #a855f7, #c084fc);
+            
+            /* UPDATED BACKGROUND STYLES */
+            background-image: 
+                url('bg.png'), /* Layer 1: The Image (Using simple relative path) */
+                linear-gradient(135deg, #a855f7, #c084fc); /* Layer 2: The Gradient */
+            
             background-size: cover;
             background-position: center center;
             background-repeat: no-repeat;
             background-attachment: fixed;
-            background-color: #a855f7;
+            background-color: #a855f7; /* Fallback color */
+            
             color: #e0e0e0; 
             position: relative;
             overflow-x: hidden; 
         }
+
+        /* NEW CUSTOM STYLE FOR H1 TITLE (Graffiti Font & White Shadowed Color) */
         .graffiti-title {
             font-family: 'Bungee', cursive;
             color: #ffffff !important; 
             text-shadow: 2px 2px #9333ea, 4px 4px #7c3aed; 
         }
+        
+        /* NEW CUSTOM STYLE FOR ANY TEXT THAT NEEDS THE GRAFFITI FONT */
+        .graffiti-font {
+            font-family: 'Bungee', cursive;
+        }
+
         .card { 
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-            background-color: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3); /* Darker shadow for dark background */
+            background-color: rgba(255, 255, 255, 0.05); /* Slightly transparent card background */
+            backdrop-filter: blur(10px); /* Frosted glass effect */
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
-        .card-hover { transition: transform 0.3s ease, box-shadow 0.3s ease; }
-        .card-hover:hover { transform: translateY(-5px); box-shadow: 0 15px 35px rgba(147, 51, 234, 0.4); }
+        /* ADDED HOVER EFFECT */
+        .card-hover { 
+            transition: transform 0.3s ease, box-shadow 0.3s ease; 
+        }
+        .card-hover:hover {
+            transform: translateY(-5px); /* Lift the card slightly */
+            box-shadow: 0 15px 35px rgba(147, 51, 234, 0.4); /* Purple glow effect */
+        }
+        /* --- PRIMARY BUTTON (PURPLE) --- */
         .btn-primary { background-color: #9333ea; transition: background-color 0.3s; }
         .btn-primary:hover { background-color: #7c3aed; }
+        /* ---------------------------------- */
         .spinner { border-top-color: #fff; border-right-color: transparent; -webkit-animation: spin 1s linear infinite; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .btn-primary-loading { opacity: 0.7; cursor: not-allowed; }
-        .ascii-art { font-family: 'Courier New', Courier, monospace; white-space: pre; overflow-x: auto; line-height: 1.2; letter-spacing: normal; font-size: 13px; }
+        
+        .ascii-art { 
+            font-family: 'Courier New', Courier, monospace; 
+            white-space: pre; 
+            overflow-x: auto; 
+            /* >>> CRITICAL FIX: Changed line-height from 0.8 to 1.2 to expand vertical spacing for a square look <<< */
+            line-height: 1.2; /* Increased vertical spacing for 1:1 ratio (square look) */
+            letter-spacing: normal; /* Revert explicit letter-spacing */
+            font-size: 13px; /* Default monospace font size */
+        }
+        
         .pending-card { opacity: 0.6; filter: grayscale(1); transition: opacity 0.5s; }
+
+        /* Adjust text colors for dark background */
         .text-gray-800 { color: #e0e0e0; }
         .text-gray-600 { color: #b0b0b0; }
         .text-gray-700 { color: #d0d0d0; }
@@ -59,6 +82,8 @@
         .bg-gray-50 { background-color: rgba(255, 255, 255, 0.08); }
         .border-gray-300 { border-color: rgba(255, 255, 255, 0.25); }
         .bg-gray-100 { background-color: rgba(255, 255, 255, 0.1); }
+
+        /* Ensure violet elements retain their color */
         .text-violet-800 { color: #d8b4fe; } 
         .bg-violet-50 { background-color: rgba(138, 43, 226, 0.2); } 
         .border-violet-200 { border-color: rgba(138, 43, 226, 0.4); }
@@ -67,18 +92,87 @@
         .border-violet-500 { border-color: #c084fc; }
         .text-purple-400 { color: #c084fc; } 
         .text-violet-500 { color: #a855f7; } 
+        
+        /* Utility to force black text for contrast */
         .text-black { color: #000000 !important; }
-        input, textarea { background-color: rgba(255, 255, 255, 0.1); color: #e0e0e0; }
-        input::placeholder, textarea::placeholder { color: #b0b0b0; }
-        #inscription-input { background-color: #ffffff; color: #000000; font-family: 'Courier New', Courier, monospace; font-size: 13px; letter-spacing: normal; line-height: 1.2; }
-        #inscription-input::placeholder { color: #4b5563; }
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7); z-index: 1000; display: none; align-items: center; justify-content: center; padding: 20px; }
-        .modal-content { background-color: #ffffff; color: #000000; padding: 25px; border-radius: 12px; max-width: 600px; width: 95%; max-height: 90vh; overflow-y: auto; position: relative; box-shadow: 0 10px 20px rgba(147, 51, 234, 0.4); animation: fadeIn 0.3s; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
-        .faq-heading { font-size: 1.25rem; font-weight: bold; color: #9333ea; margin-top: 1rem; border-bottom: 1px solid #d8b4fe; padding-bottom: 0.25rem; }
-        .faq-answer p { margin-top: 0.5rem; margin-bottom: 1rem; }
-        .faq-answer ul { list-style: disc; margin-left: 20px; }
-        .faq-answer strong { color: #4c1d95; }
+
+        /* Overriding global input/textarea styles */
+        input, textarea {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #e0e0e0;
+        }
+        input::placeholder, textarea::placeholder {
+            color: #b0b0b0;
+        }
+        
+        /* >>> MODIFICATION: Force inscription input text to black/white for contrast <<< */
+        #inscription-input {
+            background-color: #ffffff; /* Make the input background white for contrast */
+            color: #000000; /* Set text color to black */
+            /* >>> CRITICAL FIX: Apply same square ratio settings to the input box <<< */
+            font-family: 'Courier New', Courier, monospace; 
+            font-size: 13px;
+            letter-spacing: normal; /* Revert explicit letter-spacing */
+            line-height: 1.2; /* MATCH: Increased vertical spacing for 1:1 ratio (square look) */
+        }
+        /* Set placeholder color for the now white background */
+        #inscription-input::placeholder {
+             color: #4b5563; /* Use a medium gray for placeholder */
+        }
+
+        /* --- NEW MODAL STYLES --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            display: none; /* Controlled by JS */
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .modal-content {
+            background-color: #ffffff;
+            color: #000000;
+            padding: 25px;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 95%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 10px 20px rgba(147, 51, 234, 0.4);
+            animation: fadeIn 0.3s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .faq-heading {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: #9333ea; /* Purple color matching the title */
+            margin-top: 1rem;
+            border-bottom: 1px solid #d8b4fe;
+            padding-bottom: 0.25rem;
+        }
+        .faq-answer p {
+            margin-top: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .faq-answer ul {
+            list-style: disc;
+            margin-left: 20px;
+        }
+        .faq-answer strong {
+            color: #4c1d95; /* Darker purple emphasis, default is fine */
+        }
+        /* -------------------------- */
+        
+        /* Ensure disconnect button remains visible */
     </style>
 </head>
 <body class="min-h-screen p-4 flex flex-col items-center">
@@ -89,8 +183,9 @@
     </div>
 
     <div class="w-full max-w-xl bg-white p-6 md:p-8 rounded-xl card space-y-6 mb-12">
-        <!-- (same HTML content as original) -->
+        
         <div class="pt-0 space-y-4">
+            
             <div class="flex flex-col items-center justify-center -mt-2 mb-1"> 
                 <img src="burning_chicken.png" alt="Burning Chicken" class="h-10 w-10 mt-1 mb-2"> 
                 <p class="text-sm font-medium text-black flex items-center gap-2">
@@ -98,6 +193,7 @@
                     <button id="faq-btn" class="text-xs text-violet-600 font-bold hover:text-violet-700 transition underline">FAQ</button>
                 </p>
             </div>
+
             <p class="text-lg font-extrabold text-gray-700 flex justify-between items-center pb-2">
                 <span class="graffiti-font text-violet-500">Cumulative Tendie Count 🍗:</span>
                 <span id="total-burn-display" class="graffiti-font font-extrabold text-red-500">0 BERT 🔥</span>
@@ -118,17 +214,20 @@
                     </div>
                 </div>
             </div>
-
+            
             <p class="text-xs text-gray-500 flex justify-between bg-gray-50 p-2 rounded">
                 <span>Your Balance:</span>
                 <span id="balance-display" class="font-mono font-bold text-gray-800">---</span>
             </p>
         </div>
-
+        
         <div class="space-y-2">
-            <label class="block text-sm font-medium text-black" for="inscription-input">Your Permanent Inkscription</label>
+            <label class="block text-sm font-medium text-black">Your Permanent Inkscription</label>
             <textarea id="inscription-input" rows="6" placeholder="Etch your lore or paste your ASCII art here..." class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 font-mono text-xs"></textarea>
-            <div id="preview-box" class="hidden bg-gray-900 text-purple-400 p-4 rounded overflow-auto ascii-art" style="min-height: 100px;"></div>
+            
+            <div id="preview-box" class="hidden bg-gray-900 text-purple-400 p-4 rounded overflow-auto ascii-art" style="min-height: 100px;">
+                </div>
+
             <div class="flex justify-between items-center text-xs bg-gray-50 p-2 rounded border border-gray-200">
                 <span class="text-gray-600">Size: <span id="byte-count" class="font-bold">0</span> bytes</span>
                 <span class="text-gray-600">Est. Gas: <span id="gas-display" class="font-bold text-blue-600">---</span></span>
@@ -158,7 +257,7 @@
             <h2 class="text-2xl font-bold text-white">🏛️ Live Gallery</h2>
             <button id="refresh-btn" class="text-black text-sm bg-white border border-gray-300 px-3 py-1 rounded hover:bg-gray-50">↻ Refresh</button>
         </div>
-
+        
         <div id="gallery-loader" class="text-center py-10 hidden">
             <div class="spinner h-8 w-8 border-4 border-violet-500 rounded-full mx-auto"></div>
             <p class="text-gray-500 mt-2">Scanning Blockchain...</p>
@@ -174,69 +273,710 @@
                 <h2 class="text-2xl font-bold text-violet-600">Bert's Inkscriptions FAQ</h2>
                 <button id="close-faq-btn" class="text-gray-500 hover:text-gray-700 text-2xl font-bold">×</button>
             </div>
-            <div id="faq-body"></div>
+            <div id="faq-body">
+                </div>
             <div class="mt-4 pt-4 border-t border-gray-200">
                 <button onclick="closeFaqModal()" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 rounded transition">Close</button>
             </div>
         </div>
     </div>
-
     <script>
         // Global storage for inscription content
         window.tempInscriptionContent = {};
-        window.viewFullInscription = function(hash) { 
-            const art = window.tempInscriptionContent[hash];
-            if (!art) return alert("Error: Could not find inscription content."); 
 
+        // Helper function to safely open the full view
+        function viewFullInscription(hash) {
+            const art = window.tempInscriptionContent[hash];
+            if (!art) {
+                alert("Error: Could not find inscription content.");
+                return;
+            }
+
+            // --- FIX: Using a secure Blob URL for the new window content ---
             const htmlContent = `
                 <!DOCTYPE html>
                 <html>
                 <head>
                     <title>Full Inscription View: ${hash.substring(0, 10)}...</title>
                     <style>
-                        body { background-color: #000000; color: #c084fc; font-family: 'Courier New', Courier, monospace; white-space: pre-wrap; padding: 20px; font-size: 13px; letter-spacing: normal; line-height: 1.2; }
+                        body { 
+                            background-color: #000000; /* FIX: Changed to Black */
+                            color: #c084fc; 
+                            font-family: 'Courier New', Courier, monospace; 
+                            white-space: pre-wrap; 
+                            padding: 20px;
+                            /* Ensure the full screen view uses the same ratio fix */
+                            font-size: 13px;
+                            letter-spacing: normal;
+                            line-height: 1.2; /* MATCH: Increased vertical spacing for 1:1 ratio (square look) */
+                        }
                     </style>
                 </head>
-                <body>${art.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</body>
+                <body>
+                    ${art.replace(/</g, "&lt;").replace(/>/g, "&gt;")}
+                </body>
                 </html>
             `;
+            
             const blob = new Blob([htmlContent], { type: 'text/html' });
             const blobUrl = URL.createObjectURL(blob);
+            
+            // 1. Create a temporary invisible link element
             const a = document.createElement('a');
             a.href = blobUrl;
             a.target = '_blank'; 
+            
+            // 2. Append, click, and remove the link instantly (Guaranteed to bypass blockers)
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
+            
+            // Clean up the URL to prevent memory leaks
             URL.revokeObjectURL(blobUrl);
+            // -------------------------------------------------------------------
         }
 
-        function openFaqModal() { document.getElementById('faq-modal-overlay').style.display = 'flex'; }
-        function closeFaqModal() { document.getElementById('faq-modal-overlay').style.display = 'none'; }
+        // --- NEW FAQ MODAL FUNCTIONS ---
+        function openFaqModal() {
+            document.getElementById('faq-modal-overlay').style.display = 'flex';
+        }
 
+        function closeFaqModal() {
+            document.getElementById('faq-modal-overlay').style.display = 'none';
+        }
+
+        // Initialize FAQ modal listeners
         document.addEventListener('DOMContentLoaded', () => {
             const faqBtn = document.getElementById('faq-btn');
             const closeBtn = document.getElementById('close-faq-btn');
             const overlay = document.getElementById('faq-modal-overlay');
             const faqBody = document.getElementById('faq-body');
 
+            // --- FAQ CONTENT STRING (FINAL STYLING APPLIED) ---
             const faqContent = `
                 <h3 class="faq-heading">Q1: What exactly is an Inkscription?</h3>
-                <div class="faq-answer"><p>An <span style="color: #9333ea;">Inkscription</span> is a permanent, immutable artifact etched directly onto the blockchain... </p></div>
+                <div class="faq-answer">
+                    <p>An <span style="color: #9333ea;">Inkscription</span> is a permanent, immutable artifact etched directly onto the blockchain. When you create an <span style="color: #9333ea;">Inkscription</span>, you're burning a fixed amount of <span style="color: #9333ea;">BERT</span> tokens and using the transaction's calldata to embed text or data (like ASCII art) into the network's history forever. It's essentially a decentralized, permanent record stored on the chain.</p>
+                </div>
+                
                 <h3 class="faq-heading">Q2: How do I create an Inkscription?</h3>
-                <div class="faq-answer"><p>Creating an <span style="color: #9333ea;">Inkscription</span> involves four simple steps: Connect Wallet, Compose Content, Check Cost, Mint...</p></div>
+                <div class="faq-answer">
+                    <p>Creating an <span style="color: #9333ea;">Inkscription</span> involves four simple steps:</p>
+                    <ul>
+                        <li><span style="color: #9333ea;">Connect Wallet:</span> Click the "Connect Wallet" button and ensure you have enough <span style="color: #9333ea;">BERT</span> tokens (1000 <span style="color: #9333ea;">BERT</span> per <span style="color: #9333ea;">inkscription</span>) and a small amount of ETH for gas.</li>
+                        <li><span style="color: #9333ea;">Compose Content:</span> Enter your desired text, lore, or ASCII art into the "<span style="color: #000000 !important;">Your Permanent</span> <span style="color: #9333ea;">Inkscription</span>" box. For ASCII Art: We recommend an image-to-ASCII web tool such as <a href="https://www.asciiart.eu/image-to-ascii" target="_blank" class="text-violet-500 hover:text-violet-700 underline">asciiart.eu/image-to-ascii</a> or similar. There you can upload and fine-tune an image to create your perfect <span style="color: #9333ea;">inkscription</span> content.</li>
+                        <li><span style="color: #9333ea;">Check Cost:</span> Review the <span style="color: #000000 !important;">Est. Gas</span> display to see the estimated ETH transaction cost.</li>
+                        <li><span style="color: #9333ea;">Mint:</span> Click the <span style="color: #9333ea;">"MINT INKSCRIPTION"</span> button and confirm the transaction (which includes the <span style="color: #9333ea;">BERT</span> token burn and the <span style="color: #9333ea;">inkscription</span> data) in your wallet. Once confirmed, your unique artifact will appear in the Live Gallery!</li>
+                    </ul>
+                </div>
+
                 <h3 class="faq-heading">Q3: What are some use cases for Inkscriptions?</h3>
-                <div class="faq-answer"><p>Permanent Lore, Digital Graffiti, Decentralized Data, Flexing...</p></div>
+                <div class="faq-answer">
+                    <p><span style="color: #9333ea;">Inkscriptions</span> are used for creating permanent digital records and decentralized art. Common use cases include:</p>
+                    <ul>
+                        <li><span style="color: #9333ea;">Permanent Lore:</span> Etching founding statements, memorable quotes, or community histories that cannot be edited or erased.</li>
+                        <li><span style="color: #9333ea;">Digital Graffiti/Art:</span> Inscribing custom <span style="color: #000000 !important;">ASCII art</span>, pixel art, or unique digital signatures directly into the blockchain.</li>
+                        <li><span style="color: #9333ea;">Decentralized Data:</span> Embedding small but critical pieces of data, such as contract metadata, verification keys, or time-stamped proof-of-existence records.</li>
+                        <li><span style="color: #9333ea;">Flexing:</span> Publicly demonstrating the burning of <span style="color: #9333ea;">BERT</span> tokens to prove dedication to the ecosystem.</li>
+                    </ul>
+                </div>
             `;
+            
+            // Inject content and set up listeners
             faqBody.innerHTML = faqContent;
 
             if (faqBtn) faqBtn.addEventListener('click', openFaqModal);
             if (closeBtn) closeBtn.addEventListener('click', closeFaqModal);
-            if (overlay) overlay.addEventListener('click', (e) => { if (e.target === overlay) closeFaqModal(); });
+            if (overlay) overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) closeFaqModal();
+            });
         });
+        // ---------------------------------
     </script>
+    
+    <script type="module">
+        // *** This simple import structure works best for local testing ***
+        import { 
+            INK_CHAIN_ID, 
+            INK_RPC_URL, 
+            NFT_CONTRACT_ADDRESS, 
+            BERT_TOKEN_ADDRESS, 
+            BURN_ADDRESS, 
+            MINT_FEE_AMOUNT, 
+            BERT_ABI_SNIPPET,
+            NFT_ABI_SNIPPET, 
+            TOKEN_URI_ABI_SNIPPET 
+        } from './contract_details.js';
 
-    <!-- APP SCRIPT -->
-    <script src="./app.js"></script>
+        // *** CONFIRMED BERT TOKEN ADDRESS (Used for balance reading stability) ***
+        const CONFIRMED_BERT_ADDRESS = "0x62c99FAc20B33b5423fdf9226179e973A8353e36";
+
+        // --- STATE ---
+        let currentAccount = null;
+        let provider = null; // Wallet provider (used for signing)
+        let signer = null;
+        let contract = null; // This contract is for WRITING (requires signer)
+        let pendingTxHash = null; 
+
+        // --- HARD-CODED GUARANTEE ---
+        const GUARANTEED_MINTS = ["0xeb85a7dd5e847e2cb32aec12cf13a87ca33900eadd64c0880db8a6a2224e3a00"];
+        let fetchedHashes = new Set(); 
+        // -----------------------------
+
+        // --- ELEMENTS ---
+        const $ = (id) => document.getElementById(id);
+        const ui = {
+            header: $('wallet-bar'),
+            address: $('address-display'),
+            disconnect: $('disconnect-btn'),
+            balance: $('balance-display'),
+            // >>> Total Burn Display
+            totalBurn: $('total-burn-display'), 
+            input: $('inscription-input'),
+            // >>> Preview Box
+            preview: $('preview-box'), 
+            byteCount: $('byte-count'),
+            gas: $('gas-display'),
+            btn: $('main-btn'),
+            btnText: $('btn-text'),
+            spinner: $('spinner'),
+            statusBox: $('status-box'),
+            statusMsg: $('status-msg'),
+            manualBtn: $('manual-btn'),
+            manualInput: $('manual-hash'),
+            grid: $('gallery-grid'),
+            loader: $('gallery-loader'),
+            empty: $('gallery-empty'),
+            refresh: $('refresh-btn')
+        };
+
+        // ============================================================
+        // 1. CORE CONNECTION LOGIC
+        // ============================================================
+
+        async function rebuildConnection(forcedAccount = null) {
+            if (typeof window.ethereum === 'undefined') {
+                console.warn('No wallet found when rebuilding connection');
+                handleDisconnect();
+                return;
+            }
+
+            try {
+                // *** STRICT RE-INITIALIZATION (Wallet Provider for Signing) ***
+                provider = new window.ethers.BrowserProvider(window.ethereum);
+                signer = await provider.getSigner();
+
+                // --- PRIORITY ADDRESS LOGIC ---
+                let definitiveAccount;
+                if (forcedAccount) {
+                    definitiveAccount = forcedAccount;
+                } else {
+                    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                    if (accounts && accounts.length > 0) {
+                        definitiveAccount = accounts[0];
+                    } else {
+                        handleDisconnect();
+                        return;
+                    }
+                }
+                
+                // Set the current account state and update the UI
+                currentAccount = window.ethers.getAddress(definitiveAccount);
+                // ---------------------------------------------------
+
+                // Recreate contract with the fresh signer (using the address from contract_details for minting/signing)
+                contract = new window.ethers.Contract(BERT_TOKEN_ADDRESS, BERT_ABI_SNIPPET, signer);
+
+                // Update UI elements 
+                ui.header.classList.remove('hidden');
+                ui.address.textContent = currentAccount || 'Unknown';
+
+                ui.btn.disabled = false;
+                ui.btnText.textContent = `MINT INKSCRIPTION (BURN ${MINT_FEE_AMOUNT} BERT)`;
+                ui.spinner.classList.add('hidden');
+                ui.btn.classList.remove('btn-primary-loading');
+
+                // Fetch live data (uses dedicated readProvider now)
+                await fetchBalance();
+                // When connected, we fetch the gallery here
+                await fetchGallery(); // <-- Ensure gallery loads after successful connection setup
+                calcGas();
+            } catch (err) {
+                console.error('rebuildConnection error:', err);
+                handleDisconnect();
+            }
+        }
+
+        function handleDisconnect() {
+            currentAccount = null;
+            provider = null;
+            signer = null;
+            contract = null;
+            pendingTxHash = null;
+            fetchedHashes.clear(); 
+            
+            // Note: Total burn display is now handled by fetchGallery() on init if not connected.
+
+            ui.header.classList.add('hidden');
+            ui.balance.textContent = "---";
+            ui.btnText.textContent = "Connect Wallet";
+            ui.btn.disabled = false;
+            ui.spinner.classList.add('hidden');
+            ui.btn.classList.remove('btn-primary-loading');
+            ui.statusBox.classList.add('hidden');
+            ui.grid.innerHTML = ''; 
+            ui.empty.classList.remove('hidden'); 
+        }
+
+        async function connectWallet() {
+            if (typeof window.ethereum === 'undefined') {
+                alert("No wallet found. Please install MetaMask or another Web3 wallet.");
+                return;
+            }
+            try {
+                // Request accounts. This will trigger MetaMask to connect/confirm
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                if (accounts && accounts.length > 0) {
+                    await rebuildConnection(accounts[0]);
+                }
+                return accounts;
+            } catch (e) {
+                console.error('connectWallet error', e);
+                if (e.code === 4001) {
+                    alert('Please connect to your wallet to use this dApp.');
+                }
+                handleDisconnect(); 
+                return [];
+            }
+        }
+
+        // ============================================================
+        // 2. EVENT LISTENERS
+        // ============================================================
+        if (window.ethereum) {
+            window.ethereum.on('accountsChanged', async (accounts) => {
+                console.log("Wallet accountsChanged event fired:", accounts);
+                
+                // --- SYNCHRONIZATION FIXES ---
+                if (window.ethereum.disconnect) {
+                    try {
+                        await window.ethereum.disconnect(); 
+                        console.log("Forced disconnect successful.");
+                    } catch (e) {
+                        console.warn("Forced disconnect failed (this is often fine):", e);
+                    }
+                }
+
+                if (!accounts || accounts.length === 0) {
+                    handleDisconnect();
+                    return;
+                }
+                
+                // *** DELAYED REBUILD FIX ***
+                setTimeout(async () => {
+                    await rebuildConnection(accounts[0]);
+                    console.log("Wallet address updated after 100ms delay.");
+                }, 100);
+            });
+
+            window.ethereum.on('chainChanged', (chainId) => {
+                console.log("Chain changed event fired:", chainId);
+                window.location.reload();
+            });
+        }
+
+        ui.btn.addEventListener('click', () => {
+            if (!currentAccount) connectWallet();
+            else mintInscription();
+        });
+
+        ui.disconnect.addEventListener('click', handleDisconnect);
+
+        // ============================================================
+        // 3. MINTING (Uses wallet's signer, no change needed)
+        // ============================================================
+        async function mintInscription() {
+            const text = ui.input.value.trim();
+            if (!text) return alert("Please enter text");
+            if (!signer || !contract) return alert("Connect wallet first");
+
+            try {
+                ui.btn.disabled = true;
+                ui.spinner.classList.remove('hidden');
+                ui.btn.classList.add('btn-primary-loading');
+                ui.btnText.textContent = "Sign in Wallet...";
+                ui.statusBox.classList.add('hidden');
+                pendingTxHash = null; 
+
+                const amount = window.ethers.parseUnits(MINT_FEE_AMOUNT.toString(), 18);
+                const json = JSON.stringify({ text: text });
+                const hexData = window.ethers.hexlify(window.ethers.toUtf8Bytes(json)).slice(2);
+                const calldata = contract.interface.encodeFunctionData("transfer", [BURN_ADDRESS, amount]);
+
+                const tx = await signer.sendTransaction({
+                    to: BERT_TOKEN_ADDRESS,
+                    data: calldata + hexData,
+                    value: 0
+                });
+
+                ui.btnText.textContent = "Minting...";
+                pendingTxHash = tx.hash;
+
+                // Index is unknown for a pending transaction
+                createGalleryCard(text, tx.hash, "Pending...", true, '---'); 
+                ui.empty.classList.add('hidden');
+
+                ui.statusMsg.textContent = `⏳ TRANSACTION PENDING\nHash: ${tx.hash}`;
+                ui.statusBox.classList.remove('hidden');
+
+                await tx.wait();
+
+                ui.statusMsg.textContent = `✅ TRANSACTION CONFIRMED!\nHash: ${tx.hash}`;
+                
+                await fetchBalance();
+                await fetchGallery(); 
+
+                ui.btn.disabled = false;
+                ui.spinner.classList.add('hidden');
+                ui.btn.classList.remove('btn-primary-loading');
+                ui.btnText.textContent = `MINT INKSCRIPTION (BURN ${MINT_FEE_AMOUNT} BERT)`;
+                
+                ui.input.value = '';
+                calcGas();
+
+            } catch (e) {
+                console.error('Minting Error:', e);
+                
+                if (pendingTxHash) removeGalleryCard(pendingTxHash);
+                
+                ui.btn.disabled = false;
+                ui.spinner.classList.add('hidden');
+                ui.btn.classList.remove('btn-primary-loading');
+                ui.btnText.textContent = `MINT INSCRIPTION (${MINT_FEE_AMOUNT} BERT)`;
+
+                let msg = e.reason || e.message || "Unknown Error";
+                if (typeof msg === 'string' && msg.includes("insufficient")) msg = "Insufficient BERT Token Funds or Gas";
+                ui.statusMsg.textContent = `❌ ${msg}`;
+                ui.statusBox.classList.remove('hidden');
+            } finally {
+                pendingTxHash = null;
+            }
+        }
+
+        // ============================================================
+        // 4. GALLERY LOGIC (MODIFIED FOR STABLE JSON RPC PROVIDER)
+        // ============================================================
+        ui.refresh.addEventListener('click', fetchGallery);
+
+        async function fetchGallery() {
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+            if (!readProvider) return; 
+            
+            ui.loader.classList.remove('hidden');
+
+            try {
+                const currentBlock = await readProvider.getBlockNumber();
+                const fromBlock = Math.max(0, currentBlock - 5000); 
+                
+                const stableContract = new window.ethers.Contract(BERT_TOKEN_ADDRESS, BERT_ABI_SNIPPET, readProvider);
+                const filter = stableContract.filters.Transfer(null, BURN_ADDRESS); 
+                
+                const events = await stableContract.queryFilter(filter, fromBlock, currentBlock);
+                
+                // *** CALCULATE AND DISPLAY BURN METRIC ***
+                const totalInscriptions = events.length + GUARANTEED_MINTS.length;
+                let inscriptionCounter = totalInscriptions;
+                
+                // CALCULATE TOTAL BURNED
+                const totalBurned = totalInscriptions * MINT_FEE_AMOUNT;
+                
+                // >>> UPDATE TEXT FORMAT AND CONTENT (Red, Graffiti font, Fire emoji added)
+                ui.totalBurn.textContent = `${totalBurned.toLocaleString()} BERT 🔥`;
+                // ------------------------------------------
+
+                if (pendingTxHash) removeGalleryCard(pendingTxHash);
+
+                ui.grid.innerHTML = '';
+                fetchedHashes.clear();
+                
+                // *** PROMISE.ALL MODIFICATION ***
+                const renderPromises = [];
+
+                // 1. Re-add guaranteed mints
+                for(const hash of GUARANTEED_MINTS) {
+                    // Collect promise
+                    renderPromises.push(decodeAndRenderTx(hash, true, readProvider, inscriptionCounter--));
+                }
+                
+                // 2. Add new events
+                for (const evt of events.reverse()) {
+                    // Collect promise
+                    renderPromises.push(decodeEvent(evt, true, readProvider, inscriptionCounter--)); 
+                }
+                
+                // *** AWAIT ALL RENDERING PROMISES before updating UI ***
+                await Promise.all(renderPromises);
+
+                if (ui.grid.children.length === 0) {
+                    ui.empty.classList.remove('hidden');
+                } else {
+                    ui.empty.classList.add('hidden');
+                }
+
+            } catch (e) {
+                console.error('fetchGallery error:', e);
+                // Set to 0 on failure to avoid confusion
+                ui.totalBurn.textContent = `0 BERT 🔥`; 
+            } finally {
+                // This ensures the loader is hidden upon completion, regardless of success/failure
+                ui.loader.classList.add('hidden'); 
+            }
+        }
+
+        // *** MODIFIED to return the promise/result of the rendering task ***
+        async function decodeAndRenderTx(hash, prepend = false, currentProvider = null, index = '---') {
+            const p = currentProvider || provider;
+             if (!p || fetchedHashes.has(hash)) return;
+
+             try {
+                const tx = await p.getTransaction(hash);
+                if(tx && tx.data && tx.data.length > 138) {
+                    const raw = "0x" + tx.data.slice(138); 
+                    let str = "";
+                    try {
+                        str = window.ethers.toUtf8String(raw);
+                    } catch (err) {
+                        return;
+                    }
+                    let content = str;
+                    try { content = JSON.parse(str).text; } catch(e){}
+                    
+                    createGalleryCard(content, tx.hash, tx.blockNumber || '---', prepend, index); // Pass index here
+                    fetchedHashes.add(tx.hash);
+                    return true; // Return a success indicator
+                }
+            } catch (e) {
+                console.warn("Could not decode TX for hash:", hash, e);
+            }
+            return false;
+        }
+
+        // *** MODIFIED to return the promise/result of the rendering task ***
+        async function decodeEvent(evt, prepend = false, currentProvider = null, index = '---') {
+            if (!evt.transactionHash || fetchedHashes.has(evt.transactionHash)) return;
+            
+            return decodeAndRenderTx(evt.transactionHash, prepend, currentProvider, index); // Return the promise
+        }
+
+        function removeGalleryCard(hash) {
+            const card = document.getElementById(`card-${hash}`);
+            if (card) card.remove();
+        }
+
+        // *** MODIFIED to accept and display index parameter and include new view button ***
+        function createGalleryCard(art, hash, block, prepend = false, index = '---') {
+            const safeArt = (art || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            const isPending = block === "Pending...";
+            const badge = isPending ? "bg-yellow-100 text-yellow-800" : "bg-gray-100 text-gray-600";
+            
+            // --- NEW: Store content in a global cache keyed by hash ---
+            window.tempInscriptionContent[hash] = art; 
+            // --------------------------------------------------------
+
+            removeGalleryCard(hash); 
+
+            const div = document.createElement('div');
+            div.id = `card-${hash}`; 
+            // Added card-hover class
+            div.className = `bg-white p-4 rounded-lg shadow border border-gray-200 flex flex-col animate-fade-in ${isPending ? 'pending-card' : ''} card-hover`; 
+            div.innerHTML = `
+                <div class="bg-gray-900 text-purple-400 p-4 rounded text-xs overflow-auto ascii-art mb-3 flex-grow" style="max-height: 300px;">${safeArt}</div>
+                
+                <div class="text-xl font-extrabold text-violet-500 mb-2">#${index}</div> 
+                
+                <div class="pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500 mb-2">
+                    <span class="px-2 py-1 rounded ${badge}">Block: ${block}</span>
+                    <a href="https://explorer.inkonchain.com/tx/${hash}" target="_blank" class="text-blue-500 hover:underline">View TX ↗</a>
+                </div>
+                <button onclick="viewFullInscription('${hash}')" 
+                        class="w-full bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold py-1 px-2 rounded transition mt-2">
+                    View Full Content
+                </button>
+            `;
+            
+            if (prepend) ui.grid.prepend(div); 
+            else ui.grid.appendChild(div);
+        }
+
+        // ============================================================
+        // 5. UTILS (MODIFIED FOR STABLE JSON RPC PROVIDER)
+        // ============================================================
+        async function fetchBalance() {
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+
+            if(!readProvider || !currentAccount) { 
+                 ui.balance.textContent = "---";
+                 return;
+            }
+            try {
+                const stableReadContract = new window.ethers.Contract(CONFIRMED_BERT_ADDRESS, BERT_ABI_SNIPPET, readProvider);
+                const bal = await stableReadContract.balanceOf(currentAccount);
+                
+                if (bal === undefined || bal === null) {
+                    ui.balance.textContent = "N/A BERT";
+                    return;
+                }
+
+                const formattedBalance = parseFloat(window.ethers.formatUnits(bal, 18)).toFixed(2);
+                
+                if (formattedBalance === "0.00") {
+                    ui.balance.textContent = "0.00 BERT";
+                } else {
+                    ui.balance.textContent = formattedBalance + " BERT";
+                }
+            } catch(e){
+                console.error('fetchBalance failed:', e);
+                ui.balance.textContent = "---"; 
+            }
+        }
+
+        ui.input.addEventListener('input', calcGas);
+        async function calcGas() {
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+            const txt = ui.input.value || "";
+            const bytes = new TextEncoder().encode(txt);
+            
+            ui.byteCount.textContent = bytes.length;
+            
+            // --- PREVIEW LOGIC ---
+            if (txt.length > 0) {
+                const safeHtml = txt.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                ui.preview.innerHTML = safeHtml;
+                ui.preview.classList.remove('hidden');
+            } else {
+                ui.preview.classList.add('hidden');
+                ui.preview.innerHTML = '';
+            }
+            // -------------------------
+
+            // Cannot estimate gas without a provider/network connection
+            if(!readProvider) {
+                ui.gas.textContent = `---`;
+                return;
+            }
+
+            // *** FIX: Show a placeholder if input is empty, and only attempt estimation when content exists ***
+            if (txt.length === 0) {
+                ui.gas.textContent = `(Start Typing)`;
+                return;
+            }
+            
+            try {
+                // 1. Construct the transaction data object
+                const amount = window.ethers.parseUnits(MINT_FEE_AMOUNT.toString(), 18);
+                // We use a minimal payload for estimation, but still need the structure
+                const json = JSON.stringify({ text: txt });
+                const hexData = window.ethers.hexlify(window.ethers.toUtf8Bytes(json)).slice(2);
+                
+                // Need a Contract instance to encode the calldata
+                const tempContract = new window.ethers.Contract(BERT_TOKEN_ADDRESS, BERT_ABI_SNIPPET, readProvider);
+                const calldata = tempContract.interface.encodeFunctionData("transfer", [BURN_ADDRESS, amount]);
+                
+                // IMPORTANT: Since we don't have a signer/currentAccount available here for `from`,
+                // the estimation might fail if the provider is strict. To fix this, we'll
+                // use a fallback logic in case the estimation fails.
+                
+                const txData = {
+                    to: BERT_TOKEN_ADDRESS,
+                    data: calldata + hexData,
+                    value: 0
+                };
+
+                // 2. Estimate the Gas Limit
+                const gasLimit = await readProvider.estimateGas(txData);
+
+                // 3. Get the current Gas Price (Fee Data)
+                const feeData = await readProvider.getFeeData();
+                const gasPrice = feeData.maxFeePerGas || feeData.gasPrice || BigInt(0);
+                
+                // 4. Calculate the total ETH cost
+                const cost = gasLimit * gasPrice; 
+                ui.gas.textContent = `~${parseFloat(window.ethers.formatEther(cost)).toFixed(6)} ETH`;
+
+            } catch (err) {
+                // Fallback: If live estimation fails (e.g., RPC issues, simulation error),
+                // revert to a simpler estimation using a hardcoded gas limit approximation
+                // based on the data size, which is better than a generic error message.
+                console.warn("Live Gas estimation failed, falling back to approximation:", err);
+                
+                const approxGas = BigInt(65000) + BigInt(bytes.length * 16); 
+
+                try {
+                    const feeData = await readProvider.getFeeData();
+                    const gasPrice = feeData.maxFeePerGas || feeData.gasPrice || BigInt(0);
+                    const cost = approxGas * gasPrice; 
+                    ui.gas.textContent = `~${parseFloat(window.ethers.formatEther(cost)).toFixed(6)} ETH (approx)`;
+                } catch (innerErr) {
+                    ui.gas.textContent = `Error/High Fee`;
+                }
+            }
+        }
+
+        ui.manualBtn.addEventListener('click', async () => {
+            const hash = ui.manualInput.value.trim();
+            
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+            if(!hash || !readProvider) return alert("Connect wallet or network issue.");
+            
+            ui.manualBtn.textContent = "Searching...";
+            
+            try {
+                // Pass '---' for the index as it's an external hash lookup
+                await decodeAndRenderTx(hash, true, readProvider, '---'); 
+                
+                if (ui.grid.children.length > 0) {
+                     ui.empty.classList.add('hidden');
+                } else {
+                     alert("Transaction found, but no valid inscription data (transfer to burn address with payload).");
+                }
+            } catch(e) { 
+                console.error(e);
+                alert("Transaction not found or provider error."); 
+            }
+            
+            ui.manualBtn.textContent = "Look Up"; 
+        });
+
+        // ============================================================
+        // 6. INIT: check connected accounts on load
+        // ============================================================
+        (async function init() {
+            // *** FIX: Gallery fetching is now done conditionally for better load behavior. ***
+            // await fetchGallery(); // REMOVED
+
+            if (window.ethereum) {
+                try {
+                    const acc = await window.ethereum.request({ method: 'eth_accounts' });
+                    
+                    if (acc && acc.length > 0) {
+                        await rebuildConnection(acc[0]);
+                    } else {
+                        // FALLBACK: If wallet is installed but not connected, load the gallery anyway
+                        await fetchGallery(); 
+                    }
+                } catch (err) {
+                    console.error('init eth_accounts error', err);
+                    ui.loader.classList.add('hidden'); 
+                    // FALLBACK: If eth_accounts fails for any reason, load the gallery anyway
+                    await fetchGallery(); 
+                }
+            } else {
+                handleDisconnect();
+                // FALLBACK: If no wallet is installed, load the gallery to show burned history
+                await fetchGallery();
+            }
+        })();
+
+    </script>
 </body>
 </html>
