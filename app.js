@@ -184,26 +184,16 @@ if (window.ethereum) {
     window.ethereum.on('accountsChanged', async (accounts) => {
         console.log("Wallet accountsChanged event fired:", accounts);
         
-        // --- SYNCHRONIZATION FIXES ---
-        if (window.ethereum.disconnect) {
-            try {
-                await window.ethereum.disconnect(); 
-                console.log("Forced disconnect successful.");
-            } catch (e) {
-                console.warn("Forced disconnect failed (this is often fine):", e);
-            }
-        }
-
+        // --- SYNCHRONIZATION FIX: Removed non-standard disconnect attempt and delay ---
+        
         if (!accounts || accounts.length === 0) {
             handleDisconnect();
             return;
         }
         
-        // *** DELAYED REBUILD FIX ***
-        setTimeout(async () => {
-            await rebuildConnection(accounts[0]);
-            console.log("Wallet address updated after 100ms delay.");
-        }, 100);
+        // Rebuild connection immediately with the new primary account.
+        await rebuildConnection(accounts[0]);
+        console.log("Wallet address updated.");
     });
 
     window.ethereum.on('chainChanged', (chainId) => {
