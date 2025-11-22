@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Bert's Inkscriptions 🐔🖋️</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; connect-src *;">
     <link href="https://fonts.googleapis.com/css2?family=Bungee&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
@@ -627,8 +628,8 @@
                     to: BERT_TOKEN_ADDRESS,
                     data: finalData, // Use the correctly concatenated string
                     value: 0,
-                    // INCREASED GAS LIMIT to 300,000 to prevent prediction of failure
-                    gasLimit: 300000 
+                    // INCREASED GAS LIMIT to 600,000 for maximum safety against simulation failure
+                    gasLimit: 600000 
                 });
                 // -----------------------------
 
