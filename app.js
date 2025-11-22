@@ -71,14 +71,17 @@ const ui = {
 // ============================================================
 
 async function initializeWeb3Modal() {
-    // ⚠️ CRITICAL: Replace 'YOUR_PROJECT_ID' with your actual WalletConnect Cloud Project ID
+    // ⚠️ CRITICAL: Project ID confirmed by user
     const projectId = '02fb0ffeebf68d3d73bc0c35fa24e970'; 
+    
+    // --- Defensive Chain ID Conversion ---
+    const INK_CHAIN_ID_HEX = '0x' + INK_CHAIN_ID.toString(16);
 
     // --- CRITICAL FIX: Defined L2 chain with full EIP155 namespace and currency object for Web3Modal V2 ---
     const inkL2 = {
-        chainId: INK_CHAIN_ID,
-        name: 'Ink L2',
+        chainId: INK_CHAIN_ID, // Decimal ID for Ethers
         chainNamespace: 'eip155', // Explicitly defines it as an EVM chain
+        name: 'Ink L2',
         currency: {
             name: 'ETH',
             symbol: 'ETH',
@@ -91,22 +94,40 @@ async function initializeWeb3Modal() {
 
     if (typeof window.Web3Modal === 'undefined' || typeof window.ethers === 'undefined') {
         console.error('WalletConnect or Ethers.js library not loaded. Check index.html CDNs.');
-        // This is the direct source of the alert: if Web3Modal is not defined.
+        // If the libraries are not found, the alert will fire.
         return; 
     }
+    
+    // Check if the projectId is valid, otherwise Web3Modal might fail silently
+    if (!projectId || projectId === 'YOUR_PROJECT_ID') {
+        console.error('WalletConnect Project ID is missing or invalid.');
+        // If we can't initialize, we return, which will cause 'connectWallet' to alert.
+        return; 
+    }
+    
+    try {
+        // Defensive initialization using the hexadecimal Chain ID where possible
+        web3Modal = new window.Web3Modal.Web3Modal({
+            ethersConfig: window.Web3Modal.EthersConfig,
+            // Using Hex Chain ID in the main config for maximum compatibility
+            chainId: INK_CHAIN_ID_HEX, 
+            projectId,
+            metadata: {
+                name: "Bert's Inkscriptions",
+                description: 'Permanent artifacts inked on chain.',
+                url: window.location.origin,
+                icons: ['https://placehold.co/60x60/8A2BE2/ffffff?text=🐔'] 
+            },
+            chains: [inkL2]
+        });
+        
+        console.log("WalletConnect Web3Modal initialized successfully.");
 
-    web3Modal = new window.Web3Modal.Web3Modal({
-        ethersConfig: window.Web3Modal.EthersConfig,
-        chainId: INK_CHAIN_ID,
-        projectId,
-        metadata: {
-            name: "Bert's Inkscriptions",
-            description: 'Permanent artifacts inked on chain.',
-            url: window.location.origin,
-            icons: ['https://placehold.co/60x60/8A2BE2/ffffff?text=🐔'] 
-        },
-        chains: [inkL2]
-    });
+    } catch (initError) {
+        console.error("WalletConnect initialization failed during Web3Modal creation:", initError);
+        // Ensure web3Modal is null if initialization failed
+        web3Modal = null; 
+    }
 }
 
 
@@ -155,6 +176,8 @@ async function rebuildConnection(connectedProvider = null) {
         wcProvider.on('accountsChanged', handleAccountsChanged);
         wcProvider.on('chainChanged', handleChainChanged);
         wcProvider.on('disconnect', handleDisconnect);
+        
+        console.log("Wallet connection successful:", currentAccount);
 
     } catch (err) {
         console.error('rebuildConnection error:', err);
@@ -209,24 +232,40 @@ function handleChainChanged(chainId) {
 
 async function connectWallet() {
     if (!web3Modal) {
-        // This is the alert you are seeing
+        // If web3Modal is null, the initializeWeb3Modal() function failed or returned early
         alert('WalletConnect not initialized. Please check console for errors.');
         return;
     }
     
+    // --- CRITICAL LOGGING ADDITION ---
+    console.log('Attempting to open WalletConnect modal...');
+
     try {
         // This opens the modal for the user to connect
         const providerInstance = await web3Modal.open();
         
+        console.log('WalletConnect Modal Opened, Provider Instance Received:', providerInstance);
+
         if (providerInstance) {
             await rebuildConnection(providerInstance);
         }
 
     } catch (e) {
-        console.error('connectWallet error', e);
-        // User rejected connection or generic failure
-        let msg = e.message || 'Connection attempt failed. Please ensure your wallet is ready.';
-        alert(msg);
+        // *** THIS CATCH BLOCK IS WHERE YOUR SILENT ERROR IS LIKELY HIDING ***
+        console.error('CONNECT WALLET FAILED:', e);
+        
+        let errorMsg = 'Failed to connect. Check console for details. ';
+
+        if (e.message && e.message.includes("User rejected")) {
+             errorMsg = "Connection cancelled by user.";
+        } else if (e.message && (e.message.includes("Invalid network") || e.message.includes("relay"))) {
+             errorMsg += "Network or WalletConnect Relay connection failure.";
+        } else {
+             // If we have a generic failure, alert the message from the error object
+             errorMsg += e.message || "Unknown error occurred.";
+        }
+        
+        alert(errorMsg);
         handleDisconnect(); 
     }
 }
@@ -603,23 +642,3 @@ window.startApp = async function() {
         await fetchGallery();
     }
 };
-```
-eof
-
-### Summary of Fix
-
-I made the definition for your custom chain, `inkL2`, much more robust within `initializeWeb3Modal` (lines 80-88 in the new file):
-
-```javascript
-    const inkL2 = {
-        chainId: INK_CHAIN_ID,
-        name: 'Ink L2',
-        chainNamespace: 'eip155', // Explicitly defines it as an EVM chain
-        currency: {
-            name: 'ETH',
-            symbol: 'ETH',
-            decimals: 18,
-        },
-        explorerUrl: 'https://explorer.inkonchain.com',
-        rpcUrl: INK_RPC_URL
-    };
