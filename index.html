@@ -5,8 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Bert's Inkscriptions 🐔🖋️</title>
     
+    <!-- CSP META TAG REMOVED: GitHub's server-side header overrides it. Relying on script externalization + onload. -->
+
     <link href="https://fonts.googleapis.com/css2?family=Bungee&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Ethers.js must load first -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
     <style>
         body { 
@@ -176,7 +179,8 @@
         /* Ensure disconnect button remains visible */
     </style>
 </head>
-<body class="min-h-screen p-4 flex flex-col items-center">
+<!-- CRITICAL FIX: Use onload to call the startApp function in app.js -->
+<body class="min-h-screen p-4 flex flex-col items-center" onload="startApp()">
 
     <div class="w-full max-w-xl mb-8 text-center mt-8">
         <h1 class="text-4xl font-bold graffiti-title">Bert's Inkscriptions 🐔🖋️</h1>
@@ -395,6 +399,7 @@
         // ---------------------------------
     </script>
     
-    <script src="./app.js" defer></script>
+    <!-- External script must load after Ethers.js, and will execute its window.startApp() via the body onload -->
+    <script src="./app.js"></script>
 </body>
 </html>
