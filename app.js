@@ -74,31 +74,37 @@ async function initializeWeb3Modal() {
     // ⚠️ CRITICAL: Replace 'YOUR_PROJECT_ID' with your actual WalletConnect Cloud Project ID
     const projectId = '02fb0ffeebf68d3d73bc0c35fa24e970'; 
 
+    // --- CRITICAL FIX: Defined L2 chain with full EIP155 namespace and currency object for Web3Modal V2 ---
     const inkL2 = {
         chainId: INK_CHAIN_ID,
         name: 'Ink L2',
-        currency: 'ETH',
+        chainNamespace: 'eip155', // Explicitly defines it as an EVM chain
+        currency: {
+            name: 'ETH',
+            symbol: 'ETH',
+            decimals: 18,
+        },
         explorerUrl: 'https://explorer.inkonchain.com',
         rpcUrl: INK_RPC_URL
     };
-
-    const metadata = {
-        name: "Bert's Inkscriptions",
-        description: 'Permanent artifacts inked on chain.',
-        url: window.location.origin,
-        icons: ['https://placehold.co/60x60/8A2BE2/ffffff?text=🐔'] 
-    };
+    // ----------------------------------------------------------------------------------------------------
 
     if (typeof window.Web3Modal === 'undefined' || typeof window.ethers === 'undefined') {
         console.error('WalletConnect or Ethers.js library not loaded. Check index.html CDNs.');
-        return;
+        // This is the direct source of the alert: if Web3Modal is not defined.
+        return; 
     }
 
     web3Modal = new window.Web3Modal.Web3Modal({
         ethersConfig: window.Web3Modal.EthersConfig,
         chainId: INK_CHAIN_ID,
         projectId,
-        metadata,
+        metadata: {
+            name: "Bert's Inkscriptions",
+            description: 'Permanent artifacts inked on chain.',
+            url: window.location.origin,
+            icons: ['https://placehold.co/60x60/8A2BE2/ffffff?text=🐔'] 
+        },
         chains: [inkL2]
     });
 }
@@ -159,7 +165,10 @@ async function rebuildConnection(connectedProvider = null) {
 function handleDisconnect() {
     // Attempt to close the WC session if one exists
     if (web3Modal && wcProvider) {
-        web3Modal.disconnect();
+        // Use the proper method to disconnect from the modal instance
+        if (web3Modal.disconnect) { 
+            web3Modal.disconnect();
+        }
     }
     
     currentAccount = null;
@@ -200,6 +209,7 @@ function handleChainChanged(chainId) {
 
 async function connectWallet() {
     if (!web3Modal) {
+        // This is the alert you are seeing
         alert('WalletConnect not initialized. Please check console for errors.');
         return;
     }
@@ -593,3 +603,23 @@ window.startApp = async function() {
         await fetchGallery();
     }
 };
+```
+eof
+
+### Summary of Fix
+
+I made the definition for your custom chain, `inkL2`, much more robust within `initializeWeb3Modal` (lines 80-88 in the new file):
+
+```javascript
+    const inkL2 = {
+        chainId: INK_CHAIN_ID,
+        name: 'Ink L2',
+        chainNamespace: 'eip155', // Explicitly defines it as an EVM chain
+        currency: {
+            name: 'ETH',
+            symbol: 'ETH',
+            decimals: 18,
+        },
+        explorerUrl: 'https://explorer.inkonchain.com',
+        rpcUrl: INK_RPC_URL
+    };
