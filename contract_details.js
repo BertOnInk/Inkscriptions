@@ -1,6 +1,6 @@
 // --- INK L2 NETWORK CONFIGURATION ---
 const INK_CHAIN_ID = 57073;
-const INK_RPC_URL = 'https://rpc-gel.inkonchain.com'; // Public RPC for the Ink L2 Mainnet
+const INK_RPC_URL = 'https://rpc-qnd.inkonchain.com'; // Public RPC for the Ink L2 Mainnet
 
 // --- DEPLOYED CONTRACT ADDRESSES ---
 // The NFT contract you deployed and verified. This contract holds the 'safeMint' function.
