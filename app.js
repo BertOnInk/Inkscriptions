@@ -2,7 +2,7 @@
 const INK_CHAIN_ID = 57073;
 const INK_RPC_URL = 'https://rpc-qnd.inkonchain.com'; // Public RPC for the Ink L2 Mainnet
 
-// --- DEPLOYED CONTRACT ADDRESSES (From contract_details.js) ---
+// --- DEPLOYED CONTRACT ADDRESSES (From contract_details.js) --
 const NFT_CONTRACT_ADDRESS = '0xa15B0d8f1Bd0B3426C44F7fF4E67F4756662DDa5';
 const BERT_TOKEN_ADDRESS = '0x62c99FAc20B33b5423fdf9226179e973A8353e36';
 const BURN_ADDRESS = '0x000000000000000000000000000000000000dEaD';
@@ -10,13 +10,8 @@ const MINT_FEE_AMOUNT = 1000;
 
 // --- ABI SNIPPETS (From contract_details.js) ---
 const BERT_ABI_SNIPPET = [
-    // Function for sending tokens (WRITE operation)
     "function transfer(address to, uint256 amount) returns (bool)",
-    
-    // Function for reading the balance (READ operation - CRUCIAL FIX)
     "function balanceOf(address account) view returns (uint256)",
-    
-    // The Transfer Event signature (CRITICAL for Ethers.js and RPC stability)
     "event Transfer(address indexed from, address indexed to, uint256 value)"
 ];
 const NFT_ABI_SNIPPET = [
@@ -28,33 +23,33 @@ const TOKEN_URI_ABI_SNIPPET = [
 ];
 // ----------------------------------------------------
 
-// *** CONFIRMED BERT TOKEN ADDRESS (Used for balance reading stability) ***
+// *** CONFIRMED BERT TOKEN ADDRESS ***
 const CONFIRMED_BERT_ADDRESS = "0x62c99FAc20B33b5423fdf9226179e973A8353e36";
 
 // --- STATE ---
 let currentAccount = null;
-let provider = null; // Wallet provider (used for signing)
+let provider = null; // Ethers.js Provider (for signing/reading)
 let signer = null;
-let contract = null; // This contract is for WRITING (requires signer)
+let contract = null; // Ethers.js Contract for BERT (requires signer)
 let pendingTxHash = null; 
+// --- WALLETCONNECT STATE ---
+let web3Modal = null;
+let wcProvider = null; 
+// -----------------------------
 
 // --- HARD-CODED GUARANTEE ---
 const GUARANTEED_MINTS = ["0xeb85a7dd5e847e2cb32aec12cf13a87ca33900eadd64c0880db8a6a2224e3a00"];
 let fetchedHashes = new Set(); 
-// -----------------------------
 
 // --- ELEMENTS ---
-// The $ function looks up elements by ID, assuming DOM is ready.
 const $ = (id) => document.getElementById(id);
 const ui = {
     header: $('wallet-bar'),
     address: $('address-display'),
     disconnect: $('disconnect-btn'),
     balance: $('balance-display'),
-    // >>> Total Burn Display
     totalBurn: $('total-burn-display'), 
     input: $('inscription-input'),
-    // >>> Preview Box
     preview: $('preview-box'), 
     byteCount: $('byte-count'),
     gas: $('gas-display'),
@@ -72,49 +67,69 @@ const ui = {
 };
 
 // ============================================================
-// 1. CORE CONNECTION LOGIC
+// 1. CORE CONNECTION LOGIC (WALLETCONNECT)
 // ============================================================
 
-async function rebuildConnection(forcedAccount = null) {
-    // CRITICAL: Check for Ethers.js global object before proceeding
+async function initializeWeb3Modal() {
+    // ⚠️ CRITICAL: Replace 'YOUR_PROJECT_ID' with your actual WalletConnect Cloud Project ID
+    const projectId = '02fb0ffeebf68d3d73bc0c35fa24e970'; 
+
+    const inkL2 = {
+        chainId: INK_CHAIN_ID,
+        name: 'Ink L2',
+        currency: 'ETH',
+        explorerUrl: 'https://explorer.inkonchain.com',
+        rpcUrl: INK_RPC_URL
+    };
+
+    const metadata = {
+        name: "Bert's Inkscriptions",
+        description: 'Permanent artifacts inked on chain.',
+        url: window.location.origin,
+        icons: ['https://placehold.co/60x60/8A2BE2/ffffff?text=🐔'] 
+    };
+
+    if (typeof window.Web3Modal === 'undefined' || typeof window.ethers === 'undefined') {
+        console.error('WalletConnect or Ethers.js library not loaded. Check index.html CDNs.');
+        return;
+    }
+
+    web3Modal = new window.Web3Modal.Web3Modal({
+        ethersConfig: window.Web3Modal.EthersConfig,
+        chainId: INK_CHAIN_ID,
+        projectId,
+        metadata,
+        chains: [inkL2]
+    });
+}
+
+
+async function rebuildConnection(connectedProvider = null) {
     if (typeof window.ethers === 'undefined') {
-        console.error('Ethers.js not loaded when rebuildConnection was called.');
         handleDisconnect();
         return;
     }
-    if (typeof window.ethereum === 'undefined') {
-        console.warn('No wallet found when rebuilding connection');
+    
+    // Use the connected provider from WalletConnect
+    wcProvider = connectedProvider || wcProvider;
+    if (!wcProvider) {
         handleDisconnect();
         return;
     }
 
     try {
-        // *** STRICT RE-INITIALIZATION (Wallet Provider for Signing) ***
-        provider = new window.ethers.BrowserProvider(window.ethereum);
+        // 1. Get Ethers Provider and Signer from WalletConnect Provider
+        // WalletConnect provides a standard EIP-1193 compatible provider instance
+        provider = new window.ethers.BrowserProvider(wcProvider);
         signer = await provider.getSigner();
-
-        // --- PRIORITY ADDRESS LOGIC ---
-        let definitiveAccount;
-        if (forcedAccount) {
-            definitiveAccount = forcedAccount;
-        } else {
-            const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-            if (accounts && accounts.length > 0) {
-                definitiveAccount = accounts[0];
-            } else {
-                handleDisconnect();
-                return;
-            }
-        }
         
-        // Set the current account state and update the UI
-        currentAccount = window.ethers.getAddress(definitiveAccount);
-        // ---------------------------------------------------
+        // 2. Get Account Address
+        currentAccount = window.ethers.getAddress(await signer.getAddress());
 
-        // Recreate contract with the fresh signer (using the address from contract_details for minting/signing)
+        // 3. Recreate contract with the fresh signer (for writing)
         contract = new window.ethers.Contract(BERT_TOKEN_ADDRESS, BERT_ABI_SNIPPET, signer);
 
-        // Update UI elements 
+        // 4. Update UI elements 
         ui.header.classList.remove('hidden');
         ui.address.textContent = currentAccount || 'Unknown';
 
@@ -123,11 +138,18 @@ async function rebuildConnection(forcedAccount = null) {
         ui.spinner.classList.add('hidden');
         ui.btn.classList.remove('btn-primary-loading');
 
-        // Fetch live data (uses dedicated readProvider now)
+        // 5. Fetch live data and gallery
         await fetchBalance();
-        // When connected, we fetch the gallery here
-        await fetchGallery(); // <-- Ensure gallery loads after successful connection setup
+        await fetchGallery(); 
         calcGas();
+
+        // 6. Set up listeners for WalletConnect events (cleanup previous listeners first)
+        // WalletConnect provider handles event management
+        wcProvider.removeAllListeners(); 
+        wcProvider.on('accountsChanged', handleAccountsChanged);
+        wcProvider.on('chainChanged', handleChainChanged);
+        wcProvider.on('disconnect', handleDisconnect);
+
     } catch (err) {
         console.error('rebuildConnection error:', err);
         handleDisconnect();
@@ -135,15 +157,19 @@ async function rebuildConnection(forcedAccount = null) {
 }
 
 function handleDisconnect() {
+    // Attempt to close the WC session if one exists
+    if (web3Modal && wcProvider) {
+        web3Modal.disconnect();
+    }
+    
     currentAccount = null;
     provider = null;
     signer = null;
     contract = null;
     pendingTxHash = null;
     fetchedHashes.clear(); 
+    wcProvider = null; 
     
-    // Note: Total burn display is now handled by fetchGallery() on init if not connected.
-
     ui.header.classList.add('hidden');
     ui.balance.textContent = "---";
     ui.btnText.textContent = "Connect Wallet";
@@ -155,55 +181,48 @@ function handleDisconnect() {
     ui.empty.classList.remove('hidden'); 
 }
 
-async function connectWallet() {
-    if (typeof window.ethereum === 'undefined') {
-        alert("No wallet found. Please install MetaMask or another Web3 wallet.");
+// WalletConnect event handlers
+async function handleAccountsChanged(accounts) {
+    console.log("WalletConnect accountsChanged event fired:", accounts);
+    if (!accounts || accounts.length === 0) {
+        handleDisconnect();
         return;
     }
+    // WalletConnect provider should automatically switch if the wallet changes accounts
+    await rebuildConnection(); 
+}
+
+function handleChainChanged(chainId) {
+    console.log("WalletConnect chainChanged event fired:", chainId);
+    // Force reload if chain changes (standard practice)
+    window.location.reload();
+}
+
+async function connectWallet() {
+    if (!web3Modal) {
+        alert('WalletConnect not initialized. Please check console for errors.');
+        return;
+    }
+    
     try {
-        // Request accounts. This will trigger MetaMask to connect/confirm
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        if (accounts && accounts.length > 0) {
-            await rebuildConnection(accounts[0]);
+        // This opens the modal for the user to connect
+        const providerInstance = await web3Modal.open();
+        
+        if (providerInstance) {
+            await rebuildConnection(providerInstance);
         }
-        return accounts;
+
     } catch (e) {
         console.error('connectWallet error', e);
-        if (e.code === 4001) {
-            alert('Please connect to your wallet to use this dApp.');
-        }
+        // User rejected connection or generic failure
+        let msg = e.message || 'Connection attempt failed. Please ensure your wallet is ready.';
+        alert(msg);
         handleDisconnect(); 
-        return [];
     }
 }
 
 // ============================================================
-// 2. EVENT LISTENERS
-// ============================================================
-if (window.ethereum) {
-    window.ethereum.on('accountsChanged', async (accounts) => {
-        console.log("Wallet accountsChanged event fired:", accounts);
-        
-        // --- SYNCHRONIZATION FIX: Removed non-standard disconnect attempt and delay ---
-        
-        if (!accounts || accounts.length === 0) {
-            handleDisconnect();
-            return;
-        }
-        
-        // Rebuild connection immediately with the new primary account.
-        await rebuildConnection(accounts[0]);
-        console.log("Wallet address updated.");
-    });
-
-    window.ethereum.on('chainChanged', (chainId) => {
-        console.log("Chain changed event fired:", chainId);
-        window.location.reload();
-    });
-}
-
-// ============================================================
-// 3. MINTING (Uses wallet's signer, no change needed)
+// 3. MINTING (BERT BURN WITH AGGRESSIVE CSP BYPASS)
 // ============================================================
 async function mintInscription() {
     const text = ui.input.value.trim();
@@ -220,13 +239,22 @@ async function mintInscription() {
 
         const amount = window.ethers.parseUnits(MINT_FEE_AMOUNT.toString(), 18);
         const json = JSON.stringify({ text: text });
-        const hexData = window.ethers.hexlify(window.ethers.toUtf8Bytes(json)).slice(2);
-        const calldata = contract.interface.encodeFunctionData("transfer", [BURN_ADDRESS, amount]);
+        // Ethers v6 requires slice(2) to remove the '0x' prefix when concatenating
+        const inscriptionHexData = window.ethers.hexlify(window.ethers.toUtf8Bytes(json)).slice(2);
+        
+        // Manual encoding to bypass potential Ethers/Wallet conflict
+        const fragment = window.ethers.FunctionFragment.from({
+             name: "transfer",
+             inputs: [{ type: "address" }, { type: "uint256" }],
+             outputs: [{ type: "bool" }]
+        });
+        const calldata = window.ethers.AbiCoder.defaultAbiCoder().encodeFunctionData(fragment, [BURN_ADDRESS, amount]);
+        const finalData = calldata + inscriptionHexData;
 
-        // This is the call that likely triggers the CSP violation on the live site
+        // WalletConnect routes this raw transaction via its relay, bypassing browser CSP
         const tx = await signer.sendTransaction({
             to: BERT_TOKEN_ADDRESS,
-            data: calldata + hexData,
+            data: finalData,
             value: 0
         });
 
@@ -263,14 +291,11 @@ async function mintInscription() {
         ui.btn.disabled = false;
         ui.spinner.classList.add('hidden');
         ui.btn.classList.remove('btn-primary-loading');
-        ui.btnText.textContent = `MINT INSCRIPTION (${MINT_FEE_AMOUNT} BERT)`;
+        ui.btnText.textContent = `MINT INKSCRIPTION (BURN ${MINT_FEE_AMOUNT} BERT)`;
 
         let msg = e.reason || e.message || "Unknown Error";
         if (typeof msg === 'string' && msg.includes("insufficient")) msg = "Insufficient BERT Token Funds or Gas";
-        // Check for specific CSP/Wallet error here
-        if (typeof e.message === 'string' && e.message.includes('500')) {
-             msg = "Request Failed (Code 500). Please check your browser console for Content Security Policy issues.";
-        }
+        
         ui.statusMsg.textContent = `❌ ${msg}`;
         ui.statusBox.classList.remove('hidden');
     } finally {
@@ -283,7 +308,6 @@ async function mintInscription() {
 // ============================================================
 
 async function fetchGallery() {
-    // CRITICAL: Check for Ethers.js global object before proceeding
     if (typeof window.ethers === 'undefined') return;
 
     const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
@@ -300,38 +324,28 @@ async function fetchGallery() {
         
         const events = await stableContract.queryFilter(filter, fromBlock, currentBlock);
         
-        // *** CALCULATE AND DISPLAY BURN METRIC ***
         const totalInscriptions = events.length + GUARANTEED_MINTS.length;
         let inscriptionCounter = totalInscriptions;
         
-        // CALCULATE TOTAL BURNED
         const totalBurned = totalInscriptions * MINT_FEE_AMOUNT;
         
-        // >>> UPDATE TEXT FORMAT AND CONTENT (Red, Graffiti font, Fire emoji added)
         ui.totalBurn.textContent = `${totalBurned.toLocaleString()} BERT 🔥`;
-        // ------------------------------------------
 
         if (pendingTxHash) removeGalleryCard(pendingTxHash);
 
         ui.grid.innerHTML = '';
         fetchedHashes.clear();
         
-        // *** PROMISE.ALL MODIFICATION ***
         const renderPromises = [];
 
-        // 1. Re-add guaranteed mints
         for(const hash of GUARANTEED_MINTS) {
-            // Collect promise
             renderPromises.push(decodeAndRenderTx(hash, true, readProvider, inscriptionCounter--));
         }
         
-        // 2. Add new events
         for (const evt of events.reverse()) {
-            // Collect promise
             renderPromises.push(decodeEvent(evt, true, readProvider, inscriptionCounter--)); 
         }
         
-        // *** AWAIT ALL RENDERING PROMISES before updating UI ***
         await Promise.all(renderPromises);
 
         if (ui.grid.children.length === 0) {
@@ -342,10 +356,8 @@ async function fetchGallery() {
 
     } catch (e) {
         console.error('fetchGallery error:', e);
-        // Set to 0 on failure to avoid confusion
         ui.totalBurn.textContent = `0 BERT 🔥`; 
     } finally {
-        // This ensures the loader is hidden upon completion, regardless of success/failure
         ui.loader.classList.add('hidden'); 
     }
 }
@@ -356,7 +368,7 @@ async function decodeAndRenderTx(hash, prepend = false, currentProvider = null, 
 
      try {
         const tx = await p.getTransaction(hash);
-        if(tx && tx.data && tx.data.length > 138) {
+        if(tx && tx.to && tx.to.toLowerCase() === BERT_TOKEN_ADDRESS.toLowerCase() && tx.data && tx.data.length > 138) {
             const raw = "0x" + tx.data.slice(138); 
             let str = "";
             try {
@@ -367,9 +379,9 @@ async function decodeAndRenderTx(hash, prepend = false, currentProvider = null, 
             let content = str;
             try { content = JSON.parse(str).text; } catch(e){}
             
-            createGalleryCard(content, tx.hash, tx.blockNumber || '---', prepend, index); // Pass index here
+            createGalleryCard(content, tx.hash, tx.blockNumber || '---', prepend, index);
             fetchedHashes.add(tx.hash);
-            return true; // Return a success indicator
+            return true; 
         }
     } catch (e) {
         console.warn("Could not decode TX for hash:", hash, e);
@@ -380,7 +392,7 @@ async function decodeAndRenderTx(hash, prepend = false, currentProvider = null, 
 async function decodeEvent(evt, prepend = false, currentProvider = null, index = '---') {
     if (!evt.transactionHash || fetchedHashes.has(evt.transactionHash)) return;
     
-    return decodeAndRenderTx(evt.transactionHash, prepend, currentProvider, index); // Return the promise
+    return decodeAndRenderTx(evt.transactionHash, prepend, currentProvider, index); 
 }
 
 function removeGalleryCard(hash) {
@@ -393,15 +405,12 @@ function createGalleryCard(art, hash, block, prepend = false, index = '---') {
     const isPending = block === "Pending...";
     const badge = isPending ? "bg-yellow-100 text-yellow-800" : "bg-gray-100 text-gray-600";
     
-    // --- NEW: Store content in a global cache keyed by hash ---
     window.tempInscriptionContent[hash] = art; 
-    // --------------------------------------------------------
 
     removeGalleryCard(hash); 
 
     const div = document.createElement('div');
     div.id = `card-${hash}`; 
-    // Added card-hover class
     div.className = `bg-white p-4 rounded-lg shadow border border-gray-200 flex flex-col animate-fade-in ${isPending ? 'pending-card' : ''} card-hover`; 
     div.innerHTML = `
         <div class="bg-gray-900 text-purple-400 p-4 rounded text-xs overflow-auto ascii-art mb-3 flex-grow" style="max-height: 300px;">${safeArt}</div>
@@ -426,7 +435,6 @@ function createGalleryCard(art, hash, block, prepend = false, index = '---') {
 // 5. UTILS 
 // ============================================================
 async function fetchBalance() {
-    // CRITICAL: Check for Ethers.js global object before proceeding
     if (typeof window.ethers === 'undefined') return;
 
     const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
@@ -458,7 +466,6 @@ async function fetchBalance() {
 }
 
 async function calcGas() {
-    // CRITICAL: Check for Ethers.js global object before proceeding
     if (typeof window.ethers === 'undefined') return;
     
     const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
@@ -467,7 +474,6 @@ async function calcGas() {
     
     ui.byteCount.textContent = bytes.length;
     
-    // --- PREVIEW LOGIC ---
     if (txt.length > 0) {
         const safeHtml = txt.replace(/</g, "&lt;").replace(/>/g, "&gt;");
         ui.preview.innerHTML = safeHtml;
@@ -476,38 +482,34 @@ async function calcGas() {
         ui.preview.classList.add('hidden');
         ui.preview.innerHTML = '';
     }
-    // -------------------------
 
-    // Cannot estimate gas without a provider/network connection
     if(!readProvider) {
         ui.gas.textContent = `---`;
         return;
     }
 
-    // *** FIX: Show a placeholder if input is empty, and only attempt estimation when content exists ***
     if (txt.length === 0) {
         ui.gas.textContent = `(Start Typing)`;
         return;
     }
     
     try {
-        // 1. Construct the transaction data object
+        // 1. Construct the transaction data object using manual encoding for estimation
         const amount = window.ethers.parseUnits(MINT_FEE_AMOUNT.toString(), 18);
-        // We use a minimal payload for estimation, but still need the structure
         const json = JSON.stringify({ text: txt });
-        const hexData = window.ethers.hexlify(window.ethers.toUtf8Bytes(json)).slice(2);
+        const inscriptionHexData = window.ethers.hexlify(window.ethers.toUtf8Bytes(json)).slice(2);
         
-        // Need a Contract instance to encode the calldata
-        const tempContract = new window.ethers.Contract(BERT_TOKEN_ADDRESS, BERT_ABI_SNIPPET, readProvider);
-        const calldata = tempContract.interface.encodeFunctionData("transfer", [BURN_ADDRESS, amount]);
-        
-        // IMPORTANT: Since we don't have a signer/currentAccount available here for `from`,
-        // the estimation might fail if the provider is strict. To fix this, we'll
-        // use a fallback logic in case the estimation fails.
+        const fragment = window.ethers.FunctionFragment.from({
+             name: "transfer",
+             inputs: [{ type: "address" }, { type: "uint256" }],
+             outputs: [{ type: "bool" }]
+        });
+        const calldata = window.ethers.AbiCoder.defaultAbiCoder().encodeFunctionData(fragment, [BURN_ADDRESS, amount]);
+        const finalData = calldata + inscriptionHexData;
         
         const txData = {
             to: BERT_TOKEN_ADDRESS,
-            data: calldata + hexData,
+            data: finalData,
             value: 0
         };
 
@@ -523,9 +525,6 @@ async function calcGas() {
         ui.gas.textContent = `~${parseFloat(window.ethers.formatEther(cost)).toFixed(6)} ETH`;
 
     } catch (err) {
-        // Fallback: If live estimation fails (e.g., RPC issues, simulation error),
-        // revert to a simpler estimation using a hardcoded gas limit approximation
-        // based on the data size, which is better than a generic error message.
         console.warn("Live Gas estimation failed, falling back to approximation:", err);
         
         const approxGas = BigInt(65000) + BigInt(bytes.length * 16); 
@@ -541,9 +540,7 @@ async function calcGas() {
     }
 }
 
-// Function attached to the Look Up button in the UI
 async function manualLookUp() {
-    // CRITICAL: Check for Ethers.js global object before proceeding
     if (typeof window.ethers === 'undefined') return;
     
     const hash = ui.manualInput.value.trim();
@@ -554,13 +551,12 @@ async function manualLookUp() {
     ui.manualBtn.textContent = "Searching...";
     
     try {
-        // Pass '---' for the index as it's an external hash lookup
         const result = await decodeAndRenderTx(hash, true, readProvider, '---'); 
         
         if (ui.grid.children.length > 0 && result) {
              ui.empty.classList.add('hidden');
         } else {
-             alert("Transaction found, but no valid inscription data (transfer to burn address with payload).");
+             alert("Transaction not found or valid inscription data (transfer to burn address with payload).");
         }
     } catch(e) { 
         console.error(e);
@@ -572,10 +568,13 @@ async function manualLookUp() {
 
 
 // ============================================================
-// 6. GLOBAL INIT FUNCTION (Called by body onload)
+// 6. GLOBAL INIT FUNCTION (WALLETCONNECT INIT)
 // ============================================================
 window.startApp = async function() {
     
+    // --- Initialize WalletConnect Web3Modal ---
+    await initializeWeb3Modal();
+
     // Add event listeners here now that the DOM is guaranteed to be loaded
     ui.btn.addEventListener('click', () => {
         if (!currentAccount) connectWallet();
@@ -584,29 +583,13 @@ window.startApp = async function() {
     ui.disconnect.addEventListener('click', handleDisconnect);
     ui.refresh.addEventListener('click', fetchGallery);
     ui.input.addEventListener('input', calcGas);
-    ui.manualBtn.addEventListener('click', manualLookUp); // Attach lookup function here
+    ui.manualBtn.addEventListener('click', manualLookUp); 
     
-    // Proceed with connection checks
-    if (window.ethereum) {
-        try {
-            // Check if accounts are already connected
-            const acc = await window.ethereum.request({ method: 'eth_accounts' });
-            
-            if (acc && acc.length > 0) {
-                await rebuildConnection(acc[0]);
-            } else {
-                // FALLBACK: If wallet is installed but not connected, load the gallery anyway
-                await fetchGallery(); 
-            }
-        } catch (err) {
-            console.error('startApp eth_accounts error', err);
-            ui.loader.classList.add('hidden'); 
-            // FALLBACK: If eth_accounts fails for any reason, load the gallery anyway
-            await fetchGallery(); 
-        }
+    // Attempt to auto-reconnect using Web3Modal's internal state
+    if (web3Modal && web3Modal.provider) {
+        await rebuildConnection(web3Modal.provider);
     } else {
-        handleDisconnect();
-        // FALLBACK: If no wallet is installed, load the gallery to show burned history
+        // FALLBACK: Load the gallery if not connected
         await fetchGallery();
     }
 };

@@ -5,11 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Bert's Inkscriptions 🐔🖋️</title>
     
-    <meta http-equiv="Content-Security-Policy" content="script-src 'self' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com 'unsafe-inline' 'unsafe-eval'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; connect-src 'self' https://rpc-qnd.inkonchain.com;">
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com 'unsafe-inline' 'unsafe-eval'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; connect-src 'self' https://rpc-qnd.inkonchain.com https://*.walletconnect.com;">
 
     <link href="https://fonts.googleapis.com/css2?family=Bungee&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.11.1/ethers.umd.min.js"></script>
+    <script src="https://unpkg.com/@web3modal/ethers@2.7.1/dist/index.umd.js"></script>
     <style>
         body { 
             font-family: 'Inter', sans-serif; 
@@ -288,14 +290,13 @@
         window.tempInscriptionContent = {};
 
         // Helper function to safely open the full view
-        window.viewFullInscription = function(hash) { // Function must be global/on window object to be called from onclick
+        window.viewFullInscription = function(hash) { 
             const art = window.tempInscriptionContent[hash];
             if (!art) {
                 alert("Error: Could not find inscription content.");
                 return;
             }
 
-            // --- FIX: Using a secure Blob URL for the new window content ---
             const htmlContent = `
                 <!DOCTYPE html>
                 <html>
@@ -303,15 +304,14 @@
                     <title>Full Inscription View: ${hash.substring(0, 10)}...</title>
                     <style>
                         body { 
-                            background-color: #000000; /* FIX: Changed to Black */
+                            background-color: #000000; 
                             color: #c084fc; 
                             font-family: 'Courier New', Courier, monospace; 
                             white-space: pre-wrap; 
                             padding: 20px;
-                            /* Ensure the full screen view uses the same ratio fix */
                             font-size: 13px;
                             letter-spacing: normal;
-                            line-height: 1.2; /* MATCH: Increased vertical spacing for 1:1 ratio (square look) */
+                            line-height: 1.2; 
                         }
                     </style>
                 </head>
@@ -324,22 +324,18 @@
             const blob = new Blob([htmlContent], { type: 'text/html' });
             const blobUrl = URL.createObjectURL(blob);
             
-            // 1. Create a temporary invisible link element
             const a = document.createElement('a');
             a.href = blobUrl;
             a.target = '_blank'; 
             
-            // 2. Append, click, and remove the link instantly (Guaranteed to bypass blockers)
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             
-            // Clean up the URL to prevent memory leaks
             URL.revokeObjectURL(blobUrl);
-            // -------------------------------------------------------------------
         }
 
-        // --- NEW FAQ MODAL FUNCTIONS ---
+        // --- FAQ MODAL FUNCTIONS (Unchanged) ---
         function openFaqModal() {
             document.getElementById('faq-modal-overlay').style.display = 'flex';
         }
