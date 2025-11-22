@@ -203,8 +203,6 @@
                 <div>
                     <p class="text-xs font-bold text-violet-800 uppercase tracking-wide">Connected As</p>
                     <p id="address-display" class="font-mono text-sm font-bold text-gray-800">...</p>
-                    <!-- NEW: Add chain check display -->
-                    <p id="chain-status" class="text-xs mt-1 font-medium text-red-500">Checking Chain...</p>
                 </div>
                 <button id="disconnect-btn" class="bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold px-3 py-1.5 rounded transition">Disconnect</button>
             </div>
@@ -461,8 +459,7 @@
             loader: $('gallery-loader'),
             empty: $('gallery-empty'),
             refresh: $('refresh-btn'),
-            // NEW: Chain status display
-            chainStatus: $('chain-status') 
+            // REMOVED: chainStatus: $('chain-status') 
         };
 
         // ============================================================
@@ -507,21 +504,18 @@
                 ui.header.classList.remove('hidden');
                 ui.address.textContent = currentAccount || 'Unknown';
                 
-                // NEW: Update chain status UI
+                // === START CHAIN CHECK LOGIC (No UI update needed here, just button state) ===
                 const expectedChainId = parseInt(INK_CHAIN_ID);
                 if (currentChainId !== expectedChainId) {
-                    ui.chainStatus.textContent = `⚠️ Wrong Chain: ID ${currentChainId} (Expected: ${expectedChainId})`;
-                    ui.chainStatus.classList.remove('text-green-500');
-                    ui.chainStatus.classList.add('text-red-500');
                     ui.btn.disabled = true;
                     ui.btnText.textContent = `SWITCH TO CHAIN ${expectedChainId}`;
+                    // Optional: Alert the user if they connect on the wrong chain silently
+                    showCustomAlert("Wrong Network", `Your wallet is on the wrong network (ID: ${currentChainId}). Please click the button below to switch to Ink L2 Mainnet (ID: ${expectedChainId}).`, "error");
                 } else {
-                    ui.chainStatus.textContent = `✅ Connected to Chain ID ${currentChainId}`;
-                    ui.chainStatus.classList.remove('text-red-500');
-                    ui.chainStatus.classList.add('text-green-500');
                     ui.btn.disabled = false;
                     ui.btnText.textContent = `MINT INKSCRIPTION (BURN ${MINT_FEE_AMOUNT} BERT)`;
                 }
+                // === END CHAIN CHECK LOGIC ===
 
                 ui.spinner.classList.add('hidden');
                 ui.btn.classList.remove('btn-primary-loading');
@@ -546,10 +540,10 @@
             currentChainId = null; // NEW: Reset chain ID
             fetchedHashes.clear(); 
             
-            // Reset chain status UI
-            ui.chainStatus.textContent = 'Checking Chain...';
-            ui.chainStatus.classList.remove('text-green-500');
-            ui.chainStatus.classList.add('text-red-500');
+            // REMOVED: Reset chain status UI
+            // ui.chainStatus.textContent = 'Checking Chain...';
+            // ui.chainStatus.classList.remove('text-green-500');
+            // ui.chainStatus.classList.add('text-red-500');
 
             ui.header.classList.add('hidden');
             ui.balance.textContent = "---";
