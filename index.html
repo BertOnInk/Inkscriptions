@@ -194,7 +194,7 @@
 
         <div class="pt-0 space-y-4">
             
-            <div class="flex flex-col items-center justify-center -mt-8 mb-1"> 
+            <div class="flex flex-col items-center justify-center -mt-6 mb-1"> 
                 <img src="burning_chicken.png" alt="Burning Chicken" class="h-10 w-10 mt-1 mb-2"> 
                 <p class="text-sm font-medium text-black flex items-center gap-2">
                     Burn BERT, ink history
@@ -256,7 +256,7 @@
     <div class="w-full max-w-4xl">
         <div class="flex items-center justify-between mb-6">
             <h2 class="text-2xl font-bold text-white">🏛️ Live Gallery</h2>
-            <button id="refresh-btn" class="text-black text-sm bg-white border border-gray-300 px-3 py-1 rounded hover:bg-gray-50">↻ Refresh</button>
+            <button id="refresh-btn" class="text-black text-sm bg-white border border border-gray-300 px-3 py-1 rounded hover:bg-gray-50">↻ Refresh</button>
         </div>
         
         <div id="gallery-loader" class="text-center py-10 hidden">
@@ -289,7 +289,7 @@
         function viewFullInscription(hash) {
             const art = window.tempInscriptionContent[hash];
             if (!art) {
-                alert("Error: Could not find inscription content.");
+                alert("Error: Could could not find inscription content.");
                 return;
             }
 
@@ -355,9 +355,9 @@
 
             // --- FAQ CONTENT STRING (FINAL STYLING APPLIED) ---
             const faqContent = `
-                <h3 class="faq-heading">Q1: What exactly is an Inkscription?</h3>
+                <h3 class="faq-heading">Q1: What exactly is a Bert's Inkscription?</h3>
                 <div class="faq-answer">
-                    <p>An <span style="color: #9333ea;">Inkscription</span> is a permanent, immutable artifact etched directly onto the blockchain. When you create an <span style="color: #9333ea;">Inkscription</span>, you're burning a fixed amount of <span style="color: #9333ea;">BERT</span> tokens and using the transaction's calldata to embed text or data (like ASCII art) into the network's history forever. It's essentially a decentralized, permanent record stored on the chain.</p>
+                    <p>An <span style="color: #9333ea;">Inkscription</span> is a <strong>permanent, immutable artifact etched directly onto the blockchain</strong>. When you create an <span style="color: #9333ea;">Inkscription</span>, you're <strong>burning a fixed amount of BERT tokens</strong> and using the transaction's calldata to embed text or data (like ASCII art) into the network's history forever. It's essentially a decentralized, permanent record stored on the chain.</p>
                 </div>
                 
                 <h3 class="faq-heading">Q2: How do I create an Inkscription?</h3>
@@ -365,7 +365,8 @@
                     <p>Creating an <span style="color: #9333ea;">Inkscription</span> involves four simple steps:</p>
                     <ul>
                         <li><span style="color: #9333ea;">Connect Wallet:</span> Click the "Connect Wallet" button and ensure you have enough <span style="color: #9333ea;">BERT</span> tokens (1000 <span style="color: #9333ea;">BERT</span> per <span style="color: #9333ea;">inkscription</span>) and a small amount of ETH for gas.</li>
-                        <li><span style="color: #9333ea;">Compose Content:</span> Enter your desired text, lore, or ASCII art into the "<span style="color: #000000 !important;">Your Permanent</span> <span style="color: #9333ea;">Inkscription</span>" box. For ASCII Art: We recommend an image-to-ASCII web tool such as <a href="https://www.asciiart.eu/image-to-ascii" target="_blank" class="text-violet-500 hover:text-violet-700 underline">asciiart.eu/image-to-ascii</a> or similar. There you can upload and fine-tune an image to create your perfect <span style="color: #9333ea;">inkscription</span> content.</li>
+                        <li><span style="color: #9333ea;">Compose Content:</span> Enter your desired text, lore, or ASCII art into the "<span style="color: #000000 !important;">Your Permanent</span> <span style="color: #9333ea;">Inkscription</span>" box.</li>
+                        <li><span style="color: #9333ea;">For ASCII Art:</span> We recommend an image-to-ASCII web tool such as <a href="https://www.asciiart.eu/image-to-ascii" target="_blank" class="text-violet-500 hover:text-violet-700 underline">asciiart.eu/image-to-ascii</a> or similar. There you can upload and fine-tune an image to create your perfect <span style="color: #9333ea;">inkscription</span> content.</li>
                         <li><span style="color: #9333ea;">Check Cost:</span> Review the <span style="color: #000000 !important;">Est. Gas</span> display to see the estimated ETH transaction cost.</li>
                         <li><span style="color: #9333ea;">Mint:</span> Click the <span style="color: #9333ea;">"MINT INKSCRIPTION"</span> button and confirm the transaction (which includes the <span style="color: #9333ea;">BERT</span> token burn and the <span style="color: #9333ea;">inkscription</span> data) in your wallet. Once confirmed, your unique artifact will appear in the Live Gallery!</li>
                     </ul>
@@ -594,7 +595,7 @@
         ui.disconnect.addEventListener('click', handleDisconnect);
 
         // ============================================================
-        // 3. MINTING (Uses wallet's signer, no change needed)
+        // 3. MINTING (Transaction Logic FIX)
         // ============================================================
         async function mintInscription() {
             const text = ui.input.value.trim();
@@ -611,14 +612,25 @@
 
                 const amount = window.ethers.parseUnits(MINT_FEE_AMOUNT.toString(), 18);
                 const json = JSON.stringify({ text: text });
-                const hexData = window.ethers.hexlify(window.ethers.toUtf8Bytes(json)).slice(2);
+                
+                // 1. Get the inscription data, ensuring it has the 0x prefix.
+                const inscriptionPayload = window.ethers.hexlify(window.ethers.toUtf8Bytes(json));
+                
+                // 2. Encode the standard ERC-20 transfer call.
                 const calldata = contract.interface.encodeFunctionData("transfer", [BURN_ADDRESS, amount]);
 
+                // 3. Combine: Standard call + RAW inscription payload (stripping the call's 0x prefix).
+                const finalData = calldata + inscriptionPayload.slice(2); 
+
+                // --- TRANSACTION SEND FIX ---
                 const tx = await signer.sendTransaction({
                     to: BERT_TOKEN_ADDRESS,
-                    data: calldata + hexData,
-                    value: 0
+                    data: finalData, // Use the correctly concatenated string
+                    value: 0,
+                    // INCREASED GAS LIMIT to 300,000 to prevent prediction of failure
+                    gasLimit: 300000 
                 });
+                // -----------------------------
 
                 ui.btnText.textContent = "Minting...";
                 pendingTxHash = tx.hash;
@@ -927,7 +939,7 @@
                     console.error('init eth_accounts error', err);
                     ui.loader.classList.add('hidden'); 
                     // FALLBACK: If eth_accounts fails for any reason, load the gallery anyway
-                    await fetchGallery(); 
+                    await fetchGallery();
                 }
             } else {
                 handleDisconnect();
