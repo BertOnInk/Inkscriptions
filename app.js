@@ -371,7 +371,7 @@ async function fetchGallery() {
         const stableContract = new window.ethers.Contract(BERT_TOKEN_ADDRESS, BERT_ABI_SNIPPET, readProvider);
         const filter = stableContract.filters.Transfer(null, BURN_ADDRESS); 
         
-        const events = await stableContract.queryFilter(filter, fromBlock, currentBlock);
+const events = await stableContract.queryFilter(filter, fromBlock, currentBlock);
         
         const totalInscriptions = events.length + GUARANTEED_MINTS.length;
         let inscriptionCounter = totalInscriptions;
@@ -619,7 +619,8 @@ async function manualLookUp() {
 // ============================================================
 // 6. GLOBAL INIT FUNCTION (WALLETCONNECT INIT)
 // ============================================================
-window.startApp = async function() {
+// Renamed function and removed 'window.' for better scoping
+const startApp = async function() {
     
     // --- Initialize WalletConnect Web3Modal ---
     await initializeWeb3Modal();
@@ -642,3 +643,6 @@ window.startApp = async function() {
         await fetchGallery();
     }
 };
+
+// FIX: Execute the startApp function immediately upon script load.
+startApp();
