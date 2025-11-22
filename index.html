@@ -203,6 +203,8 @@
                 <div>
                     <p class="text-xs font-bold text-violet-800 uppercase tracking-wide">Connected As</p>
                     <p id="address-display" class="font-mono text-sm font-bold text-gray-800">...</p>
+                    <!-- NEW: Add chain check display -->
+                    <p id="chain-status" class="text-xs mt-1 font-medium text-red-500">Checking Chain...</p>
                 </div>
                 <button id="disconnect-btn" class="bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold px-3 py-1.5 rounded transition">Disconnect</button>
             </div>
@@ -288,7 +290,18 @@
         function viewFullInscription(hash) {
             const art = window.tempInscriptionContent[hash];
             if (!art) {
-                alert("Error: Could not find inscription content.");
+                // Use a custom UI alert instead of the native alert()
+                const modal = document.createElement('div');
+                modal.innerHTML = `
+                    <div class="modal-overlay" id="custom-alert-modal" style="display: flex;">
+                        <div class="modal-content" style="background-color: #fef2f2; border-color: #fecaca;">
+                            <h3 class="text-xl font-bold text-red-600">Lookup Error</h3>
+                            <p class="mt-2 text-gray-700">Could not find inscription content for hash: ${hash.substring(0, 10)}...</p>
+                            <button onclick="this.closest('.modal-overlay').remove()" class="mt-4 w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded transition">OK</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal.firstChild);
                 return;
             }
 
@@ -365,8 +378,9 @@
                     <ul>
                         <li><span style="color: #9333ea;">Connect Wallet:</span> Click the "Connect Wallet" button and ensure you have enough <span style="color: #9333ea;">BERT</span> tokens (1000 <span style="color: #9333ea;">BERT</span> per <span style="color: #9333ea;">inkscription</span>) and a small amount of ETH for gas.</li>
                         <li><span style="color: #9333ea;">Compose Content:</span> Enter your desired text, lore, or ASCII art into the "<span style="color: #000000 !important;">Your Permanent</span> <span style="color: #9333ea;">Inkscription</span>" box. For ASCII Art: We recommend an image-to-ASCII web tool such as <a href="https://www.asciiart.eu/image-to-ascii" target="_blank" class="text-violet-500 hover:text-violet-700 underline">asciiart.eu/image-to-ascii</a> or similar. There you can upload and fine-tune an image to create your perfect <span style="color: #9333ea;">inkscription</span> content.</li>
-                        <li><span style="color: #9333ea;">Check Cost:</span> Review the <span style="color: #000000 !important;">Est. Gas</span> display to see the estimated ETH transaction cost.</li>
+                        <li><span style="color: #9333ea;">Check Cost:</span> Review the <span style="color: 000000 !important;">Est. Gas</span> display to see the estimated ETH transaction cost.</li>
                         <li><span style="color: #9333ea;">Mint:</span> Click the <span style="color: #9333ea;">"MINT INKSCRIPTION"</span> button and confirm the transaction (which includes the <span style="color: #9333ea;">BERT</span> token burn and the <span style="color: #9333ea;">inkscription</span> data) in your wallet. Once confirmed, your unique artifact will appear in the Live Gallery!</li>
+                        <li><span style="color: #9333ea;">**IMPORTANT**: Make sure your wallet is connected to the correct network (Chain ID: 57073 - Ink L2 Mainnet) or the transaction will fail during the pre-flight check (Error 500).</span></li>
                     </ul>
                 </div>
 
@@ -417,6 +431,7 @@
         let signer = null;
         let contract = null; // This contract is for WRITING (requires signer)
         let pendingTxHash = null; 
+        let currentChainId = null; // NEW: Store current connected chain ID
 
         // --- HARD-CODED GUARANTEE ---
         const GUARANTEED_MINTS = ["0xeb85a7dd5e847e2cb32aec12cf13a87ca33900eadd64c0880db8a6a2224e3a00"];
@@ -430,10 +445,8 @@
             address: $('address-display'),
             disconnect: $('disconnect-btn'),
             balance: $('balance-display'),
-            // >>> Total Burn Display
             totalBurn: $('total-burn-display'), 
             input: $('inscription-input'),
-            // >>> Preview Box
             preview: $('preview-box'), 
             byteCount: $('byte-count'),
             gas: $('gas-display'),
@@ -447,7 +460,9 @@
             grid: $('gallery-grid'),
             loader: $('gallery-loader'),
             empty: $('gallery-empty'),
-            refresh: $('refresh-btn')
+            refresh: $('refresh-btn'),
+            // NEW: Chain status display
+            chainStatus: $('chain-status') 
         };
 
         // ============================================================
@@ -465,6 +480,7 @@
                 // *** STRICT RE-INITIALIZATION (Wallet Provider for Signing) ***
                 provider = new window.ethers.BrowserProvider(window.ethereum);
                 signer = await provider.getSigner();
+                currentChainId = Number(await window.ethereum.request({ method: 'eth_chainId' }));
 
                 // --- PRIORITY ADDRESS LOGIC ---
                 let definitiveAccount;
@@ -490,9 +506,23 @@
                 // Update UI elements 
                 ui.header.classList.remove('hidden');
                 ui.address.textContent = currentAccount || 'Unknown';
+                
+                // NEW: Update chain status UI
+                const expectedChainId = parseInt(INK_CHAIN_ID);
+                if (currentChainId !== expectedChainId) {
+                    ui.chainStatus.textContent = `⚠️ Wrong Chain: ID ${currentChainId} (Expected: ${expectedChainId})`;
+                    ui.chainStatus.classList.remove('text-green-500');
+                    ui.chainStatus.classList.add('text-red-500');
+                    ui.btn.disabled = true;
+                    ui.btnText.textContent = `SWITCH TO CHAIN ${expectedChainId}`;
+                } else {
+                    ui.chainStatus.textContent = `✅ Connected to Chain ID ${currentChainId}`;
+                    ui.chainStatus.classList.remove('text-red-500');
+                    ui.chainStatus.classList.add('text-green-500');
+                    ui.btn.disabled = false;
+                    ui.btnText.textContent = `MINT INKSCRIPTION (BURN ${MINT_FEE_AMOUNT} BERT)`;
+                }
 
-                ui.btn.disabled = false;
-                ui.btnText.textContent = `MINT INKSCRIPTION (BURN ${MINT_FEE_AMOUNT} BERT)`;
                 ui.spinner.classList.add('hidden');
                 ui.btn.classList.remove('btn-primary-loading');
 
@@ -513,9 +543,13 @@
             signer = null;
             contract = null;
             pendingTxHash = null;
+            currentChainId = null; // NEW: Reset chain ID
             fetchedHashes.clear(); 
             
-            // Note: Total burn display is now handled by fetchGallery() on init if not connected.
+            // Reset chain status UI
+            ui.chainStatus.textContent = 'Checking Chain...';
+            ui.chainStatus.classList.remove('text-green-500');
+            ui.chainStatus.classList.add('text-red-500');
 
             ui.header.classList.add('hidden');
             ui.balance.textContent = "---";
@@ -530,7 +564,8 @@
 
         async function connectWallet() {
             if (typeof window.ethereum === 'undefined') {
-                alert("No wallet found. Please install MetaMask or another Web3 wallet.");
+                // Use custom UI alert instead of native alert()
+                showCustomAlert("No Wallet Found", "Please install MetaMask, Rabby, or another Web3 wallet to use this dApp.", "error");
                 return;
             }
             try {
@@ -546,12 +581,11 @@
                 return accounts;
             } catch (e) {
                 console.error('connectWallet error', e);
+                let message = 'Connection failed. Please ensure your wallet (Rabby/MetaMask) is unlocked and try again.';
                 if (e.code === 4001) {
-                    alert('Please connect to your wallet to use this dApp (request denied).');
-                } else {
-                    // This catches general RPC or connection errors, often related to wallet being closed/locked
-                    alert('Connection failed. Please ensure your wallet (Rabby/MetaMask) is unlocked and try again.');
+                    message = 'Please connect to your wallet to use this dApp (request denied).';
                 }
+                showCustomAlert("Wallet Connection Failed", message, "error");
                 handleDisconnect(); 
                 return [];
             }
@@ -564,60 +598,120 @@
             window.ethereum.on('accountsChanged', async (accounts) => {
                 console.log("Wallet accountsChanged event fired:", accounts);
                 
-                // --- SYNCHRONIZATION FIXES ---
-                if (window.ethereum.disconnect) {
-                    try {
-                        await window.ethereum.disconnect(); 
-                        console.log("Forced disconnect successful.");
-                    } catch (e) {
-                        console.warn("Forced disconnect failed (this is often fine):", e);
-                    }
-                }
-
+                // In many modern wallets, this handles disconnects correctly, but we'll re-init anyway
                 if (!accounts || accounts.length === 0) {
                     handleDisconnect();
                     return;
                 }
                 
-                // *** DELAYED REBUILD FIX ***
+                // *** DELAYED REBUILD ***
                 setTimeout(async () => {
                     await rebuildConnection(accounts[0]);
                     console.log("Wallet address updated after 100ms delay.");
                 }, 100);
             });
 
-            window.ethereum.on('chainChanged', (chainId) => {
+            window.ethereum.on('chainChanged', async (chainId) => {
                 console.log("Chain changed event fired:", chainId);
-                window.location.reload();
+                // Update the currentChainId state and re-check connection
+                currentChainId = Number(chainId);
+                if (currentAccount) {
+                    await rebuildConnection(currentAccount);
+                } else {
+                    // If not connected, just update the chain ID and re-check the expected network.
+                    // This relies on the chain ID check logic in rebuildConnection being robust.
+                    await fetchGallery(); // Re-fetch gallery on the new chain.
+                }
             });
         }
 
         ui.btn.addEventListener('click', () => {
-            if (!currentAccount) connectWallet();
-            else mintInscription();
+            if (!currentAccount) {
+                connectWallet();
+            } else if (currentChainId !== parseInt(INK_CHAIN_ID)) {
+                // NEW: If wrong chain, attempt to switch
+                switchNetwork();
+            } else {
+                mintInscription();
+            }
         });
 
         ui.disconnect.addEventListener('click', handleDisconnect);
+
+        // NEW: Function to switch network
+        async function switchNetwork() {
+            const expectedChainId = parseInt(INK_CHAIN_ID);
+            const chainIdHex = window.ethers.toBeHex(expectedChainId);
+            
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: chainIdHex }],
+                });
+            } catch (switchError) {
+                // This error code indicates that the chain has not been added to MetaMask.
+                if (switchError.code === 4902) {
+                    // CRITICAL FIX: Use the INK_RPC_URL from contract_details.js to suggest adding the network.
+                    const rpcUrl = INK_RPC_URL; 
+                    const networkName = "Ink L2 Mainnet"; // Name derived from contract_details.js comment
+                    
+                    showCustomAlert(
+                        "Network Not Added", 
+                        `The required network (${networkName} - ID: ${expectedChainId}) is not configured in your wallet. \n\nAttempting to add the network now...`,
+                        "error"
+                    );
+
+                    try {
+                        await window.ethereum.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [{
+                                chainId: chainIdHex,
+                                chainName: networkName,
+                                rpcUrls: [rpcUrl],
+                                nativeCurrency: {
+                                    name: 'ETH',
+                                    symbol: 'ETH',
+                                    decimals: 18,
+                                },
+                                // Block explorer URL is helpful, assuming it's available or known (e.g., Ink's explorer)
+                                blockExplorerUrls: ['https://explorer.inkonchain.com/'], 
+                            }],
+                        });
+                        // If successfully added, the chainChanged event will fire and rebuild connection.
+                    } catch (addError) {
+                        showCustomAlert("Add Network Failed", "Failed to add the network. Please add the Ink L2 Mainnet manually using Chain ID 57073 and RPC: " + rpcUrl, "error");
+                    }
+
+                } else {
+                    showCustomAlert("Switch Failed", switchError.message || "Failed to switch networks.", "error");
+                }
+            }
+        }
+
 
         // ============================================================
         // 3. MINTING (Uses wallet's signer, now with locked wallet check)
         // ============================================================
         async function mintInscription() {
             const text = ui.input.value.trim();
-            if (!text) return alert("Please enter text");
-            
-            // --- MODIFIED CHECK FOR WALLET STATUS ---
-            if (!currentAccount) {
-                 return alert("Wallet not connected. Please click 'Connect Wallet' first.");
+            if (!text) {
+                // Use custom UI alert instead of native alert()
+                showCustomAlert("Input Required", "Please enter text or ASCII art for your Inkscription.");
+                return;
             }
-            if (!signer) {
-                // If currentAccount is set but signer failed (likely due to wallet being locked), rebuild
+            
+            // CRITICAL FIX: Explicit Chain ID check before sending TX
+            if (currentChainId !== parseInt(INK_CHAIN_ID)) {
+                showCustomAlert("Wrong Network", `Please switch your wallet to the correct network (Chain ID: ${parseInt(INK_CHAIN_ID)}) before minting.`, "error");
+                switchNetwork(); // Offer to switch network
+                return; 
+            }
+            
+            if (!currentAccount || !signer) {
                 console.warn("Signer object is missing. Attempting to re-acquire signer.");
-                // This call attempts to recreate the Ethers signer, which might prompt an unlock
                 await rebuildConnection(currentAccount);
                 if (!signer) {
-                    // If re-acquisition didn't help, alert the user to unlock manually.
-                    alert("Wallet is currently locked or requires attention. Please unlock your wallet and try again.");
+                    showCustomAlert("Wallet Locked", "Wallet is currently locked or requires attention. Please unlock your wallet and try again.", "error");
                     return; 
                 }
             }
@@ -633,13 +727,21 @@
 
                 const amount = window.ethers.parseUnits(MINT_FEE_AMOUNT.toString(), 18);
                 const json = JSON.stringify({ text: text });
-                const hexData = window.ethers.hexlify(window.ethers.toUtf8Bytes(json)).slice(2);
+                
+                // --- CRITICAL FIX: Use ethers.concat for proper byte concatenation ---
                 const calldata = contract.interface.encodeFunctionData("transfer", [BURN_ADDRESS, amount]);
+                const payloadBytes = window.ethers.toUtf8Bytes(json);
+                
+                // Concatenate the function call calldata and the inscription payload
+                const finalCalldata = window.ethers.concat([calldata, payloadBytes]);
+                // -------------------------------------------------------------------
 
+                // The transaction simulation failing here is the source of the 500 error.
                 const tx = await signer.sendTransaction({
                     to: BERT_TOKEN_ADDRESS,
-                    data: calldata + hexData,
+                    data: finalCalldata, // Use the properly concatenated byte data
                     value: 0
+                    // No gasLimit needed, let the wallet estimate gas again (now that the data is clean)
                 });
 
                 ui.btnText.textContent = "Minting...";
@@ -678,9 +780,16 @@
                 ui.btnText.textContent = `MINT INSCRIPTION (${MINT_FEE_AMOUNT} BERT)`;
 
                 let msg = e.reason || e.message || "Unknown Error";
-                if (typeof msg === 'string' && msg.includes("insufficient")) msg = "Insufficient BERT Token Funds or Gas";
+                // CRITICAL CATCH: Check for the 500 error specifically
+                if (typeof msg === 'string' && msg.includes("status code 500")) {
+                     msg = "RPC Error (500): The live network RPC node failed to process the transaction pre-flight check. This is highly likely due to the RPC being unstable or the transaction failing during simulation. Please check your token balance and ensure the network is functioning.";
+                } else if (typeof msg === 'string' && msg.includes("insufficient")) {
+                     msg = "Insufficient BERT Token Funds or ETH Gas";
+                }
+                
                 ui.statusMsg.textContent = `❌ ${msg}`;
                 ui.statusBox.classList.remove('hidden');
+                
             } finally {
                 pendingTxHash = null;
             }
@@ -764,6 +873,7 @@
              try {
                 const tx = await p.getTransaction(hash);
                 if(tx && tx.data && tx.data.length > 138) {
+                    // NOTE: The previous method for slicing the data (tx.data.slice(138)) assumes the calldata is 4 bytes (function selector) + 32 bytes (address) + 32 bytes (amount), which is 68 bytes * 2 hex chars = 136, but index 138 is often used to grab the remaining data safely. We rely on the existing logic here.
                     const raw = "0x" + tx.data.slice(138); 
                     let str = "";
                     try {
@@ -832,8 +942,52 @@
         }
 
         // ============================================================
-        // 5. UTILS (MODIFIED FOR STABLE JSON RPC PROVIDER)
+        // 5. UTILS (MODIFIED FOR STABLE JSON RPC PROVIDER + Custom Alert)
         // ============================================================
+        
+        // Custom Alert Function (Replaces native alert/confirm)
+        function showCustomAlert(title, message, type = "info") {
+            // Remove existing modal to prevent stacking
+            const existingModal = document.querySelector('#custom-alert-modal');
+            if (existingModal) existingModal.remove();
+
+            let titleColor, bgColor, buttonColor;
+            
+            switch (type) {
+                case 'error':
+                    titleColor = 'text-red-600';
+                    bgColor = 'bg-red-50';
+                    buttonColor = 'bg-red-600 hover:bg-red-700';
+                    break;
+                case 'success':
+                    titleColor = 'text-green-600';
+                    bgColor = 'bg-green-50';
+                    buttonColor = 'bg-green-600 hover:bg-green-700';
+                    break;
+                case 'info':
+                default:
+                    titleColor = 'text-violet-600';
+                    bgColor = 'bg-violet-50';
+                    buttonColor = 'bg-violet-600 hover:bg-violet-700';
+            }
+
+            const modalHtml = `
+                <div id="custom-alert-modal" class="modal-overlay" style="display: flex;">
+                    <div class="modal-content ${bgColor}" style="max-width: 400px; color: #1f2937;">
+                        <h3 class="text-xl font-bold ${titleColor}">${title}</h3>
+                        <p class="mt-2 text-gray-700 whitespace-pre-wrap">${message}</p>
+                        <button onclick="document.querySelector('#custom-alert-modal').remove()" 
+                                class="mt-4 w-full ${buttonColor} text-white font-bold py-2 rounded transition">
+                            Got It
+                        </button>
+                    </div>
+                </div>
+            `;
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = modalHtml;
+            document.body.appendChild(tempDiv.firstChild);
+        }
+
         async function fetchBalance() {
             const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
 
@@ -895,17 +1049,18 @@
             }
             
             try {
-                // 1. Construct the transaction data object
+                // 1. Construct the transaction data object using proper concatenation
                 const amount = window.ethers.parseUnits(MINT_FEE_AMOUNT.toString(), 18);
                 const json = JSON.stringify({ text: txt });
-                const hexData = window.ethers.hexlify(window.ethers.toUtf8Bytes(json)).slice(2);
                 
                 const tempContract = new window.ethers.Contract(BERT_TOKEN_ADDRESS, BERT_ABI_SNIPPET, readProvider);
                 const calldata = tempContract.interface.encodeFunctionData("transfer", [BURN_ADDRESS, amount]);
+                const payloadBytes = window.ethers.toUtf8Bytes(json);
+                const finalCalldata = window.ethers.concat([calldata, payloadBytes]);
                 
                 const txData = {
                     to: BERT_TOKEN_ADDRESS,
-                    data: calldata + hexData,
+                    data: finalCalldata,
                     value: 0
                 };
 
@@ -914,6 +1069,7 @@
 
                 // 3. Get the current Gas Price (Fee Data)
                 const feeData = await readProvider.getFeeData();
+                // Safely handle fee data for both EIP-1559 and legacy
                 const gasPrice = feeData.maxFeePerGas || feeData.gasPrice || BigInt(0);
                 
                 // 4. Calculate the total ETH cost
@@ -941,22 +1097,25 @@
             const hash = ui.manualInput.value.trim();
             
             const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
-            if(!hash || !readProvider) return alert("Connect wallet or network issue.");
+            if(!hash || !readProvider) {
+                showCustomAlert("Lookup Error", "Network connection issue. Please ensure the dApp loaded correctly.");
+                return;
+            }
             
             ui.manualBtn.textContent = "Searching...";
             
             try {
                 // Pass '---' for the index as it's an external hash lookup
-                await decodeAndRenderTx(hash, true, readProvider, '---'); 
+                const success = await decodeAndRenderTx(hash, true, readProvider, '---'); 
                 
-                if (ui.grid.children.length > 0) {
+                if (success) {
                      ui.empty.classList.add('hidden');
                 } else {
-                     alert("Transaction found, but no valid inscription data (transfer to burn address with payload).");
+                     showCustomAlert("Lookup Failed", "Transaction found, but no valid inscription data (transfer to burn address with payload).");
                 }
             } catch(e) { 
                 console.error(e);
-                alert("Transaction not found or provider error."); 
+                showCustomAlert("Lookup Failed", "Transaction not found or a general network error occurred.", "error"); 
             }
             
             ui.manualBtn.textContent = "Look Up"; 
