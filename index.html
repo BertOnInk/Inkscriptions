@@ -534,16 +534,23 @@
                 return;
             }
             try {
-                // Request accounts. This will trigger MetaMask to connect/confirm
+                // Request accounts. This will trigger MetaMask/Rabby to connect/confirm/unlock
                 const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                
                 if (accounts && accounts.length > 0) {
                     await rebuildConnection(accounts[0]);
+                } else {
+                    // This scenario is rare but covers cases where the request returns an empty array
+                    handleDisconnect();
                 }
                 return accounts;
             } catch (e) {
                 console.error('connectWallet error', e);
                 if (e.code === 4001) {
-                    alert('Please connect to your wallet to use this dApp.');
+                    alert('Please connect to your wallet to use this dApp (request denied).');
+                } else {
+                    // This catches general RPC or connection errors, often related to wallet being closed/locked
+                    alert('Connection failed. Please ensure your wallet (Rabby/MetaMask) is unlocked and try again.');
                 }
                 handleDisconnect(); 
                 return [];
@@ -593,12 +600,28 @@
         ui.disconnect.addEventListener('click', handleDisconnect);
 
         // ============================================================
-        // 3. MINTING (Uses wallet's signer, no change needed)
+        // 3. MINTING (Uses wallet's signer, now with locked wallet check)
         // ============================================================
         async function mintInscription() {
             const text = ui.input.value.trim();
             if (!text) return alert("Please enter text");
-            if (!signer || !contract) return alert("Connect wallet first");
+            
+            // --- MODIFIED CHECK FOR WALLET STATUS ---
+            if (!currentAccount) {
+                 return alert("Wallet not connected. Please click 'Connect Wallet' first.");
+            }
+            if (!signer) {
+                // If currentAccount is set but signer failed (likely due to wallet being locked), rebuild
+                console.warn("Signer object is missing. Attempting to re-acquire signer.");
+                // This call attempts to recreate the Ethers signer, which might prompt an unlock
+                await rebuildConnection(currentAccount);
+                if (!signer) {
+                    // If re-acquisition didn't help, alert the user to unlock manually.
+                    alert("Wallet is currently locked or requires attention. Please unlock your wallet and try again.");
+                    return; 
+                }
+            }
+            // ----------------------------------------
 
             try {
                 ui.btn.disabled = true;
@@ -865,7 +888,7 @@
                 return;
             }
 
-            // *** FIX: Show a placeholder if input is empty, and only attempt estimation when content exists ***
+            // --- FIX: Show placeholder if input is empty ---
             if (txt.length === 0) {
                 ui.gas.textContent = `(Start Typing)`;
                 return;
@@ -874,17 +897,11 @@
             try {
                 // 1. Construct the transaction data object
                 const amount = window.ethers.parseUnits(MINT_FEE_AMOUNT.toString(), 18);
-                // We use a minimal payload for estimation, but still need the structure
                 const json = JSON.stringify({ text: txt });
                 const hexData = window.ethers.hexlify(window.ethers.toUtf8Bytes(json)).slice(2);
                 
-                // Need a Contract instance to encode the calldata
                 const tempContract = new window.ethers.Contract(BERT_TOKEN_ADDRESS, BERT_ABI_SNIPPET, readProvider);
                 const calldata = tempContract.interface.encodeFunctionData("transfer", [BURN_ADDRESS, amount]);
-                
-                // IMPORTANT: Since we don't have a signer/currentAccount available here for `from`,
-                // the estimation might fail if the provider is strict. To fix this, we'll
-                // use a fallback logic in case the estimation fails.
                 
                 const txData = {
                     to: BERT_TOKEN_ADDRESS,
@@ -904,9 +921,7 @@
                 ui.gas.textContent = `~${parseFloat(window.ethers.formatEther(cost)).toFixed(6)} ETH`;
 
             } catch (err) {
-                // Fallback: If live estimation fails (e.g., RPC issues, simulation error),
-                // revert to a simpler estimation using a hardcoded gas limit approximation
-                // based on the data size, which is better than a generic error message.
+                // Fallback: If live estimation fails (e.g., RPC issues, simulation error)
                 console.warn("Live Gas estimation failed, falling back to approximation:", err);
                 
                 const approxGas = BigInt(65000) + BigInt(bytes.length * 16); 
@@ -948,32 +963,24 @@
         });
 
         // ============================================================
-        // 6. INIT: check connected accounts on load
+        // 6. INIT: check connected accounts on load (Simplified)
         // ============================================================
         (async function init() {
-            // *** FIX: Gallery fetching is now done conditionally for better load behavior. ***
-            // await fetchGallery(); // REMOVED
-
+            // Only fetch gallery on load. We rely on the user clicking "Connect Wallet"
+            // to trigger eth_requestAccounts for a session.
+            await fetchGallery(); 
+            
+            // Check for existing session automatically, only if Ethereum is available
             if (window.ethereum) {
                 try {
                     const acc = await window.ethereum.request({ method: 'eth_accounts' });
-                    
                     if (acc && acc.length > 0) {
+                        // If permission already exists, rebuild connection silently
                         await rebuildConnection(acc[0]);
-                    } else {
-                        // FALLBACK: If wallet is installed but not connected, load the gallery anyway
-                        await fetchGallery(); 
                     }
                 } catch (err) {
                     console.error('init eth_accounts error', err);
-                    ui.loader.classList.add('hidden'); 
-                    // FALLBACK: If eth_accounts fails for any reason, load the gallery anyway
-                    await fetchGallery(); 
                 }
-            } else {
-                handleDisconnect();
-                // FALLBACK: If no wallet is installed, load the gallery to show burned history
-                await fetchGallery();
             }
         })();
 
