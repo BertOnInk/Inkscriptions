@@ -6,74 +6,58 @@
     <title>Bert's Inkscriptions 🐔🖋️</title>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Ensure ethers.js is loaded globally -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
     <style>
         body { 
             font-family: 'Inter', sans-serif; 
-            
-            /* UPDATED BACKGROUND STYLES */
             background-image: 
-                url('bg.png'), /* Layer 1: The Image (Using simple relative path) */
-                linear-gradient(135deg, #a855f7, #c084fc); /* Layer 2: The Gradient */
-            
+                url('bg.png'),
+                linear-gradient(135deg, #a855f7, #c084fc);
             background-size: cover;
             background-position: center center;
             background-repeat: no-repeat;
             background-attachment: fixed;
-            background-color: #a855f7; /* Fallback color */
-            
+            background-color: #a855f7; 
             color: #e0e0e0; 
             position: relative;
             overflow-x: hidden; 
         }
-
-        /* NEW CUSTOM STYLE FOR H1 TITLE (Graffiti Font & White Shadowed Color) */
         .graffiti-title {
             font-family: 'Bungee', cursive;
             color: #ffffff !important; 
             text-shadow: 2px 2px #9333ea, 4px 4px #7c3aed; 
         }
-        
-        /* NEW CUSTOM STYLE FOR ANY TEXT THAT NEEDS THE GRAFFITI FONT */
         .graffiti-font {
             font-family: 'Bungee', cursive;
         }
-
         .card { 
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3); /* Darker shadow for dark background */
-            background-color: rgba(255, 255, 255, 0.05); /* Slightly transparent card background */
-            backdrop-filter: blur(10px); /* Frosted glass effect */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            background-color: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
-        /* ADDED HOVER EFFECT */
         .card-hover { 
             transition: transform 0.3s ease, box-shadow 0.3s ease; 
         }
         .card-hover:hover {
-            transform: translateY(-5px); /* Lift the card slightly */
-            box-shadow: 0 15px 35px rgba(147, 51, 234, 0.4); /* Purple glow effect */
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(147, 51, 234, 0.4);
         }
-        /* --- PRIMARY BUTTON (PURPLE) --- */
         .btn-primary { background-color: #9333ea; transition: background-color 0.3s; }
         .btn-primary:hover { background-color: #7c3aed; }
-        /* ---------------------------------- */
         .spinner { border-top-color: #fff; border-right-color: transparent; -webkit-animation: spin 1s linear infinite; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .btn-primary-loading { opacity: 0.7; cursor: not-allowed; }
-        
         .ascii-art { 
             font-family: 'Courier New', Courier, monospace; 
             white-space: pre; 
             overflow-x: auto; 
-            /* >>> CRITICAL FIX: Changed line-height from 0.8 to 1.2 to expand vertical spacing for a square look <<< */
-            line-height: 1.2; /* Increased vertical spacing for 1:1 ratio (square look) */
-            letter-spacing: normal; /* Revert explicit letter-spacing */
-            font-size: 13px; /* Default monospace font size */
+            line-height: 1.2; 
+            letter-spacing: normal;
+            font-size: 13px;
         }
-        
         .pending-card { opacity: 0.6; filter: grayscale(1); transition: opacity 0.5s; }
-
-        /* Adjust text colors for dark background */
         .text-gray-800 { color: #e0e0e0; }
         .text-gray-600 { color: #b0b0b0; }
         .text-gray-700 { color: #d0d0d0; }
@@ -82,8 +66,6 @@
         .bg-gray-50 { background-color: rgba(255, 255, 255, 0.08); }
         .border-gray-300 { border-color: rgba(255, 255, 255, 0.25); }
         .bg-gray-100 { background-color: rgba(255, 255, 255, 0.1); }
-
-        /* Ensure violet elements retain their color */
         .text-violet-800 { color: #d8b4fe; } 
         .bg-violet-50 { background-color: rgba(138, 43, 226, 0.2); } 
         .border-violet-200 { border-color: rgba(138, 43, 226, 0.4); }
@@ -92,11 +74,7 @@
         .border-violet-500 { border-color: #c084fc; }
         .text-purple-400 { color: #c084fc; } 
         .text-violet-500 { color: #a855f7; } 
-        
-        /* Utility to force black text for contrast */
         .text-black { color: #000000 !important; }
-
-        /* Overriding global input/textarea styles */
         input, textarea {
             background-color: rgba(255, 255, 255, 0.1);
             color: #e0e0e0;
@@ -104,23 +82,17 @@
         input::placeholder, textarea::placeholder {
             color: #b0b0b0;
         }
-        
-        /* >>> MODIFICATION: Force inscription input text to black/white for contrast <<< */
         #inscription-input {
-            background-color: #ffffff; /* Make the input background white for contrast */
-            color: #000000; /* Set text color to black */
-            /* >>> CRITICAL FIX: Apply same square ratio settings to the input box <<< */
+            background-color: #ffffff; 
+            color: #000000; 
             font-family: 'Courier New', Courier, monospace; 
             font-size: 13px;
-            letter-spacing: normal; /* Revert explicit letter-spacing */
-            line-height: 1.2; /* MATCH: Increased vertical spacing for 1:1 ratio (square look) */
+            letter-spacing: normal; 
+            line-height: 1.2; 
         }
-        /* Set placeholder color for the now white background */
         #inscription-input::placeholder {
-             color: #4b5563; /* Use a medium gray for placeholder */
+             color: #4b5563;
         }
-
-        /* --- NEW MODAL STYLES --- */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -129,7 +101,7 @@
             height: 100%;
             background-color: rgba(0, 0, 0, 0.7);
             z-index: 1000;
-            display: none; /* Controlled by JS */
+            display: none; 
             align-items: center;
             justify-content: center;
             padding: 20px;
@@ -154,7 +126,7 @@
         .faq-heading {
             font-size: 1.25rem;
             font-weight: bold;
-            color: #9333ea; /* Purple color matching the title */
+            color: #9333ea;
             margin-top: 1rem;
             border-bottom: 1px solid #d8b4fe;
             padding-bottom: 0.25rem;
@@ -168,11 +140,8 @@
             margin-left: 20px;
         }
         .faq-answer strong {
-            color: #4c1d95; /* Darker purple emphasis, default is fine */
+            color: #4c1d95;
         }
-        /* -------------------------- */
-        
-        /* Ensure disconnect button remains visible */
     </style>
 </head>
 <body class="min-h-screen p-4 flex flex-col items-center">
@@ -187,7 +156,7 @@
         <div class="pt-0 space-y-4">
             
             <div class="flex flex-col items-center justify-center -mt-2 mb-1"> 
-                <img src="burning_chicken.png" alt="Burning Chicken" class="h-10 w-10 mt-1 mb-2"> 
+                <img src="burning_chicken.png" onerror="this.onerror=null;this.src='https://placehold.co/40x40/9333ea/ffffff?text=🐔🔥'" alt="Burning Chicken" class="h-10 w-10 mt-1 mb-2"> 
                 <p class="text-sm font-medium text-black flex items-center gap-2">
                     Burn BERT, ink history
                     <button id="faq-btn" class="text-xs text-violet-600 font-bold hover:text-violet-700 transition underline">FAQ</button>
@@ -234,6 +203,23 @@
             </div>
         </div>
 
+        <div class="space-y-2">
+            <label class="block text-sm font-medium text-black">Gallery Visibility:</label>
+            <div class="flex items-center space-x-4 bg-gray-50 p-2 rounded border border-violet-200">
+                
+                <div class="flex items-center">
+                    <input id="visibility-public" type="radio" name="gallery-visibility" value="public" checked
+                           class="h-4 w-4 text-violet-600 border-gray-300 focus:ring-violet-500">
+                    <label for="visibility-public" class="ml-2 text-sm font-medium text-black">Public (Show in Gallery)</label>
+                </div>
+                
+                <div class="flex items-center">
+                    <input id="visibility-private" type="radio" name="gallery-visibility" value="private"
+                           class="h-4 w-4 text-violet-600 border-gray-300 focus:ring-violet-500">
+                    <label for="visibility-private" class="ml-2 text-sm font-medium text-black">Private (Do Not Show)</label>
+                </div>
+            </div>
+        </div>
         <button id="main-btn" class="btn-primary w-full text-white font-bold py-3 rounded-lg flex items-center justify-center transition-all">
             <div id="spinner" class="spinner h-5 w-5 border-4 rounded-full mr-2 hidden"></div>
             <span id="btn-text">Connect Wallet</span>
@@ -290,61 +276,35 @@
             if (!art) {
                 // Use a custom UI alert instead of the native alert()
                 const modal = document.createElement('div');
-                modal.innerHTML = `
-                    <div class="modal-overlay" id="custom-alert-modal" style="display: flex;">
-                        <div class="modal-content" style="background-color: #fef2f2; border-color: #fecaca;">
-                            <h3 class="text-xl font-bold text-red-600">Lookup Error</h3>
-                            <p class="mt-2 text-gray-700">Could not find inscription content for hash: ${hash.substring(0, 10)}...</p>
-                            <button onclick="this.closest('.modal-overlay').remove()" class="mt-4 w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded transition">OK</button>
-                        </div>
-                    </div>
-                `;
+                modal.innerHTML = '<div class="modal-overlay" id="custom-alert-modal" style="display: flex;">' +
+                    '<div class="modal-content" style="background-color: #fef2f2; border-color: #fecaca;">' +
+                    '<h3 class="text-xl font-bold text-red-600">Lookup Error</h3>' +
+                    '<p class="mt-2 text-gray-700">Could not find inscription content for hash: ' + hash.substring(0, 10) + '...</p>' +
+                    '<button onclick="this.closest(\'.modal-overlay\').remove()" class="mt-4 w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded transition">OK</button>' +
+                    '</div>' +
+                    '</div>';
                 document.body.appendChild(modal.firstChild);
                 return;
             }
 
-            // --- FIX: Using a secure Blob URL for the new window content ---
-            const htmlContent = `
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>Full Inscription View: ${hash.substring(0, 10)}...</title>
-                    <style>
-                        body { 
-                            background-color: #000000; /* FIX: Changed to Black */
-                            color: #c084fc; 
-                            font-family: 'Courier New', Courier, monospace; 
-                            white-space: pre-wrap; 
-                            padding: 20px;
-                            /* Ensure the full screen view uses the same ratio fix */
-                            font-size: 13px;
-                            letter-spacing: normal;
-                            line-height: 1.2; /* MATCH: Increased vertical spacing for 1:1 ratio (square look) */
-                        }
-                    </style>
-                </head>
-                <body>
-                    ${art.replace(/</g, "&lt;").replace(/>/g, "&gt;")}
-                </body>
-                </html>
-            `;
+            const htmlContent = '<!DOCTYPE html><html><head><title>Full Inscription View: ' + hash.substring(0, 10) + '...' +
+                '</title><style>body { background-color: #000000; color: #c084fc; font-family: \'Courier New\', Courier, monospace; ' +
+                'white-space: pre-wrap; padding: 20px; font-size: 13px; letter-spacing: normal; line-height: 1.2; }</style></head><body>' +
+                art.replace(/</g, "&lt;").replace(/>/g, "&gt;") +
+                '</body></html>';
             
             const blob = new Blob([htmlContent], { type: 'text/html' });
             const blobUrl = URL.createObjectURL(blob);
             
-            // 1. Create a temporary invisible link element
             const a = document.createElement('a');
             a.href = blobUrl;
             a.target = '_blank'; 
             
-            // 2. Append, click, and remove the link instantly (Guaranteed to bypass blockers)
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             
-            // Clean up the URL to prevent memory leaks
             URL.revokeObjectURL(blobUrl);
-            // -------------------------------------------------------------------
         }
 
         // --- NEW FAQ MODAL FUNCTIONS ---
@@ -420,23 +380,34 @@
             TOKEN_URI_ABI_SNIPPET 
         } from './contract_details.js';
 
+        // ============================================================
+        // 1. FIX: GLOBAL VARIABLE INITIALIZATION
+        // ============================================================
+        let provider = null;
+        let signer = null;
+        let contract = null;
+        let currentAccount = null;
+        let currentChainId = null;
+        let pendingTxHash = null;
+        // ============================================================
+
+
         // *** CONFIRMED BERT TOKEN ADDRESS (Used for balance reading stability) ***
         const CONFIRMED_BERT_ADDRESS = "0x62c99FAc20B33b5423fdf9226179e973A8353e36";
 
-        // --- STATE ---
-        let currentAccount = null;
-        let provider = null; // Wallet provider (used for signing)
-        let signer = null;
-        let contract = null; // This contract is for WRITING (requires signer)
-        let pendingTxHash = null; 
-        let currentChainId = null; // NEW: Store current connected chain ID
+        // >>> CORRECTED GLOBAL CONSTANTS FOR GAS ENDPOINTS <<<
+        // 🚨 CRITICAL NOTE: The Gallery (GET) function is now MOCKED to bypass unstable Google Script CORS.
+        // The Collector (POST) function still uses the active URL for potential data logging.
+        const GALLERY_API_URL = 'https://script.google.com/macros/s/AKfycbz-G5ZCZANs1arV8xbWdFkNbL_2MRP_T0JfQ2M3F6JcbqIiONiNsq-lpsSadqbX5C0/exec';
+        // Collector URL is the SAME as the API URL for the combined GAS script
+        const COLLECTOR_URL = GALLERY_API_URL;
+        // >>> END CORRECTED GLOBAL CONSTANTS <<<
 
-        // --- HARD-CODED GUARANTEE ---
-        // FIX: Added the missing inscription hash to the GUARANTEED_MINTS array 
-        // to ensure it shows up regardless of RPC query filter issues.
+        // --- HARD-CODED GUARANTEE (FIXED: Only contains the two original mints) ---
         const GUARANTEED_MINTS = [
-            "0xeb85a7dd5e847e2cb32aec12cf13a87ca33900eadd64c0880db8a6a2224e3a00", // Working TX
-            "0x7f6d5341a49dc56706117eed565f2b7f41a71081db92d8ee792b8dcdf11be21b"  // Missing TX (now guaranteed)
+            // These two hashes represent the original data you wanted loaded from the sheet.
+            { hash: "0xeb85a7dd5e847e2cb32aec12cf13a87ca33900eadd64c0880db8a6a2224e3a00" }, 
+            { hash: "0x7f6d5341a49dc56706117eed565f2b7f41a71081db92d8ee792b8dcdf11be21b" }
         ];
         let fetchedHashes = new Set(); 
         // -----------------------------
@@ -464,7 +435,6 @@
             loader: $('gallery-loader'),
             empty: $('gallery-empty'),
             refresh: $('refresh-btn'),
-            // REMOVED: chainStatus: $('chain-status') 
         };
 
         // ============================================================
@@ -545,11 +515,6 @@
             currentChainId = null; // NEW: Reset chain ID
             fetchedHashes.clear(); 
             
-            // REMOVED: Reset chain status UI
-            // ui.chainStatus.textContent = 'Checking Chain...';
-            // ui.chainStatus.classList.remove('text-green-500');
-            // ui.chainStatus.classList.add('text-red-500');
-
             ui.header.classList.add('hidden');
             ui.balance.textContent = "---";
             ui.btnText.textContent = "Connect Wallet";
@@ -755,7 +720,38 @@
 
                 const receipt = await tx.wait(); // Wait for transaction to be mined
 
-                ui.statusMsg.textContent = `✅ TRANSACTION CONFIRMED!\nHash: ${tx.hash}`;
+                // --- START NEW LOGIC: SEND HASH TO COLLECTOR (Step 3.2) ---
+                const visibility = document.querySelector('input[name="gallery-visibility"]:checked').value;
+                
+                if (visibility === 'public') {
+                    // Collector URL is the same as the API URL for the combined GAS script
+                    const YOUR_GAS_ENDPOINT = COLLECTOR_URL; 
+                    
+                    const dataToCollect = { 
+                        hash: tx.hash,
+                        block: receipt.blockNumber,
+                        timestamp: Date.now()
+                    };
+
+                    try {
+                        // Send the hash to the Google Apps Script collector endpoint
+                        await fetch(YOUR_GAS_ENDPOINT, {
+                            method: 'POST',
+                            mode: 'no-cors', // Essential for client-side CORS compatibility
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(dataToCollect)
+                        });
+                        ui.statusMsg.textContent = `✅ TRANSACTION CONFIRMED!\nHash: ${tx.hash}\n(Gallery Log Sent: Public)`;
+                    } catch (e) {
+                        console.warn("Failed to send TX Hash to Google Sheet:", e);
+                        ui.statusMsg.textContent = `✅ TRANSACTION CONFIRMED!\nHash: ${tx.hash}\n(ERROR: Gallery Log Failed)`;
+                    }
+                } else {
+                    // User chose Private
+                    ui.statusMsg.textContent = `✅ TRANSACTION CONFIRMED!\nHash: ${tx.hash}\n(Gallery Log: Private)`;
+                }
+                // --- END NEW LOGIC ---
+
                 
                 await fetchBalance();
                 await fetchGallery(); 
@@ -809,9 +805,16 @@
         }
 
         // ============================================================
-        // 4. GALLERY LOGIC (MODIFIED FOR STABLE JSON RPC PROVIDER)
+        // 4. GALLERY LOGIC 
         // ============================================================
         ui.refresh.addEventListener('click', fetchGallery);
+
+        // *** MOCK FUNCTION: Bypasses the failed Google Apps Script call ***
+        function fetchGuaranteedMintsFromAPI() {
+            // Returns a promise that resolves immediately with the mock data.
+            console.warn("MOCK DATA LOADED: Bypassing Google Script due to CORS failures.");
+            return Promise.resolve(GUARANTEED_MINTS);
+        }
 
         async function fetchGallery() {
             const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
@@ -821,17 +824,29 @@
 
             try {
                 const currentBlock = await readProvider.getBlockNumber();
-                // We keep the last 5000 block range for performance, but the guaranteed mints ensure
-                // old inscriptions are still shown.
-                const fromBlock = Math.max(0, currentBlock - 5000); 
                 
+                // 1. Fetch the STABLE and RECENT events (Last 5000 blocks)
+                const fromBlock = Math.max(0, currentBlock - 5000); 
                 const stableContract = new window.ethers.Contract(BERT_TOKEN_ADDRESS, BERT_ABI_SNIPPET, readProvider);
                 const filter = stableContract.filters.Transfer(null, BURN_ADDRESS); 
+                let events = await stableContract.queryFilter(filter, fromBlock, currentBlock);
                 
-                const events = await stableContract.queryFilter(filter, fromBlock, currentBlock);
+                
+                // 2. Fetch the DYNAMIC historical hashes from your MOCKED source
+                const externalGuaranteedHashes = await fetchGuaranteedMintsFromAPI();
+                
+                // --- PHASE 5 LOGIC: COMBINE HASHS AND DEDUPLICATE ---
+                const liveHashes = events.map(evt => evt.transactionHash);
+                // Extract hashes from the mock objects
+                const mockHashes = externalGuaranteedHashes.map(item => item.hash);
+
+                // Combine live events and historical API hashes, removing duplicates
+                let combinedHashes = [...new Set([...liveHashes, ...mockHashes])];
+                // ---------------------------------------------------
+                
                 
                 // *** CALCULATE AND DISPLAY BURN METRIC ***
-                const totalInscriptions = events.length + GUARANTEED_MINTS.length;
+                const totalInscriptions = combinedHashes.length;
                 
                 // CALCULATE TOTAL BURNED
                 const totalBurned = totalInscriptions * MINT_FEE_AMOUNT;
@@ -845,38 +860,22 @@
                 ui.grid.innerHTML = '';
                 fetchedHashes.clear();
                 
-                // *** PROMISE.ALL MODIFICATION ***
                 const renderPromises = [];
-
-                // We need to count up from 1 to totalInscriptions to assign indices in chronological order.
-                // NOTE: This count is slightly inaccurate as it treats GUARANTEED_MINTS as "pre-events"
-                // which is acceptable for simple indexing.
                 let inscriptionCounter = 1;
 
-                // 1. Re-add guaranteed mints (Oldest first)
-                for(const hash of GUARANTEED_MINTS) {
-                    // Pass the current counter value and increment it
-                    renderPromises.push(decodeAndRenderTx(hash, true, readProvider, inscriptionCounter++));
-                }
-                
-                // 2. Add new events (The list of events is ordered chronologically by Ethers.js queryFilter)
-                // The events are returned oldest first. We need to process them in that order.
-                for (const evt of events) { // NOTE: events array is NOT reversed here, processing chronologically
-                    // Pass the current counter value and increment it
-                    // Filter out hashes that were already in GUARANTEED_MINTS
-                    if (!GUARANTEED_MINTS.includes(evt.transactionHash)) {
-                        renderPromises.push(decodeEvent(evt, false, readProvider, inscriptionCounter++)); 
+                // 3. Render all unique hashes (Both live and historical/curated)
+                for (const hash of combinedHashes) {
+                    // Only render if not already fetched from event scan (rare overlap, but safe)
+                    if (!fetchedHashes.has(hash)) { 
+                         renderPromises.push(decodeAndRenderTx(hash, false, readProvider, inscriptionCounter++));
                     }
                 }
+                
                 
                 // *** AWAIT ALL RENDERING PROMISES before updating UI ***
                 await Promise.all(renderPromises);
                 
-                // To display the latest inscriptions at the top of the grid, we fetch them chronologically,
-                // but we need to reverse the order of elements in the DOM *after* all rendering is done.
-                
-                // FIX: Reverse the DOM order to show newest (highest index) first.
-                // The HTML grid uses appendChild (last is newest). We need to reverse the children.
+                // Fix: Reverse the DOM order to show newest (highest index) first.
                 const grid = ui.grid;
                 const children = Array.from(grid.children);
                 children.reverse().forEach(child => grid.appendChild(child));
@@ -890,10 +889,8 @@
 
             } catch (e) {
                 console.error('fetchGallery error:', e);
-                // Set to 0 on failure to avoid confusion
                 ui.totalBurn.textContent = `0 BERT 🔥`; 
             } finally {
-                // This ensures the loader is hidden upon completion, regardless of success/failure
                 ui.loader.classList.add('hidden'); 
             }
         }
@@ -1007,18 +1004,15 @@
                     buttonColor = 'bg-violet-600 hover:bg-violet-700';
             }
 
-            const modalHtml = `
-                <div id="custom-alert-modal" class="modal-overlay" style="display: flex;">
-                    <div class="modal-content ${bgColor}" style="max-width: 400px; color: #1f2937;">
-                        <h3 class="text-xl font-bold ${titleColor}">${title}</h3>
-                        <p class="mt-2 text-gray-700 whitespace-pre-wrap">${message}</p>
-                        <button onclick="document.querySelector('#custom-alert-modal').remove()" 
-                                class="mt-4 w-full ${buttonColor} text-white font-bold py-2 rounded transition">
-                            Got It
-                        </button>
-                    </div>
-                </div>
-            `;
+            const modalHtml = '<div id="custom-alert-modal" class="modal-overlay" style="display: flex;">' +
+                '<div class="modal-content ' + bgColor + '" style="max-width: 400px; color: #1f2937;">' +
+                '<h3 class="text-xl font-bold ' + titleColor + '">' + title + '</h3>' +
+                '<p class="mt-2 text-gray-700 whitespace-pre-wrap">' + message + '</p>' +
+                '<button onclick="document.querySelector(\'#custom-alert-modal\').remove()" ' +
+                'class="mt-4 w-full ' + buttonColor + ' text-white font-bold py-2 rounded transition">' +
+                'Got It' +
+                '</button></div></div>';
+            
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = modalHtml;
             document.body.appendChild(tempDiv.firstChild);
