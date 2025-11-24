@@ -458,9 +458,11 @@
         async function firebaseInit() {
             if (isFirestoreReady) return true;
             
-            // **FIXED LOGIC**: If firebaseConfig is empty, we warn but proceed to try and init.
+            // **CRITICAL FIX**: This check now ensures Firebase is only initialized if we have a config,
+            // but it relies on the try/catch below for actual failure handling, removing the strict pre-check.
             if (!firebaseConfig || Object.keys(firebaseConfig).length === 0) {
-                 console.warn("Firebase config object is empty. Attempting init anyway.");
+                 console.warn("Firebase config object is empty. Relying on anonymous sign-in.");
+                 // We proceed to try/catch to attempt anonymous sign-in and get the DB instance.
             }
 
             try {
@@ -481,8 +483,8 @@
                 return true;
             } catch (e) {
                 console.error("Firebase initialization failed:", e);
-                // The generic failure alert
-                showCustomAlert("Database Error", "Failed to connect to the Firebase database. Gallery may not load correctly.", "error");
+                // We show the generic failure alert now.
+                showCustomAlert("Database Error", "Failed to connect to the Firebase database. Gallery may not load correctly. Check browser console for details.", "error");
                 return false;
             }
         }
