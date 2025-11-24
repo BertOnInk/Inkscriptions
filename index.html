@@ -847,27 +847,43 @@
                 
                 
                 // 2. Fetch the HISTORICAL data from your Firebase Function
-                const externalGuaranteedHashes = await fetchGuaranteedMintsFromAPI();
+                const externalGuaranteedMints = await fetchGuaranteedMintsFromAPI();
                 
-                // --- PHASE 5 LOGIC: COMBINE HASHES AND DEDUPLICATE ---
-                const liveHashes = events.map(evt => evt.transactionHash);
-                // Extract hashes from the API objects
-                const apiHashes = externalGuaranteedHashes.map(item => item.hash);
-
-                // Combine live events and historical API hashes, removing duplicates
-                let combinedHashes = [...new Set([...liveHashes, ...apiHashes])];
+                // --- PHASE 5 LOGIC: COMBINE AND SORT BY BLOCK NUMBER ---
+                // We create a unified list of objects { hash, block } to allow strict sorting
+                
+                const allItems = [];
+                
+                // Add API items (API items should have a 'block' field)
+                externalGuaranteedMints.forEach(item => {
+                    allItems.push({ hash: item.hash, block: Number(item.block) });
+                });
+                
+                // Add Live items (Events have 'blockNumber')
+                events.forEach(evt => {
+                     allItems.push({ hash: evt.transactionHash, block: Number(evt.blockNumber) });
+                });
+                
+                // Deduplicate based on hash
+                const uniqueItems = [];
+                const seenHashes = new Set();
+                
+                // Sort by Block Number ASCENDING (Oldest -> Newest)
+                // This is crucial for assigning correct chronological IDs (#1, #2...)
+                allItems.sort((a, b) => a.block - b.block);
+                
+                for(const item of allItems) {
+                    if(!seenHashes.has(item.hash)) {
+                        seenHashes.add(item.hash);
+                        uniqueItems.push(item);
+                    }
+                }
                 // ---------------------------------------------------
                 
-                
                 // *** CALCULATE AND DISPLAY BURN METRIC ***
-                const totalInscriptions = combinedHashes.length;
-                
-                // CALCULATE TOTAL BURNED
+                const totalInscriptions = uniqueItems.length;
                 const totalBurned = totalInscriptions * MINT_FEE_AMOUNT;
-                
-                // >>> UPDATE TEXT FORMAT AND CONTENT (Red, Graffiti font, Fire emoji added)
                 ui.totalBurn.textContent = `${totalBurned.toLocaleString()} BERT 🔥`;
-                // ------------------------------------------
 
                 if (pendingTxHash) removeGalleryCard(pendingTxHash);
 
@@ -877,14 +893,13 @@
                 const renderPromises = [];
                 let inscriptionCounter = 1;
 
-                // 3. Render all unique hashes (Both live and historical/curated)
-                for (const hash of combinedHashes) {
-                    // Only render if not already fetched from event scan (rare overlap, but safe)
-                    if (!fetchedHashes.has(hash)) { 
-                         renderPromises.push(decodeAndRenderTx(hash, false, readProvider, inscriptionCounter++));
+                // 3. Render all unique hashes in strictly sorted order
+                for (const item of uniqueItems) {
+                    // Only render if not already fetched (double check logic)
+                    if (!fetchedHashes.has(item.hash)) { 
+                         renderPromises.push(decodeAndRenderTx(item.hash, false, readProvider, inscriptionCounter++));
                     }
                 }
-                
                 
                 // *** AWAIT ALL RENDERING PROMISES before updating UI ***
                 await Promise.all(renderPromises);
