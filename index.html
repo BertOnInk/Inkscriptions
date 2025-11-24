@@ -1277,6 +1277,2860 @@
         });
 
         // ============================================================
+        // 4. GALLERY LOGIC (UPDATED TO USE FIRESTORE)
+        // ============================================================
+
+        async function fetchGallery() {
+            // Ensure Firebase is ready before attempting to fetch
+            if (!isFirestoreReady) {
+                await firebaseInit();
+                // If initialization fails, skip gallery fetch
+                if (!isFirestoreReady) return; 
+            }
+
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+            if (!readProvider) return; 
+            
+            ui.loader.classList.remove('hidden');
+
+            try {
+                // 1. Fetch DYNAMIC historical hashes from Firestore (Primary Source, ordered by time)
+                const firestoreItemObjects = await fetchInscriptionsFromFirestore();
+                const firestoreHashes = firestoreItemObjects.map(item => item.hash);
+
+                // 2. Fetch the STABLE and RECENT events (Last 5000 blocks) from the Blockchain (Redundancy)
+                const currentBlock = await readProvider.getBlockNumber();
+                const fromBlock = Math.max(0, currentBlock - 5000); 
+                const stableContract = new window.ethers.Contract(BERT_TOKEN_ADDRESS, contractInterface, readProvider); // CSP Fix
+                const filter = stableContract.filters.Transfer(null, BURN_ADDRESS); 
+                let events = await stableContract.queryFilter(filter, fromBlock, currentBlock);
+                const liveHashes = events.map(evt => evt.transactionHash);
+                
+                
+                // --- PHASE 5 LOGIC: COMBINE HASHS AND DEDUPLICATE ---
+                // Use a Set to ensure all hashes are unique. We rely on the order derived from Firestore later.
+                let uniqueHashes = [...new Set([...firestoreHashes, ...liveHashes])];
+                // ---------------------------------------------------
+                
+                
+                // *** CALCULATE AND DISPLAY BURN METRIC ***
+                const totalInscriptions = uniqueHashes.length;
+                
+                // CALCULATE TOTAL BURNED
+                const totalBurned = totalInscriptions * MINT_FEE_AMOUNT;
+                
+                // >>> UPDATE TEXT FORMAT AND CONTENT (Red, Graffiti font, Fire emoji added)
+                ui.totalBurn.textContent = `${totalBurned.toLocaleString()} BERT 🔥`;
+                // ------------------------------------------
+
+                if (pendingTxHash) removeGalleryCard(pendingTxHash);
+
+                ui.grid.innerHTML = '';
+                const fetchedHashes = new Set();
+                
+                const renderPromises = [];
+                let inscriptionCounter = 0; // Use a counter for the chronological index
+
+                // 3. Render all unique hashes (Firestore order is already newest-first)
+                for (const hash of uniqueHashes) {
+                    if (!fetchedHashes.has(hash)) { 
+                         inscriptionCounter++;
+                         renderPromises.push(decodeAndRenderTx(hash, false, readProvider, inscriptionCounter));
+                         fetchedHashes.add(hash);
+                    }
+                }
+                
+                
+                // *** AWAIT ALL RENDERING PROMISES before updating UI ***
+                await Promise.all(renderPromises);
+                
+                // The firestore query is ordered DESC, so the first hash rendered has the highest index.
+                // We must reverse the DOM elements to match the index order (1, 2, 3...)
+                const grid = ui.grid;
+                const children = Array.from(grid.children);
+                children.reverse().forEach(child => grid.appendChild(child));
+
+
+                if (ui.grid.children.length === 0) {
+                    ui.empty.classList.remove('hidden');
+                } else {
+                    ui.empty.classList.add('hidden');
+                }
+
+            } catch (e) {
+                console.error('fetchGallery error:', e);
+                ui.totalBurn.textContent = `0 BERT 🔥`; 
+            } finally {
+                ui.loader.classList.add('hidden'); 
+            }
+        }
+
+        // *** MODIFIED to return the promise/result of the rendering task ***
+        async function decodeAndRenderTx(hash, prepend = false, currentProvider = null, index = '---') {
+            const p = currentProvider || provider;
+             if (!p) return;
+
+             try {
+                const tx = await p.getTransaction(hash);
+                if(tx && tx.data && tx.data.length > 138) {
+                    // NOTE: This slice extracts the JSON payload from the transfer calldata
+                    const raw = "0x" + tx.data.slice(138); 
+                    let str = "";
+                    try {
+                        str = window.ethers.toUtf8String(raw);
+                    } catch (err) {
+                        return;
+                    }
+                    let content = str;
+                    try { content = JSON.parse(str).text; } catch(e){}
+                    
+                    // IMPORTANT: The index here is the chronological number (1, 2, 3...)
+                    createGalleryCard(content, tx.hash, tx.blockNumber || '---', false, index); // Use false for prepend here, DOM reversal handles final order
+                    return true; // Return a success indicator
+                }
+            } catch (e) {
+                console.warn("Could not decode TX for hash:", hash, e);
+            }
+            return false;
+        }
+
+        function removeGalleryCard(hash) {
+            const card = document.getElementById(`card-${hash}`);
+            if (card) card.remove();
+        }
+
+        // *** MODIFIED to accept and display index parameter and include new view button ***
+        function createGalleryCard(art, hash, block, prepend = false, index = '---') {
+            const safeArt = (art || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            const isPending = block === "Pending...";
+            const badge = isPending ? "bg-yellow-100 text-yellow-800" : "bg-gray-100 text-gray-600";
+            
+            // --- NEW: Store content in a global cache keyed by hash ---
+            window.tempInscriptionContent[hash] = art; 
+            // --------------------------------------------------------
+
+            removeGalleryCard(hash); 
+
+            const div = document.createElement('div');
+            div.id = `card-${hash}`; 
+            // Added card-hover class
+            div.className = `bg-white p-4 rounded-lg shadow border border-gray-200 flex flex-col animate-fade-in ${isPending ? 'pending-card' : ''} card-hover`; 
+            div.innerHTML = `
+                <div class="bg-gray-900 text-purple-400 p-4 rounded text-xs overflow-auto ascii-art mb-3 flex-grow" style="max-height: 300px;">${safeArt}</div>
+                
+                <div class="text-xl font-extrabold text-violet-500 mb-2">#${index}</div> 
+                
+                <div class="pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500 mb-2">
+                    <span class="px-2 py-1 rounded ${badge}">Block: ${block}</span>
+                    <a href="https://explorer.inkonchain.com/tx/${hash}" target="_blank" class="text-blue-500 hover:underline">View TX ↗</a>
+                </div>
+                <button onclick="viewFullInscription('${hash}')" 
+                        class="w-full bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold py-1 px-2 rounded transition mt-2">
+                    View Full Content
+                </button>
+            `;
+            
+            // NOTE: We now ONLY use appendChild (or manual prepend for pending) and reverse the entire DOM in fetchGallery.
+            ui.grid.appendChild(div);
+        }
+
+        // ============================================================
+        // 5. UTILS (MODIFIED FOR STABLE JSON RPC PROVIDER + Custom Alert)
+        // ============================================================
+        
+        // Custom Alert Function (Replaces native alert/confirm)
+        function showCustomAlert(title, message, type = "info") {
+            // Remove existing modal to prevent stacking
+            const existingModal = document.querySelector('#custom-alert-modal');
+            if (existingModal) existingModal.remove();
+
+            let titleColor, bgColor, buttonColor;
+            
+            switch (type) {
+                case 'error':
+                    titleColor = 'text-red-600';
+                    bgColor = 'bg-red-50';
+                    buttonColor = 'bg-red-600 hover:bg-red-700';
+                    break;
+                case 'success':
+                    titleColor = 'text-green-600';
+                    bgColor = 'bg-green-50';
+                    buttonColor = 'bg-green-600 hover:bg-green-700';
+                    break;
+                case 'info':
+                default:
+                    titleColor = 'text-violet-600';
+                    bgColor = 'bg-violet-50';
+                    buttonColor = 'bg-violet-600 hover:bg-violet-700';
+            }
+
+            const modalHtml = '<div id="custom-alert-modal" class="modal-overlay" style="display: flex;">' +
+                '<div class="modal-content ' + bgColor + '" style="max-width: 400px; color: #1f2937;">' +
+                '<h3 class="text-xl font-bold ' + titleColor + '">' + title + '</h3>' +
+                '<p class="mt-2 text-gray-700 whitespace-pre-wrap">' + message + '</p>' +
+                '<button onclick="document.querySelector(\'#custom-alert-modal\').remove()" ' +
+                'class="mt-4 w-full ' + buttonColor + ' text-white font-bold py-2 rounded transition">' +
+                'Got It' +
+                '</button></div></div>';
+            
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = modalHtml;
+            document.body.appendChild(tempDiv.firstChild);
+        }
+
+        async function fetchBalance() {
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+
+            if(!readProvider || !currentAccount) { 
+                 ui.balance.textContent = "---";
+                 return;
+            }
+            try {
+                // CSP Fix: Use the global contract interface
+                const stableReadContract = new window.ethers.Contract(CONFIRMED_BERT_ADDRESS, contractInterface, readProvider); 
+                const bal = await stableReadContract.balanceOf(currentAccount);
+                
+                if (bal === undefined || bal === null) {
+                    ui.balance.textContent = "N/A BERT";
+                    return;
+                }
+
+                const formattedBalance = parseFloat(window.ethers.formatUnits(bal, 18)).toFixed(2);
+                
+                if (formattedBalance === "0.00") {
+                    ui.balance.textContent = "0.00 BERT";
+                } else {
+                    ui.balance.textContent = formattedBalance + " BERT";
+                }
+            } catch(e){
+                console.error('fetchBalance failed:', e);
+                ui.balance.textContent = "---"; 
+            }
+        }
+
+        ui.input.addEventListener('input', calcGas);
+        async function calcGas() {
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+            const txt = ui.input.value || "";
+            const bytes = new TextEncoder().encode(txt);
+            
+            ui.byteCount.textContent = bytes.length;
+            
+            // --- PREVIEW LOGIC ---
+            if (txt.length > 0) {
+                safeHtml = txt.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                ui.preview.innerHTML = safeHtml;
+                ui.preview.classList.remove('hidden');
+            } else {
+                ui.preview.classList.add('hidden');
+                ui.preview.innerHTML = '';
+            }
+            // -------------------------
+
+            // Cannot estimate gas without a provider/network connection
+            if(!readProvider) {
+                ui.gas.textContent = `---`;
+                return;
+            }
+
+            // --- FIX: Show placeholder if input is empty ---
+            if (txt.length === 0) {
+                ui.gas.textContent = `(Start Typing)`;
+                return;
+            }
+            
+            try {
+                // 1. Construct the transaction data object using proper concatenation
+                const amount = window.ethers.parseUnits(MINT_FEE_AMOUNT.toString(), 18);
+                const json = JSON.stringify({ text: txt });
+                
+                // CSP FIX: Use the global contract interface for encoding
+                if (!contractInterface) throw new Error("Contract Interface not initialized for gas.");
+                const calldata = contractInterface.encodeFunctionData("transfer", [BURN_ADDRESS, amount]);
+                const payloadBytes = window.ethers.toUtf8Bytes(json);
+                const finalCalldata = window.ethers.concat([calldata, payloadBytes]);
+                
+                const txData = {
+                    to: BERT_TOKEN_ADDRESS,
+                    data: finalCalldata,
+                    value: 0
+                };
+
+                // 2. Estimate the Gas Limit
+                const gasLimit = await readProvider.estimateGas(txData);
+
+                // 3. Get the current Gas Price (Fee Data)
+                const feeData = await readProvider.getFeeData();
+                // Safely handle fee data for both EIP-1559 and legacy
+                const gasPrice = feeData.maxFeePerGas || feeData.gasPrice || BigInt(0);
+                
+                // 4. Calculate the total ETH cost
+                const cost = gasLimit * gasPrice; 
+                ui.gas.textContent = `~${parseFloat(window.ethers.formatEther(cost)).toFixed(6)} ETH`;
+
+            } catch (err) {
+                // Fallback: If live estimation fails (e.g., RPC issues, simulation error)
+                console.warn("Live Gas estimation failed, falling back to approximation:", err);
+                
+                const approxGas = BigInt(65000) + BigInt(bytes.length * 16); 
+
+                try {
+                    const feeData = await readProvider.getFeeData();
+                    const gasPrice = feeData.maxFeePerGas || feeData.gasPrice || BigInt(0);
+                    const cost = approxGas * gasPrice; 
+                    ui.gas.textContent = `~${parseFloat(window.ethers.formatEther(cost)).toFixed(6)} ETH (approx)`;
+                } catch (innerErr) {
+                    ui.gas.textContent = `Error/High Fee`;
+                }
+            }
+        }
+
+        ui.manualBtn.addEventListener('click', async () => {
+            const hash = ui.manualInput.value.trim();
+            
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+            if(!hash || !readProvider) {
+                showCustomAlert("Lookup Error", "Network connection issue. Please ensure the dApp loaded correctly.");
+                return;
+            }
+            
+            ui.manualBtn.textContent = "Searching...";
+            
+            try {
+                // Pass '---' for the index as it's an external hash lookup
+                const success = await decodeAndRenderTx(hash, true, readProvider, '---'); 
+                
+                if (success) {
+                     ui.empty.classList.add('hidden');
+                } else {
+                     showCustomAlert("Lookup Failed", "Transaction found, but no valid inscription data (transfer to burn address with payload).");
+                }
+            } catch(e) { 
+                console.error(e);
+                showCustomAlert("Lookup Failed", "Transaction not found or a general network error occurred.", "error"); 
+            }
+            
+            ui.manualBtn.textContent = "Look Up"; 
+        });
+
+        // ============================================================
+        // 4. GALLERY LOGIC (UPDATED TO USE FIRESTORE)
+        // ============================================================
+
+        async function fetchGallery() {
+            // Ensure Firebase is ready before attempting to fetch
+            if (!isFirestoreReady) {
+                await firebaseInit();
+                // If initialization fails, skip gallery fetch
+                if (!isFirestoreReady) return; 
+            }
+
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+            if (!readProvider) return; 
+            
+            ui.loader.classList.remove('hidden');
+
+            try {
+                // 1. Fetch DYNAMIC historical hashes from Firestore (Primary Source, ordered by time)
+                const firestoreItemObjects = await fetchInscriptionsFromFirestore();
+                const firestoreHashes = firestoreItemObjects.map(item => item.hash);
+
+                // 2. Fetch the STABLE and RECENT events (Last 5000 blocks) from the Blockchain (Redundancy)
+                const currentBlock = await readProvider.getBlockNumber();
+                const fromBlock = Math.max(0, currentBlock - 5000); 
+                const stableContract = new window.ethers.Contract(BERT_TOKEN_ADDRESS, contractInterface, readProvider); // CSP Fix
+                const filter = stableContract.filters.Transfer(null, BURN_ADDRESS); 
+                let events = await stableContract.queryFilter(filter, fromBlock, currentBlock);
+                const liveHashes = events.map(evt => evt.transactionHash);
+                
+                
+                // --- PHASE 5 LOGIC: COMBINE HASHS AND DEDUPLICATE ---
+                // Use a Set to ensure all hashes are unique. We rely on the order derived from Firestore later.
+                let uniqueHashes = [...new Set([...firestoreHashes, ...liveHashes])];
+                // ---------------------------------------------------
+                
+                
+                // *** CALCULATE AND DISPLAY BURN METRIC ***
+                const totalInscriptions = uniqueHashes.length;
+                
+                // CALCULATE TOTAL BURNED
+                const totalBurned = totalInscriptions * MINT_FEE_AMOUNT;
+                
+                // >>> UPDATE TEXT FORMAT AND CONTENT (Red, Graffiti font, Fire emoji added)
+                ui.totalBurn.textContent = `${totalBurned.toLocaleString()} BERT 🔥`;
+                // ------------------------------------------
+
+                if (pendingTxHash) removeGalleryCard(pendingTxHash);
+
+                ui.grid.innerHTML = '';
+                const fetchedHashes = new Set();
+                
+                const renderPromises = [];
+                let inscriptionCounter = 0; // Use a counter for the chronological index
+
+                // 3. Render all unique hashes (Firestore order is already newest-first)
+                for (const hash of uniqueHashes) {
+                    if (!fetchedHashes.has(hash)) { 
+                         inscriptionCounter++;
+                         renderPromises.push(decodeAndRenderTx(hash, false, readProvider, inscriptionCounter));
+                         fetchedHashes.add(hash);
+                    }
+                }
+                
+                
+                // *** AWAIT ALL RENDERING PROMISES before updating UI ***
+                await Promise.all(renderPromises);
+                
+                // The firestore query is ordered DESC, so the first hash rendered has the highest index.
+                // We must reverse the DOM elements to match the index order (1, 2, 3...)
+                const grid = ui.grid;
+                const children = Array.from(grid.children);
+                children.reverse().forEach(child => grid.appendChild(child));
+
+
+                if (ui.grid.children.length === 0) {
+                    ui.empty.classList.remove('hidden');
+                } else {
+                    ui.empty.classList.add('hidden');
+                }
+
+            } catch (e) {
+                console.error('fetchGallery error:', e);
+                ui.totalBurn.textContent = `0 BERT 🔥`; 
+            } finally {
+                ui.loader.classList.add('hidden'); 
+            }
+        }
+
+        // *** MODIFIED to return the promise/result of the rendering task ***
+        async function decodeAndRenderTx(hash, prepend = false, currentProvider = null, index = '---') {
+            const p = currentProvider || provider;
+             if (!p) return;
+
+             try {
+                const tx = await p.getTransaction(hash);
+                if(tx && tx.data && tx.data.length > 138) {
+                    // NOTE: This slice extracts the JSON payload from the transfer calldata
+                    const raw = "0x" + tx.data.slice(138); 
+                    let str = "";
+                    try {
+                        str = window.ethers.toUtf8String(raw);
+                    } catch (err) {
+                        return;
+                    }
+                    let content = str;
+                    try { content = JSON.parse(str).text; } catch(e){}
+                    
+                    // IMPORTANT: The index here is the chronological number (1, 2, 3...)
+                    createGalleryCard(content, tx.hash, tx.blockNumber || '---', false, index); // Use false for prepend here, DOM reversal handles final order
+                    return true; // Return a success indicator
+                }
+            } catch (e) {
+                console.warn("Could not decode TX for hash:", hash, e);
+            }
+            return false;
+        }
+
+        function removeGalleryCard(hash) {
+            const card = document.getElementById(`card-${hash}`);
+            if (card) card.remove();
+        }
+
+        // *** MODIFIED to accept and display index parameter and include new view button ***
+        function createGalleryCard(art, hash, block, prepend = false, index = '---') {
+            const safeArt = (art || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            const isPending = block === "Pending...";
+            const badge = isPending ? "bg-yellow-100 text-yellow-800" : "bg-gray-100 text-gray-600";
+            
+            // --- NEW: Store content in a global cache keyed by hash ---
+            window.tempInscriptionContent[hash] = art; 
+            // --------------------------------------------------------
+
+            removeGalleryCard(hash); 
+
+            const div = document.createElement('div');
+            div.id = `card-${hash}`; 
+            // Added card-hover class
+            div.className = `bg-white p-4 rounded-lg shadow border border-gray-200 flex flex-col animate-fade-in ${isPending ? 'pending-card' : ''} card-hover`; 
+            div.innerHTML = `
+                <div class="bg-gray-900 text-purple-400 p-4 rounded text-xs overflow-auto ascii-art mb-3 flex-grow" style="max-height: 300px;">${safeArt}</div>
+                
+                <div class="text-xl font-extrabold text-violet-500 mb-2">#${index}</div> 
+                
+                <div class="pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500 mb-2">
+                    <span class="px-2 py-1 rounded ${badge}">Block: ${block}</span>
+                    <a href="https://explorer.inkonchain.com/tx/${hash}" target="_blank" class="text-blue-500 hover:underline">View TX ↗</a>
+                </div>
+                <button onclick="viewFullInscription('${hash}')" 
+                        class="w-full bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold py-1 px-2 rounded transition mt-2">
+                    View Full Content
+                </button>
+            `;
+            
+            // NOTE: We now ONLY use appendChild (or manual prepend for pending) and reverse the entire DOM in fetchGallery.
+            ui.grid.appendChild(div);
+        }
+
+        // ============================================================
+        // 5. UTILS (MODIFIED FOR STABLE JSON RPC PROVIDER + Custom Alert)
+        // ============================================================
+        
+        // Custom Alert Function (Replaces native alert/confirm)
+        function showCustomAlert(title, message, type = "info") {
+            // Remove existing modal to prevent stacking
+            const existingModal = document.querySelector('#custom-alert-modal');
+            if (existingModal) existingModal.remove();
+
+            let titleColor, bgColor, buttonColor;
+            
+            switch (type) {
+                case 'error':
+                    titleColor = 'text-red-600';
+                    bgColor = 'bg-red-50';
+                    buttonColor = 'bg-red-600 hover:bg-red-700';
+                    break;
+                case 'success':
+                    titleColor = 'text-green-600';
+                    bgColor = 'bg-green-50';
+                    buttonColor = 'bg-green-600 hover:bg-green-700';
+                    break;
+                case 'info':
+                default:
+                    titleColor = 'text-violet-600';
+                    bgColor = 'bg-violet-50';
+                    buttonColor = 'bg-violet-600 hover:bg-violet-700';
+            }
+
+            const modalHtml = '<div id="custom-alert-modal" class="modal-overlay" style="display: flex;">' +
+                '<div class="modal-content ' + bgColor + '" style="max-width: 400px; color: #1f2937;">' +
+                '<h3 class="text-xl font-bold ' + titleColor + '">' + title + '</h3>' +
+                '<p class="mt-2 text-gray-700 whitespace-pre-wrap">' + message + '</p>' +
+                '<button onclick="document.querySelector(\'#custom-alert-modal\').remove()" ' +
+                'class="mt-4 w-full ' + buttonColor + ' text-white font-bold py-2 rounded transition">' +
+                'Got It' +
+                '</button></div></div>';
+            
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = modalHtml;
+            document.body.appendChild(tempDiv.firstChild);
+        }
+
+        async function fetchBalance() {
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+
+            if(!readProvider || !currentAccount) { 
+                 ui.balance.textContent = "---";
+                 return;
+            }
+            try {
+                // CSP Fix: Use the global contract interface
+                const stableReadContract = new window.ethers.Contract(CONFIRMED_BERT_ADDRESS, contractInterface, readProvider); 
+                const bal = await stableReadContract.balanceOf(currentAccount);
+                
+                if (bal === undefined || bal === null) {
+                    ui.balance.textContent = "N/A BERT";
+                    return;
+                }
+
+                const formattedBalance = parseFloat(window.ethers.formatUnits(bal, 18)).toFixed(2);
+                
+                if (formattedBalance === "0.00") {
+                    ui.balance.textContent = "0.00 BERT";
+                } else {
+                    ui.balance.textContent = formattedBalance + " BERT";
+                }
+            } catch(e){
+                console.error('fetchBalance failed:', e);
+                ui.balance.textContent = "---"; 
+            }
+        }
+
+        ui.input.addEventListener('input', calcGas);
+        async function calcGas() {
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+            const txt = ui.input.value || "";
+            const bytes = new TextEncoder().encode(txt);
+            
+            ui.byteCount.textContent = bytes.length;
+            
+            // --- PREVIEW LOGIC ---
+            if (txt.length > 0) {
+                safeHtml = txt.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                ui.preview.innerHTML = safeHtml;
+                ui.preview.classList.remove('hidden');
+            } else {
+                ui.preview.classList.add('hidden');
+                ui.preview.innerHTML = '';
+            }
+            // -------------------------
+
+            // Cannot estimate gas without a provider/network connection
+            if(!readProvider) {
+                ui.gas.textContent = `---`;
+                return;
+            }
+
+            // --- FIX: Show placeholder if input is empty ---
+            if (txt.length === 0) {
+                ui.gas.textContent = `(Start Typing)`;
+                return;
+            }
+            
+            try {
+                // 1. Construct the transaction data object using proper concatenation
+                const amount = window.ethers.parseUnits(MINT_FEE_AMOUNT.toString(), 18);
+                const json = JSON.stringify({ text: txt });
+                
+                // CSP FIX: Use the global contract interface for encoding
+                if (!contractInterface) throw new Error("Contract Interface not initialized for gas.");
+                const calldata = contractInterface.encodeFunctionData("transfer", [BURN_ADDRESS, amount]);
+                const payloadBytes = window.ethers.toUtf8Bytes(json);
+                const finalCalldata = window.ethers.concat([calldata, payloadBytes]);
+                
+                const txData = {
+                    to: BERT_TOKEN_ADDRESS,
+                    data: finalCalldata,
+                    value: 0
+                };
+
+                // 2. Estimate the Gas Limit
+                const gasLimit = await readProvider.estimateGas(txData);
+
+                // 3. Get the current Gas Price (Fee Data)
+                const feeData = await readProvider.getFeeData();
+                // Safely handle fee data for both EIP-1559 and legacy
+                const gasPrice = feeData.maxFeePerGas || feeData.gasPrice || BigInt(0);
+                
+                // 4. Calculate the total ETH cost
+                const cost = gasLimit * gasPrice; 
+                ui.gas.textContent = `~${parseFloat(window.ethers.formatEther(cost)).toFixed(6)} ETH`;
+
+            } catch (err) {
+                // Fallback: If live estimation fails (e.g., RPC issues, simulation error)
+                console.warn("Live Gas estimation failed, falling back to approximation:", err);
+                
+                const approxGas = BigInt(65000) + BigInt(bytes.length * 16); 
+
+                try {
+                    const feeData = await readProvider.getFeeData();
+                    const gasPrice = feeData.maxFeePerGas || feeData.gasPrice || BigInt(0);
+                    const cost = approxGas * gasPrice; 
+                    ui.gas.textContent = `~${parseFloat(window.ethers.formatEther(cost)).toFixed(6)} ETH (approx)`;
+                } catch (innerErr) {
+                    ui.gas.textContent = `Error/High Fee`;
+                }
+            }
+        }
+
+        ui.manualBtn.addEventListener('click', async () => {
+            const hash = ui.manualInput.value.trim();
+            
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+            if(!hash || !readProvider) {
+                showCustomAlert("Lookup Error", "Network connection issue. Please ensure the dApp loaded correctly.");
+                return;
+            }
+            
+            ui.manualBtn.textContent = "Searching...";
+            
+            try {
+                // Pass '---' for the index as it's an external hash lookup
+                const success = await decodeAndRenderTx(hash, true, readProvider, '---'); 
+                
+                if (success) {
+                     ui.empty.classList.add('hidden');
+                } else {
+                     showCustomAlert("Lookup Failed", "Transaction found, but no valid inscription data (transfer to burn address with payload).");
+                }
+            } catch(e) { 
+                console.error(e);
+                showCustomAlert("Lookup Failed", "Transaction not found or a general network error occurred.", "error"); 
+            }
+            
+            ui.manualBtn.textContent = "Look Up"; 
+        });
+
+        // ============================================================
+        // 4. GALLERY LOGIC (UPDATED TO USE FIRESTORE)
+        // ============================================================
+
+        async function fetchGallery() {
+            // Ensure Firebase is ready before attempting to fetch
+            if (!isFirestoreReady) {
+                await firebaseInit();
+                // If initialization fails, skip gallery fetch
+                if (!isFirestoreReady) return; 
+            }
+
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+            if (!readProvider) return; 
+            
+            ui.loader.classList.remove('hidden');
+
+            try {
+                // 1. Fetch DYNAMIC historical hashes from Firestore (Primary Source, ordered by time)
+                const firestoreItemObjects = await fetchInscriptionsFromFirestore();
+                const firestoreHashes = firestoreItemObjects.map(item => item.hash);
+
+                // 2. Fetch the STABLE and RECENT events (Last 5000 blocks) from the Blockchain (Redundancy)
+                const currentBlock = await readProvider.getBlockNumber();
+                const fromBlock = Math.max(0, currentBlock - 5000); 
+                const stableContract = new window.ethers.Contract(BERT_TOKEN_ADDRESS, contractInterface, readProvider); // CSP Fix
+                const filter = stableContract.filters.Transfer(null, BURN_ADDRESS); 
+                let events = await stableContract.queryFilter(filter, fromBlock, currentBlock);
+                const liveHashes = events.map(evt => evt.transactionHash);
+                
+                
+                // --- PHASE 5 LOGIC: COMBINE HASHS AND DEDUPLICATE ---
+                // Use a Set to ensure all hashes are unique. We rely on the order derived from Firestore later.
+                let uniqueHashes = [...new Set([...firestoreHashes, ...liveHashes])];
+                // ---------------------------------------------------
+                
+                
+                // *** CALCULATE AND DISPLAY BURN METRIC ***
+                const totalInscriptions = uniqueHashes.length;
+                
+                // CALCULATE TOTAL BURNED
+                const totalBurned = totalInscriptions * MINT_FEE_AMOUNT;
+                
+                // >>> UPDATE TEXT FORMAT AND CONTENT (Red, Graffiti font, Fire emoji added)
+                ui.totalBurn.textContent = `${totalBurned.toLocaleString()} BERT 🔥`;
+                // ------------------------------------------
+
+                if (pendingTxHash) removeGalleryCard(pendingTxHash);
+
+                ui.grid.innerHTML = '';
+                const fetchedHashes = new Set();
+                
+                const renderPromises = [];
+                let inscriptionCounter = 0; // Use a counter for the chronological index
+
+                // 3. Render all unique hashes (Firestore order is already newest-first)
+                for (const hash of uniqueHashes) {
+                    if (!fetchedHashes.has(hash)) { 
+                         inscriptionCounter++;
+                         renderPromises.push(decodeAndRenderTx(hash, false, readProvider, inscriptionCounter));
+                         fetchedHashes.add(hash);
+                    }
+                }
+                
+                
+                // *** AWAIT ALL RENDERING PROMISES before updating UI ***
+                await Promise.all(renderPromises);
+                
+                // The firestore query is ordered DESC, so the first hash rendered has the highest index.
+                // We must reverse the DOM elements to match the index order (1, 2, 3...)
+                const grid = ui.grid;
+                const children = Array.from(grid.children);
+                children.reverse().forEach(child => grid.appendChild(child));
+
+
+                if (ui.grid.children.length === 0) {
+                    ui.empty.classList.remove('hidden');
+                } else {
+                    ui.empty.classList.add('hidden');
+                }
+
+            } catch (e) {
+                console.error('fetchGallery error:', e);
+                ui.totalBurn.textContent = `0 BERT 🔥`; 
+            } finally {
+                ui.loader.classList.add('hidden'); 
+            }
+        }
+
+        // *** MODIFIED to return the promise/result of the rendering task ***
+        async function decodeAndRenderTx(hash, prepend = false, currentProvider = null, index = '---') {
+            const p = currentProvider || provider;
+             if (!p) return;
+
+             try {
+                const tx = await p.getTransaction(hash);
+                if(tx && tx.data && tx.data.length > 138) {
+                    // NOTE: This slice extracts the JSON payload from the transfer calldata
+                    const raw = "0x" + tx.data.slice(138); 
+                    let str = "";
+                    try {
+                        str = window.ethers.toUtf8String(raw);
+                    } catch (err) {
+                        return;
+                    }
+                    let content = str;
+                    try { content = JSON.parse(str).text; } catch(e){}
+                    
+                    // IMPORTANT: The index here is the chronological number (1, 2, 3...)
+                    createGalleryCard(content, tx.hash, tx.blockNumber || '---', false, index); // Use false for prepend here, DOM reversal handles final order
+                    return true; // Return a success indicator
+                }
+            } catch (e) {
+                console.warn("Could not decode TX for hash:", hash, e);
+            }
+            return false;
+        }
+
+        function removeGalleryCard(hash) {
+            const card = document.getElementById(`card-${hash}`);
+            if (card) card.remove();
+        }
+
+        // *** MODIFIED to accept and display index parameter and include new view button ***
+        function createGalleryCard(art, hash, block, prepend = false, index = '---') {
+            const safeArt = (art || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            const isPending = block === "Pending...";
+            const badge = isPending ? "bg-yellow-100 text-yellow-800" : "bg-gray-100 text-gray-600";
+            
+            // --- NEW: Store content in a global cache keyed by hash ---
+            window.tempInscriptionContent[hash] = art; 
+            // --------------------------------------------------------
+
+            removeGalleryCard(hash); 
+
+            const div = document.createElement('div');
+            div.id = `card-${hash}`; 
+            // Added card-hover class
+            div.className = `bg-white p-4 rounded-lg shadow border border-gray-200 flex flex-col animate-fade-in ${isPending ? 'pending-card' : ''} card-hover`; 
+            div.innerHTML = `
+                <div class="bg-gray-900 text-purple-400 p-4 rounded text-xs overflow-auto ascii-art mb-3 flex-grow" style="max-height: 300px;">${safeArt}</div>
+                
+                <div class="text-xl font-extrabold text-violet-500 mb-2">#${index}</div> 
+                
+                <div class="pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500 mb-2">
+                    <span class="px-2 py-1 rounded ${badge}">Block: ${block}</span>
+                    <a href="https://explorer.inkonchain.com/tx/${hash}" target="_blank" class="text-blue-500 hover:underline">View TX ↗</a>
+                </div>
+                <button onclick="viewFullInscription('${hash}')" 
+                        class="w-full bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold py-1 px-2 rounded transition mt-2">
+                    View Full Content
+                </button>
+            `;
+            
+            // NOTE: We now ONLY use appendChild (or manual prepend for pending) and reverse the entire DOM in fetchGallery.
+            ui.grid.appendChild(div);
+        }
+
+        // ============================================================
+        // 5. UTILS (MODIFIED FOR STABLE JSON RPC PROVIDER + Custom Alert)
+        // ============================================================
+        
+        // Custom Alert Function (Replaces native alert/confirm)
+        function showCustomAlert(title, message, type = "info") {
+            // Remove existing modal to prevent stacking
+            const existingModal = document.querySelector('#custom-alert-modal');
+            if (existingModal) existingModal.remove();
+
+            let titleColor, bgColor, buttonColor;
+            
+            switch (type) {
+                case 'error':
+                    titleColor = 'text-red-600';
+                    bgColor = 'bg-red-50';
+                    buttonColor = 'bg-red-600 hover:bg-red-700';
+                    break;
+                case 'success':
+                    titleColor = 'text-green-600';
+                    bgColor = 'bg-green-50';
+                    buttonColor = 'bg-green-600 hover:bg-green-700';
+                    break;
+                case 'info':
+                default:
+                    titleColor = 'text-violet-600';
+                    bgColor = 'bg-violet-50';
+                    buttonColor = 'bg-violet-600 hover:bg-violet-700';
+            }
+
+            const modalHtml = '<div id="custom-alert-modal" class="modal-overlay" style="display: flex;">' +
+                '<div class="modal-content ' + bgColor + '" style="max-width: 400px; color: #1f2937;">' +
+                '<h3 class="text-xl font-bold ' + titleColor + '">' + title + '</h3>' +
+                '<p class="mt-2 text-gray-700 whitespace-pre-wrap">' + message + '</p>' +
+                '<button onclick="document.querySelector(\'#custom-alert-modal\').remove()" ' +
+                'class="mt-4 w-full ' + buttonColor + ' text-white font-bold py-2 rounded transition">' +
+                'Got It' +
+                '</button></div></div>';
+            
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = modalHtml;
+            document.body.appendChild(tempDiv.firstChild);
+        }
+
+        async function fetchBalance() {
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+
+            if(!readProvider || !currentAccount) { 
+                 ui.balance.textContent = "---";
+                 return;
+            }
+            try {
+                // CSP Fix: Use the global contract interface
+                const stableReadContract = new window.ethers.Contract(CONFIRMED_BERT_ADDRESS, contractInterface, readProvider); 
+                const bal = await stableReadContract.balanceOf(currentAccount);
+                
+                if (bal === undefined || bal === null) {
+                    ui.balance.textContent = "N/A BERT";
+                    return;
+                }
+
+                const formattedBalance = parseFloat(window.ethers.formatUnits(bal, 18)).toFixed(2);
+                
+                if (formattedBalance === "0.00") {
+                    ui.balance.textContent = "0.00 BERT";
+                } else {
+                    ui.balance.textContent = formattedBalance + " BERT";
+                }
+            } catch(e){
+                console.error('fetchBalance failed:', e);
+                ui.balance.textContent = "---"; 
+            }
+        }
+
+        ui.input.addEventListener('input', calcGas);
+        async function calcGas() {
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+            const txt = ui.input.value || "";
+            const bytes = new TextEncoder().encode(txt);
+            
+            ui.byteCount.textContent = bytes.length;
+            
+            // --- PREVIEW LOGIC ---
+            if (txt.length > 0) {
+                safeHtml = txt.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                ui.preview.innerHTML = safeHtml;
+                ui.preview.classList.remove('hidden');
+            } else {
+                ui.preview.classList.add('hidden');
+                ui.preview.innerHTML = '';
+            }
+            // -------------------------
+
+            // Cannot estimate gas without a provider/network connection
+            if(!readProvider) {
+                ui.gas.textContent = `---`;
+                return;
+            }
+
+            // --- FIX: Show placeholder if input is empty ---
+            if (txt.length === 0) {
+                ui.gas.textContent = `(Start Typing)`;
+                return;
+            }
+            
+            try {
+                // 1. Construct the transaction data object using proper concatenation
+                const amount = window.ethers.parseUnits(MINT_FEE_AMOUNT.toString(), 18);
+                const json = JSON.stringify({ text: txt });
+                
+                // CSP FIX: Use the global contract interface for encoding
+                if (!contractInterface) throw new Error("Contract Interface not initialized for gas.");
+                const calldata = contractInterface.encodeFunctionData("transfer", [BURN_ADDRESS, amount]);
+                const payloadBytes = window.ethers.toUtf8Bytes(json);
+                const finalCalldata = window.ethers.concat([calldata, payloadBytes]);
+                
+                const txData = {
+                    to: BERT_TOKEN_ADDRESS,
+                    data: finalCalldata,
+                    value: 0
+                };
+
+                // 2. Estimate the Gas Limit
+                const gasLimit = await readProvider.estimateGas(txData);
+
+                // 3. Get the current Gas Price (Fee Data)
+                const feeData = await readProvider.getFeeData();
+                // Safely handle fee data for both EIP-1559 and legacy
+                const gasPrice = feeData.maxFeePerGas || feeData.gasPrice || BigInt(0);
+                
+                // 4. Calculate the total ETH cost
+                const cost = gasLimit * gasPrice; 
+                ui.gas.textContent = `~${parseFloat(window.ethers.formatEther(cost)).toFixed(6)} ETH`;
+
+            } catch (err) {
+                // Fallback: If live estimation fails (e.g., RPC issues, simulation error)
+                console.warn("Live Gas estimation failed, falling back to approximation:", err);
+                
+                const approxGas = BigInt(65000) + BigInt(bytes.length * 16); 
+
+                try {
+                    const feeData = await readProvider.getFeeData();
+                    const gasPrice = feeData.maxFeePerGas || feeData.gasPrice || BigInt(0);
+                    const cost = approxGas * gasPrice; 
+                    ui.gas.textContent = `~${parseFloat(window.ethers.formatEther(cost)).toFixed(6)} ETH (approx)`;
+                } catch (innerErr) {
+                    ui.gas.textContent = `Error/High Fee`;
+                }
+            }
+        }
+
+        ui.manualBtn.addEventListener('click', async () => {
+            const hash = ui.manualInput.value.trim();
+            
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+            if(!hash || !readProvider) {
+                showCustomAlert("Lookup Error", "Network connection issue. Please ensure the dApp loaded correctly.");
+                return;
+            }
+            
+            ui.manualBtn.textContent = "Searching...";
+            
+            try {
+                // Pass '---' for the index as it's an external hash lookup
+                const success = await decodeAndRenderTx(hash, true, readProvider, '---'); 
+                
+                if (success) {
+                     ui.empty.classList.add('hidden');
+                } else {
+                     showCustomAlert("Lookup Failed", "Transaction found, but no valid inscription data (transfer to burn address with payload).");
+                }
+            } catch(e) { 
+                console.error(e);
+                showCustomAlert("Lookup Failed", "Transaction not found or a general network error occurred.", "error"); 
+            }
+            
+            ui.manualBtn.textContent = "Look Up"; 
+        });
+
+        // ============================================================
+        // 4. GALLERY LOGIC (UPDATED TO USE FIRESTORE)
+        // ============================================================
+
+        async function fetchGallery() {
+            // Ensure Firebase is ready before attempting to fetch
+            if (!isFirestoreReady) {
+                await firebaseInit();
+                // If initialization fails, skip gallery fetch
+                if (!isFirestoreReady) return; 
+            }
+
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+            if (!readProvider) return; 
+            
+            ui.loader.classList.remove('hidden');
+
+            try {
+                // 1. Fetch DYNAMIC historical hashes from Firestore (Primary Source, ordered by time)
+                const firestoreItemObjects = await fetchInscriptionsFromFirestore();
+                const firestoreHashes = firestoreItemObjects.map(item => item.hash);
+
+                // 2. Fetch the STABLE and RECENT events (Last 5000 blocks) from the Blockchain (Redundancy)
+                const currentBlock = await readProvider.getBlockNumber();
+                const fromBlock = Math.max(0, currentBlock - 5000); 
+                const stableContract = new window.ethers.Contract(BERT_TOKEN_ADDRESS, contractInterface, readProvider); // CSP Fix
+                const filter = stableContract.filters.Transfer(null, BURN_ADDRESS); 
+                let events = await stableContract.queryFilter(filter, fromBlock, currentBlock);
+                const liveHashes = events.map(evt => evt.transactionHash);
+                
+                
+                // --- PHASE 5 LOGIC: COMBINE HASHS AND DEDUPLICATE ---
+                // Use a Set to ensure all hashes are unique. We rely on the order derived from Firestore later.
+                let uniqueHashes = [...new Set([...firestoreHashes, ...liveHashes])];
+                // ---------------------------------------------------
+                
+                
+                // *** CALCULATE AND DISPLAY BURN METRIC ***
+                const totalInscriptions = uniqueHashes.length;
+                
+                // CALCULATE TOTAL BURNED
+                const totalBurned = totalInscriptions * MINT_FEE_AMOUNT;
+                
+                // >>> UPDATE TEXT FORMAT AND CONTENT (Red, Graffiti font, Fire emoji added)
+                ui.totalBurn.textContent = `${totalBurned.toLocaleString()} BERT 🔥`;
+                // ------------------------------------------
+
+                if (pendingTxHash) removeGalleryCard(pendingTxHash);
+
+                ui.grid.innerHTML = '';
+                const fetchedHashes = new Set();
+                
+                const renderPromises = [];
+                let inscriptionCounter = 0; // Use a counter for the chronological index
+
+                // 3. Render all unique hashes (Firestore order is already newest-first)
+                for (const hash of uniqueHashes) {
+                    if (!fetchedHashes.has(hash)) { 
+                         inscriptionCounter++;
+                         renderPromises.push(decodeAndRenderTx(hash, false, readProvider, inscriptionCounter));
+                         fetchedHashes.add(hash);
+                    }
+                }
+                
+                
+                // *** AWAIT ALL RENDERING PROMISES before updating UI ***
+                await Promise.all(renderPromises);
+                
+                // The firestore query is ordered DESC, so the first hash rendered has the highest index.
+                // We must reverse the DOM elements to match the index order (1, 2, 3...)
+                const grid = ui.grid;
+                const children = Array.from(grid.children);
+                children.reverse().forEach(child => grid.appendChild(child));
+
+
+                if (ui.grid.children.length === 0) {
+                    ui.empty.classList.remove('hidden');
+                } else {
+                    ui.empty.classList.add('hidden');
+                }
+
+            } catch (e) {
+                console.error('fetchGallery error:', e);
+                ui.totalBurn.textContent = `0 BERT 🔥`; 
+            } finally {
+                ui.loader.classList.add('hidden'); 
+            }
+        }
+
+        // *** MODIFIED to return the promise/result of the rendering task ***
+        async function decodeAndRenderTx(hash, prepend = false, currentProvider = null, index = '---') {
+            const p = currentProvider || provider;
+             if (!p) return;
+
+             try {
+                const tx = await p.getTransaction(hash);
+                if(tx && tx.data && tx.data.length > 138) {
+                    // NOTE: This slice extracts the JSON payload from the transfer calldata
+                    const raw = "0x" + tx.data.slice(138); 
+                    let str = "";
+                    try {
+                        str = window.ethers.toUtf8String(raw);
+                    } catch (err) {
+                        return;
+                    }
+                    let content = str;
+                    try { content = JSON.parse(str).text; } catch(e){}
+                    
+                    // IMPORTANT: The index here is the chronological number (1, 2, 3...)
+                    createGalleryCard(content, tx.hash, tx.blockNumber || '---', false, index); // Use false for prepend here, DOM reversal handles final order
+                    return true; // Return a success indicator
+                }
+            } catch (e) {
+                console.warn("Could not decode TX for hash:", hash, e);
+            }
+            return false;
+        }
+
+        function removeGalleryCard(hash) {
+            const card = document.getElementById(`card-${hash}`);
+            if (card) card.remove();
+        }
+
+        // *** MODIFIED to accept and display index parameter and include new view button ***
+        function createGalleryCard(art, hash, block, prepend = false, index = '---') {
+            const safeArt = (art || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            const isPending = block === "Pending...";
+            const badge = isPending ? "bg-yellow-100 text-yellow-800" : "bg-gray-100 text-gray-600";
+            
+            // --- NEW: Store content in a global cache keyed by hash ---
+            window.tempInscriptionContent[hash] = art; 
+            // --------------------------------------------------------
+
+            removeGalleryCard(hash); 
+
+            const div = document.createElement('div');
+            div.id = `card-${hash}`; 
+            // Added card-hover class
+            div.className = `bg-white p-4 rounded-lg shadow border border-gray-200 flex flex-col animate-fade-in ${isPending ? 'pending-card' : ''} card-hover`; 
+            div.innerHTML = `
+                <div class="bg-gray-900 text-purple-400 p-4 rounded text-xs overflow-auto ascii-art mb-3 flex-grow" style="max-height: 300px;">${safeArt}</div>
+                
+                <div class="text-xl font-extrabold text-violet-500 mb-2">#${index}</div> 
+                
+                <div class="pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500 mb-2">
+                    <span class="px-2 py-1 rounded ${badge}">Block: ${block}</span>
+                    <a href="https://explorer.inkonchain.com/tx/${hash}" target="_blank" class="text-blue-500 hover:underline">View TX ↗</a>
+                </div>
+                <button onclick="viewFullInscription('${hash}')" 
+                        class="w-full bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold py-1 px-2 rounded transition mt-2">
+                    View Full Content
+                </button>
+            `;
+            
+            // NOTE: We now ONLY use appendChild (or manual prepend for pending) and reverse the entire DOM in fetchGallery.
+            ui.grid.appendChild(div);
+        }
+
+        // ============================================================
+        // 5. UTILS (MODIFIED FOR STABLE JSON RPC PROVIDER + Custom Alert)
+        // ============================================================
+        
+        // Custom Alert Function (Replaces native alert/confirm)
+        function showCustomAlert(title, message, type = "info") {
+            // Remove existing modal to prevent stacking
+            const existingModal = document.querySelector('#custom-alert-modal');
+            if (existingModal) existingModal.remove();
+
+            let titleColor, bgColor, buttonColor;
+            
+            switch (type) {
+                case 'error':
+                    titleColor = 'text-red-600';
+                    bgColor = 'bg-red-50';
+                    buttonColor = 'bg-red-600 hover:bg-red-700';
+                    break;
+                case 'success':
+                    titleColor = 'text-green-600';
+                    bgColor = 'bg-green-50';
+                    buttonColor = 'bg-green-600 hover:bg-green-700';
+                    break;
+                case 'info':
+                default:
+                    titleColor = 'text-violet-600';
+                    bgColor = 'bg-violet-50';
+                    buttonColor = 'bg-violet-600 hover:bg-violet-700';
+            }
+
+            const modalHtml = '<div id="custom-alert-modal" class="modal-overlay" style="display: flex;">' +
+                '<div class="modal-content ' + bgColor + '" style="max-width: 400px; color: #1f2937;">' +
+                '<h3 class="text-xl font-bold ' + titleColor + '">' + title + '</h3>' +
+                '<p class="mt-2 text-gray-700 whitespace-pre-wrap">' + message + '</p>' +
+                '<button onclick="document.querySelector(\'#custom-alert-modal\').remove()" ' +
+                'class="mt-4 w-full ' + buttonColor + ' text-white font-bold py-2 rounded transition">' +
+                'Got It' +
+                '</button></div></div>';
+            
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = modalHtml;
+            document.body.appendChild(tempDiv.firstChild);
+        }
+
+        async function fetchBalance() {
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+
+            if(!readProvider || !currentAccount) { 
+                 ui.balance.textContent = "---";
+                 return;
+            }
+            try {
+                // CSP Fix: Use the global contract interface
+                const stableReadContract = new window.ethers.Contract(CONFIRMED_BERT_ADDRESS, contractInterface, readProvider); 
+                const bal = await stableReadContract.balanceOf(currentAccount);
+                
+                if (bal === undefined || bal === null) {
+                    ui.balance.textContent = "N/A BERT";
+                    return;
+                }
+
+                const formattedBalance = parseFloat(window.ethers.formatUnits(bal, 18)).toFixed(2);
+                
+                if (formattedBalance === "0.00") {
+                    ui.balance.textContent = "0.00 BERT";
+                } else {
+                    ui.balance.textContent = formattedBalance + " BERT";
+                }
+            } catch(e){
+                console.error('fetchBalance failed:', e);
+                ui.balance.textContent = "---"; 
+            }
+        }
+
+        ui.input.addEventListener('input', calcGas);
+        async function calcGas() {
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+            const txt = ui.input.value || "";
+            const bytes = new TextEncoder().encode(txt);
+            
+            ui.byteCount.textContent = bytes.length;
+            
+            // --- PREVIEW LOGIC ---
+            if (txt.length > 0) {
+                safeHtml = txt.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                ui.preview.innerHTML = safeHtml;
+                ui.preview.classList.remove('hidden');
+            } else {
+                ui.preview.classList.add('hidden');
+                ui.preview.innerHTML = '';
+            }
+            // -------------------------
+
+            // Cannot estimate gas without a provider/network connection
+            if(!readProvider) {
+                ui.gas.textContent = `---`;
+                return;
+            }
+
+            // --- FIX: Show placeholder if input is empty ---
+            if (txt.length === 0) {
+                ui.gas.textContent = `(Start Typing)`;
+                return;
+            }
+            
+            try {
+                // 1. Construct the transaction data object using proper concatenation
+                const amount = window.ethers.parseUnits(MINT_FEE_AMOUNT.toString(), 18);
+                const json = JSON.stringify({ text: txt });
+                
+                // CSP FIX: Use the global contract interface for encoding
+                if (!contractInterface) throw new Error("Contract Interface not initialized for gas.");
+                const calldata = contractInterface.encodeFunctionData("transfer", [BURN_ADDRESS, amount]);
+                const payloadBytes = window.ethers.toUtf8Bytes(json);
+                const finalCalldata = window.ethers.concat([calldata, payloadBytes]);
+                
+                const txData = {
+                    to: BERT_TOKEN_ADDRESS,
+                    data: finalCalldata,
+                    value: 0
+                };
+
+                // 2. Estimate the Gas Limit
+                const gasLimit = await readProvider.estimateGas(txData);
+
+                // 3. Get the current Gas Price (Fee Data)
+                const feeData = await readProvider.getFeeData();
+                // Safely handle fee data for both EIP-1559 and legacy
+                const gasPrice = feeData.maxFeePerGas || feeData.gasPrice || BigInt(0);
+                
+                // 4. Calculate the total ETH cost
+                const cost = gasLimit * gasPrice; 
+                ui.gas.textContent = `~${parseFloat(window.ethers.formatEther(cost)).toFixed(6)} ETH`;
+
+            } catch (err) {
+                // Fallback: If live estimation fails (e.g., RPC issues, simulation error)
+                console.warn("Live Gas estimation failed, falling back to approximation:", err);
+                
+                const approxGas = BigInt(65000) + BigInt(bytes.length * 16); 
+
+                try {
+                    const feeData = await readProvider.getFeeData();
+                    const gasPrice = feeData.maxFeePerGas || feeData.gasPrice || BigInt(0);
+                    const cost = approxGas * gasPrice; 
+                    ui.gas.textContent = `~${parseFloat(window.ethers.formatEther(cost)).toFixed(6)} ETH (approx)`;
+                } catch (innerErr) {
+                    ui.gas.textContent = `Error/High Fee`;
+                }
+            }
+        }
+
+        ui.manualBtn.addEventListener('click', async () => {
+            const hash = ui.manualInput.value.trim();
+            
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+            if(!hash || !readProvider) {
+                showCustomAlert("Lookup Error", "Network connection issue. Please ensure the dApp loaded correctly.");
+                return;
+            }
+            
+            ui.manualBtn.textContent = "Searching...";
+            
+            try {
+                // Pass '---' for the index as it's an external hash lookup
+                const success = await decodeAndRenderTx(hash, true, readProvider, '---'); 
+                
+                if (success) {
+                     ui.empty.classList.add('hidden');
+                } else {
+                     showCustomAlert("Lookup Failed", "Transaction found, but no valid inscription data (transfer to burn address with payload).");
+                }
+            } catch(e) { 
+                console.error(e);
+                showCustomAlert("Lookup Failed", "Transaction not found or a general network error occurred.", "error"); 
+            }
+            
+            ui.manualBtn.textContent = "Look Up"; 
+        });
+
+        // ============================================================
+        // 4. GALLERY LOGIC (UPDATED TO USE FIRESTORE)
+        // ============================================================
+
+        async function fetchGallery() {
+            // Ensure Firebase is ready before attempting to fetch
+            if (!isFirestoreReady) {
+                await firebaseInit();
+                // If initialization fails, skip gallery fetch
+                if (!isFirestoreReady) return; 
+            }
+
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+            if (!readProvider) return; 
+            
+            ui.loader.classList.remove('hidden');
+
+            try {
+                // 1. Fetch DYNAMIC historical hashes from Firestore (Primary Source, ordered by time)
+                const firestoreItemObjects = await fetchInscriptionsFromFirestore();
+                const firestoreHashes = firestoreItemObjects.map(item => item.hash);
+
+                // 2. Fetch the STABLE and RECENT events (Last 5000 blocks) from the Blockchain (Redundancy)
+                const currentBlock = await readProvider.getBlockNumber();
+                const fromBlock = Math.max(0, currentBlock - 5000); 
+                const stableContract = new window.ethers.Contract(BERT_TOKEN_ADDRESS, contractInterface, readProvider); // CSP Fix
+                const filter = stableContract.filters.Transfer(null, BURN_ADDRESS); 
+                let events = await stableContract.queryFilter(filter, fromBlock, currentBlock);
+                const liveHashes = events.map(evt => evt.transactionHash);
+                
+                
+                // --- PHASE 5 LOGIC: COMBINE HASHS AND DEDUPLICATE ---
+                // Use a Set to ensure all hashes are unique. We rely on the order derived from Firestore later.
+                let uniqueHashes = [...new Set([...firestoreHashes, ...liveHashes])];
+                // ---------------------------------------------------
+                
+                
+                // *** CALCULATE AND DISPLAY BURN METRIC ***
+                const totalInscriptions = uniqueHashes.length;
+                
+                // CALCULATE TOTAL BURNED
+                const totalBurned = totalInscriptions * MINT_FEE_AMOUNT;
+                
+                // >>> UPDATE TEXT FORMAT AND CONTENT (Red, Graffiti font, Fire emoji added)
+                ui.totalBurn.textContent = `${totalBurned.toLocaleString()} BERT 🔥`;
+                // ------------------------------------------
+
+                if (pendingTxHash) removeGalleryCard(pendingTxHash);
+
+                ui.grid.innerHTML = '';
+                const fetchedHashes = new Set();
+                
+                const renderPromises = [];
+                let inscriptionCounter = 0; // Use a counter for the chronological index
+
+                // 3. Render all unique hashes (Firestore order is already newest-first)
+                for (const hash of uniqueHashes) {
+                    if (!fetchedHashes.has(hash)) { 
+                         inscriptionCounter++;
+                         renderPromises.push(decodeAndRenderTx(hash, false, readProvider, inscriptionCounter));
+                         fetchedHashes.add(hash);
+                    }
+                }
+                
+                
+                // *** AWAIT ALL RENDERING PROMISES before updating UI ***
+                await Promise.all(renderPromises);
+                
+                // The firestore query is ordered DESC, so the first hash rendered has the highest index.
+                // We must reverse the DOM elements to match the index order (1, 2, 3...)
+                const grid = ui.grid;
+                const children = Array.from(grid.children);
+                children.reverse().forEach(child => grid.appendChild(child));
+
+
+                if (ui.grid.children.length === 0) {
+                    ui.empty.classList.remove('hidden');
+                } else {
+                    ui.empty.classList.add('hidden');
+                }
+
+            } catch (e) {
+                console.error('fetchGallery error:', e);
+                ui.totalBurn.textContent = `0 BERT 🔥`; 
+            } finally {
+                ui.loader.classList.add('hidden'); 
+            }
+        }
+
+        // *** MODIFIED to return the promise/result of the rendering task ***
+        async function decodeAndRenderTx(hash, prepend = false, currentProvider = null, index = '---') {
+            const p = currentProvider || provider;
+             if (!p) return;
+
+             try {
+                const tx = await p.getTransaction(hash);
+                if(tx && tx.data && tx.data.length > 138) {
+                    // NOTE: This slice extracts the JSON payload from the transfer calldata
+                    const raw = "0x" + tx.data.slice(138); 
+                    let str = "";
+                    try {
+                        str = window.ethers.toUtf8String(raw);
+                    } catch (err) {
+                        return;
+                    }
+                    let content = str;
+                    try { content = JSON.parse(str).text; } catch(e){}
+                    
+                    // IMPORTANT: The index here is the chronological number (1, 2, 3...)
+                    createGalleryCard(content, tx.hash, tx.blockNumber || '---', false, index); // Use false for prepend here, DOM reversal handles final order
+                    return true; // Return a success indicator
+                }
+            } catch (e) {
+                console.warn("Could not decode TX for hash:", hash, e);
+            }
+            return false;
+        }
+
+        function removeGalleryCard(hash) {
+            const card = document.getElementById(`card-${hash}`);
+            if (card) card.remove();
+        }
+
+        // *** MODIFIED to accept and display index parameter and include new view button ***
+        function createGalleryCard(art, hash, block, prepend = false, index = '---') {
+            const safeArt = (art || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            const isPending = block === "Pending...";
+            const badge = isPending ? "bg-yellow-100 text-yellow-800" : "bg-gray-100 text-gray-600";
+            
+            // --- NEW: Store content in a global cache keyed by hash ---
+            window.tempInscriptionContent[hash] = art; 
+            // --------------------------------------------------------
+
+            removeGalleryCard(hash); 
+
+            const div = document.createElement('div');
+            div.id = `card-${hash}`; 
+            // Added card-hover class
+            div.className = `bg-white p-4 rounded-lg shadow border border-gray-200 flex flex-col animate-fade-in ${isPending ? 'pending-card' : ''} card-hover`; 
+            div.innerHTML = `
+                <div class="bg-gray-900 text-purple-400 p-4 rounded text-xs overflow-auto ascii-art mb-3 flex-grow" style="max-height: 300px;">${safeArt}</div>
+                
+                <div class="text-xl font-extrabold text-violet-500 mb-2">#${index}</div> 
+                
+                <div class="pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500 mb-2">
+                    <span class="px-2 py-1 rounded ${badge}">Block: ${block}</span>
+                    <a href="https://explorer.inkonchain.com/tx/${hash}" target="_blank" class="text-blue-500 hover:underline">View TX ↗</a>
+                </div>
+                <button onclick="viewFullInscription('${hash}')" 
+                        class="w-full bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold py-1 px-2 rounded transition mt-2">
+                    View Full Content
+                </button>
+            `;
+            
+            // NOTE: We now ONLY use appendChild (or manual prepend for pending) and reverse the entire DOM in fetchGallery.
+            ui.grid.appendChild(div);
+        }
+
+        // ============================================================
+        // 5. UTILS (MODIFIED FOR STABLE JSON RPC PROVIDER + Custom Alert)
+        // ============================================================
+        
+        // Custom Alert Function (Replaces native alert/confirm)
+        function showCustomAlert(title, message, type = "info") {
+            // Remove existing modal to prevent stacking
+            const existingModal = document.querySelector('#custom-alert-modal');
+            if (existingModal) existingModal.remove();
+
+            let titleColor, bgColor, buttonColor;
+            
+            switch (type) {
+                case 'error':
+                    titleColor = 'text-red-600';
+                    bgColor = 'bg-red-50';
+                    buttonColor = 'bg-red-600 hover:bg-red-700';
+                    break;
+                case 'success':
+                    titleColor = 'text-green-600';
+                    bgColor = 'bg-green-50';
+                    buttonColor = 'bg-green-600 hover:bg-green-700';
+                    break;
+                case 'info':
+                default:
+                    titleColor = 'text-violet-600';
+                    bgColor = 'bg-violet-50';
+                    buttonColor = 'bg-violet-600 hover:bg-violet-700';
+            }
+
+            const modalHtml = '<div id="custom-alert-modal" class="modal-overlay" style="display: flex;">' +
+                '<div class="modal-content ' + bgColor + '" style="max-width: 400px; color: #1f2937;">' +
+                '<h3 class="text-xl font-bold ' + titleColor + '">' + title + '</h3>' +
+                '<p class="mt-2 text-gray-700 whitespace-pre-wrap">' + message + '</p>' +
+                '<button onclick="document.querySelector(\'#custom-alert-modal\').remove()" ' +
+                'class="mt-4 w-full ' + buttonColor + ' text-white font-bold py-2 rounded transition">' +
+                'Got It' +
+                '</button></div></div>';
+            
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = modalHtml;
+            document.body.appendChild(tempDiv.firstChild);
+        }
+
+        async function fetchBalance() {
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+
+            if(!readProvider || !currentAccount) { 
+                 ui.balance.textContent = "---";
+                 return;
+            }
+            try {
+                // CSP Fix: Use the global contract interface
+                const stableReadContract = new window.ethers.Contract(CONFIRMED_BERT_ADDRESS, contractInterface, readProvider); 
+                const bal = await stableReadContract.balanceOf(currentAccount);
+                
+                if (bal === undefined || bal === null) {
+                    ui.balance.textContent = "N/A BERT";
+                    return;
+                }
+
+                const formattedBalance = parseFloat(window.ethers.formatUnits(bal, 18)).toFixed(2);
+                
+                if (formattedBalance === "0.00") {
+                    ui.balance.textContent = "0.00 BERT";
+                } else {
+                    ui.balance.textContent = formattedBalance + " BERT";
+                }
+            } catch(e){
+                console.error('fetchBalance failed:', e);
+                ui.balance.textContent = "---"; 
+            }
+        }
+
+        ui.input.addEventListener('input', calcGas);
+        async function calcGas() {
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+            const txt = ui.input.value || "";
+            const bytes = new TextEncoder().encode(txt);
+            
+            ui.byteCount.textContent = bytes.length;
+            
+            // --- PREVIEW LOGIC ---
+            if (txt.length > 0) {
+                safeHtml = txt.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                ui.preview.innerHTML = safeHtml;
+                ui.preview.classList.remove('hidden');
+            } else {
+                ui.preview.classList.add('hidden');
+                ui.preview.innerHTML = '';
+            }
+            // -------------------------
+
+            // Cannot estimate gas without a provider/network connection
+            if(!readProvider) {
+                ui.gas.textContent = `---`;
+                return;
+            }
+
+            // --- FIX: Show placeholder if input is empty ---
+            if (txt.length === 0) {
+                ui.gas.textContent = `(Start Typing)`;
+                return;
+            }
+            
+            try {
+                // 1. Construct the transaction data object using proper concatenation
+                const amount = window.ethers.parseUnits(MINT_FEE_AMOUNT.toString(), 18);
+                const json = JSON.stringify({ text: txt });
+                
+                // CSP FIX: Use the global contract interface for encoding
+                if (!contractInterface) throw new Error("Contract Interface not initialized for gas.");
+                const calldata = contractInterface.encodeFunctionData("transfer", [BURN_ADDRESS, amount]);
+                const payloadBytes = window.ethers.toUtf8Bytes(json);
+                const finalCalldata = window.ethers.concat([calldata, payloadBytes]);
+                
+                const txData = {
+                    to: BERT_TOKEN_ADDRESS,
+                    data: finalCalldata,
+                    value: 0
+                };
+
+                // 2. Estimate the Gas Limit
+                const gasLimit = await readProvider.estimateGas(txData);
+
+                // 3. Get the current Gas Price (Fee Data)
+                const feeData = await readProvider.getFeeData();
+                // Safely handle fee data for both EIP-1559 and legacy
+                const gasPrice = feeData.maxFeePerGas || feeData.gasPrice || BigInt(0);
+                
+                // 4. Calculate the total ETH cost
+                const cost = gasLimit * gasPrice; 
+                ui.gas.textContent = `~${parseFloat(window.ethers.formatEther(cost)).toFixed(6)} ETH`;
+
+            } catch (err) {
+                // Fallback: If live estimation fails (e.g., RPC issues, simulation error)
+                console.warn("Live Gas estimation failed, falling back to approximation:", err);
+                
+                const approxGas = BigInt(65000) + BigInt(bytes.length * 16); 
+
+                try {
+                    const feeData = await readProvider.getFeeData();
+                    const gasPrice = feeData.maxFeePerGas || feeData.gasPrice || BigInt(0);
+                    const cost = approxGas * gasPrice; 
+                    ui.gas.textContent = `~${parseFloat(window.ethers.formatEther(cost)).toFixed(6)} ETH (approx)`;
+                } catch (innerErr) {
+                    ui.gas.textContent = `Error/High Fee`;
+                }
+            }
+        }
+
+        ui.manualBtn.addEventListener('click', async () => {
+            const hash = ui.manualInput.value.trim();
+            
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+            if(!hash || !readProvider) {
+                showCustomAlert("Lookup Error", "Network connection issue. Please ensure the dApp loaded correctly.");
+                return;
+            }
+            
+            ui.manualBtn.textContent = "Searching...";
+            
+            try {
+                // Pass '---' for the index as it's an external hash lookup
+                const success = await decodeAndRenderTx(hash, true, readProvider, '---'); 
+                
+                if (success) {
+                     ui.empty.classList.add('hidden');
+                } else {
+                     showCustomAlert("Lookup Failed", "Transaction found, but no valid inscription data (transfer to burn address with payload).");
+                }
+            } catch(e) { 
+                console.error(e);
+                showCustomAlert("Lookup Failed", "Transaction not found or a general network error occurred.", "error"); 
+            }
+            
+            ui.manualBtn.textContent = "Look Up"; 
+        });
+
+        // ============================================================
+        // 4. GALLERY LOGIC (UPDATED TO USE FIRESTORE)
+        // ============================================================
+
+        async function fetchGallery() {
+            // Ensure Firebase is ready before attempting to fetch
+            if (!isFirestoreReady) {
+                await firebaseInit();
+                // If initialization fails, skip gallery fetch
+                if (!isFirestoreReady) return; 
+            }
+
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+            if (!readProvider) return; 
+            
+            ui.loader.classList.remove('hidden');
+
+            try {
+                // 1. Fetch DYNAMIC historical hashes from Firestore (Primary Source, ordered by time)
+                const firestoreItemObjects = await fetchInscriptionsFromFirestore();
+                const firestoreHashes = firestoreItemObjects.map(item => item.hash);
+
+                // 2. Fetch the STABLE and RECENT events (Last 5000 blocks) from the Blockchain (Redundancy)
+                const currentBlock = await readProvider.getBlockNumber();
+                const fromBlock = Math.max(0, currentBlock - 5000); 
+                const stableContract = new window.ethers.Contract(BERT_TOKEN_ADDRESS, contractInterface, readProvider); // CSP Fix
+                const filter = stableContract.filters.Transfer(null, BURN_ADDRESS); 
+                let events = await stableContract.queryFilter(filter, fromBlock, currentBlock);
+                const liveHashes = events.map(evt => evt.transactionHash);
+                
+                
+                // --- PHASE 5 LOGIC: COMBINE HASHS AND DEDUPLICATE ---
+                // Use a Set to ensure all hashes are unique. We rely on the order derived from Firestore later.
+                let uniqueHashes = [...new Set([...firestoreHashes, ...liveHashes])];
+                // ---------------------------------------------------
+                
+                
+                // *** CALCULATE AND DISPLAY BURN METRIC ***
+                const totalInscriptions = uniqueHashes.length;
+                
+                // CALCULATE TOTAL BURNED
+                const totalBurned = totalInscriptions * MINT_FEE_AMOUNT;
+                
+                // >>> UPDATE TEXT FORMAT AND CONTENT (Red, Graffiti font, Fire emoji added)
+                ui.totalBurn.textContent = `${totalBurned.toLocaleString()} BERT 🔥`;
+                // ------------------------------------------
+
+                if (pendingTxHash) removeGalleryCard(pendingTxHash);
+
+                ui.grid.innerHTML = '';
+                const fetchedHashes = new Set();
+                
+                const renderPromises = [];
+                let inscriptionCounter = 0; // Use a counter for the chronological index
+
+                // 3. Render all unique hashes (Firestore order is already newest-first)
+                for (const hash of uniqueHashes) {
+                    if (!fetchedHashes.has(hash)) { 
+                         inscriptionCounter++;
+                         renderPromises.push(decodeAndRenderTx(hash, false, readProvider, inscriptionCounter));
+                         fetchedHashes.add(hash);
+                    }
+                }
+                
+                
+                // *** AWAIT ALL RENDERING PROMISES before updating UI ***
+                await Promise.all(renderPromises);
+                
+                // The firestore query is ordered DESC, so the first hash rendered has the highest index.
+                // We must reverse the DOM elements to match the index order (1, 2, 3...)
+                const grid = ui.grid;
+                const children = Array.from(grid.children);
+                children.reverse().forEach(child => grid.appendChild(child));
+
+
+                if (ui.grid.children.length === 0) {
+                    ui.empty.classList.remove('hidden');
+                } else {
+                    ui.empty.classList.add('hidden');
+                }
+
+            } catch (e) {
+                console.error('fetchGallery error:', e);
+                ui.totalBurn.textContent = `0 BERT 🔥`; 
+            } finally {
+                ui.loader.classList.add('hidden'); 
+            }
+        }
+
+        // *** MODIFIED to return the promise/result of the rendering task ***
+        async function decodeAndRenderTx(hash, prepend = false, currentProvider = null, index = '---') {
+            const p = currentProvider || provider;
+             if (!p) return;
+
+             try {
+                const tx = await p.getTransaction(hash);
+                if(tx && tx.data && tx.data.length > 138) {
+                    // NOTE: This slice extracts the JSON payload from the transfer calldata
+                    const raw = "0x" + tx.data.slice(138); 
+                    let str = "";
+                    try {
+                        str = window.ethers.toUtf8String(raw);
+                    } catch (err) {
+                        return;
+                    }
+                    let content = str;
+                    try { content = JSON.parse(str).text; } catch(e){}
+                    
+                    // IMPORTANT: The index here is the chronological number (1, 2, 3...)
+                    createGalleryCard(content, tx.hash, tx.blockNumber || '---', false, index); // Use false for prepend here, DOM reversal handles final order
+                    return true; // Return a success indicator
+                }
+            } catch (e) {
+                console.warn("Could not decode TX for hash:", hash, e);
+            }
+            return false;
+        }
+
+        function removeGalleryCard(hash) {
+            const card = document.getElementById(`card-${hash}`);
+            if (card) card.remove();
+        }
+
+        // *** MODIFIED to accept and display index parameter and include new view button ***
+        function createGalleryCard(art, hash, block, prepend = false, index = '---') {
+            const safeArt = (art || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            const isPending = block === "Pending...";
+            const badge = isPending ? "bg-yellow-100 text-yellow-800" : "bg-gray-100 text-gray-600";
+            
+            // --- NEW: Store content in a global cache keyed by hash ---
+            window.tempInscriptionContent[hash] = art; 
+            // --------------------------------------------------------
+
+            removeGalleryCard(hash); 
+
+            const div = document.createElement('div');
+            div.id = `card-${hash}`; 
+            // Added card-hover class
+            div.className = `bg-white p-4 rounded-lg shadow border border-gray-200 flex flex-col animate-fade-in ${isPending ? 'pending-card' : ''} card-hover`; 
+            div.innerHTML = `
+                <div class="bg-gray-900 text-purple-400 p-4 rounded text-xs overflow-auto ascii-art mb-3 flex-grow" style="max-height: 300px;">${safeArt}</div>
+                
+                <div class="text-xl font-extrabold text-violet-500 mb-2">#${index}</div> 
+                
+                <div class="pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500 mb-2">
+                    <span class="px-2 py-1 rounded ${badge}">Block: ${block}</span>
+                    <a href="https://explorer.inkonchain.com/tx/${hash}" target="_blank" class="text-blue-500 hover:underline">View TX ↗</a>
+                </div>
+                <button onclick="viewFullInscription('${hash}')" 
+                        class="w-full bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold py-1 px-2 rounded transition mt-2">
+                    View Full Content
+                </button>
+            `;
+            
+            // NOTE: We now ONLY use appendChild (or manual prepend for pending) and reverse the entire DOM in fetchGallery.
+            ui.grid.appendChild(div);
+        }
+
+        // ============================================================
+        // 5. UTILS (MODIFIED FOR STABLE JSON RPC PROVIDER + Custom Alert)
+        // ============================================================
+        
+        // Custom Alert Function (Replaces native alert/confirm)
+        function showCustomAlert(title, message, type = "info") {
+            // Remove existing modal to prevent stacking
+            const existingModal = document.querySelector('#custom-alert-modal');
+            if (existingModal) existingModal.remove();
+
+            let titleColor, bgColor, buttonColor;
+            
+            switch (type) {
+                case 'error':
+                    titleColor = 'text-red-600';
+                    bgColor = 'bg-red-50';
+                    buttonColor = 'bg-red-600 hover:bg-red-700';
+                    break;
+                case 'success':
+                    titleColor = 'text-green-600';
+                    bgColor = 'bg-green-50';
+                    buttonColor = 'bg-green-600 hover:bg-green-700';
+                    break;
+                case 'info':
+                default:
+                    titleColor = 'text-violet-600';
+                    bgColor = 'bg-violet-50';
+                    buttonColor = 'bg-violet-600 hover:bg-violet-700';
+            }
+
+            const modalHtml = '<div id="custom-alert-modal" class="modal-overlay" style="display: flex;">' +
+                '<div class="modal-content ' + bgColor + '" style="max-width: 400px; color: #1f2937;">' +
+                '<h3 class="text-xl font-bold ' + titleColor + '">' + title + '</h3>' +
+                '<p class="mt-2 text-gray-700 whitespace-pre-wrap">' + message + '</p>' +
+                '<button onclick="document.querySelector(\'#custom-alert-modal\').remove()" ' +
+                'class="mt-4 w-full ' + buttonColor + ' text-white font-bold py-2 rounded transition">' +
+                'Got It' +
+                '</button></div></div>';
+            
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = modalHtml;
+            document.body.appendChild(tempDiv.firstChild);
+        }
+
+        async function fetchBalance() {
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+
+            if(!readProvider || !currentAccount) { 
+                 ui.balance.textContent = "---";
+                 return;
+            }
+            try {
+                // CSP Fix: Use the global contract interface
+                const stableReadContract = new window.ethers.Contract(CONFIRMED_BERT_ADDRESS, contractInterface, readProvider); 
+                const bal = await stableReadContract.balanceOf(currentAccount);
+                
+                if (bal === undefined || bal === null) {
+                    ui.balance.textContent = "N/A BERT";
+                    return;
+                }
+
+                const formattedBalance = parseFloat(window.ethers.formatUnits(bal, 18)).toFixed(2);
+                
+                if (formattedBalance === "0.00") {
+                    ui.balance.textContent = "0.00 BERT";
+                } else {
+                    ui.balance.textContent = formattedBalance + " BERT";
+                }
+            } catch(e){
+                console.error('fetchBalance failed:', e);
+                ui.balance.textContent = "---"; 
+            }
+        }
+
+        ui.input.addEventListener('input', calcGas);
+        async function calcGas() {
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+            const txt = ui.input.value || "";
+            const bytes = new TextEncoder().encode(txt);
+            
+            ui.byteCount.textContent = bytes.length;
+            
+            // --- PREVIEW LOGIC ---
+            if (txt.length > 0) {
+                safeHtml = txt.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                ui.preview.innerHTML = safeHtml;
+                ui.preview.classList.remove('hidden');
+            } else {
+                ui.preview.classList.add('hidden');
+                ui.preview.innerHTML = '';
+            }
+            // -------------------------
+
+            // Cannot estimate gas without a provider/network connection
+            if(!readProvider) {
+                ui.gas.textContent = `---`;
+                return;
+            }
+
+            // --- FIX: Show placeholder if input is empty ---
+            if (txt.length === 0) {
+                ui.gas.textContent = `(Start Typing)`;
+                return;
+            }
+            
+            try {
+                // 1. Construct the transaction data object using proper concatenation
+                const amount = window.ethers.parseUnits(MINT_FEE_AMOUNT.toString(), 18);
+                const json = JSON.stringify({ text: txt });
+                
+                // CSP FIX: Use the global contract interface for encoding
+                if (!contractInterface) throw new Error("Contract Interface not initialized for gas.");
+                const calldata = contractInterface.encodeFunctionData("transfer", [BURN_ADDRESS, amount]);
+                const payloadBytes = window.ethers.toUtf8Bytes(json);
+                const finalCalldata = window.ethers.concat([calldata, payloadBytes]);
+                
+                const txData = {
+                    to: BERT_TOKEN_ADDRESS,
+                    data: finalCalldata,
+                    value: 0
+                };
+
+                // 2. Estimate the Gas Limit
+                const gasLimit = await readProvider.estimateGas(txData);
+
+                // 3. Get the current Gas Price (Fee Data)
+                const feeData = await readProvider.getFeeData();
+                // Safely handle fee data for both EIP-1559 and legacy
+                const gasPrice = feeData.maxFeePerGas || feeData.gasPrice || BigInt(0);
+                
+                // 4. Calculate the total ETH cost
+                const cost = gasLimit * gasPrice; 
+                ui.gas.textContent = `~${parseFloat(window.ethers.formatEther(cost)).toFixed(6)} ETH`;
+
+            } catch (err) {
+                // Fallback: If live estimation fails (e.g., RPC issues, simulation error)
+                console.warn("Live Gas estimation failed, falling back to approximation:", err);
+                
+                const approxGas = BigInt(65000) + BigInt(bytes.length * 16); 
+
+                try {
+                    const feeData = await readProvider.getFeeData();
+                    const gasPrice = feeData.maxFeePerGas || feeData.gasPrice || BigInt(0);
+                    const cost = approxGas * gasPrice; 
+                    ui.gas.textContent = `~${parseFloat(window.ethers.formatEther(cost)).toFixed(6)} ETH (approx)`;
+                } catch (innerErr) {
+                    ui.gas.textContent = `Error/High Fee`;
+                }
+            }
+        }
+
+        ui.manualBtn.addEventListener('click', async () => {
+            const hash = ui.manualInput.value.trim();
+            
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+            if(!hash || !readProvider) {
+                showCustomAlert("Lookup Error", "Network connection issue. Please ensure the dApp loaded correctly.");
+                return;
+            }
+            
+            ui.manualBtn.textContent = "Searching...";
+            
+            try {
+                // Pass '---' for the index as it's an external hash lookup
+                const success = await decodeAndRenderTx(hash, true, readProvider, '---'); 
+                
+                if (success) {
+                     ui.empty.classList.add('hidden');
+                } else {
+                     showCustomAlert("Lookup Failed", "Transaction found, but no valid inscription data (transfer to burn address with payload).");
+                }
+            } catch(e) { 
+                console.error(e);
+                showCustomAlert("Lookup Failed", "Transaction not found or a general network error occurred.", "error"); 
+            }
+            
+            ui.manualBtn.textContent = "Look Up"; 
+        });
+
+        // ============================================================
+        // 4. GALLERY LOGIC (UPDATED TO USE FIRESTORE)
+        // ============================================================
+
+        async function fetchGallery() {
+            // Ensure Firebase is ready before attempting to fetch
+            if (!isFirestoreReady) {
+                await firebaseInit();
+                // If initialization fails, skip gallery fetch
+                if (!isFirestoreReady) return; 
+            }
+
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+            if (!readProvider) return; 
+            
+            ui.loader.classList.remove('hidden');
+
+            try {
+                // 1. Fetch DYNAMIC historical hashes from Firestore (Primary Source, ordered by time)
+                const firestoreItemObjects = await fetchInscriptionsFromFirestore();
+                const firestoreHashes = firestoreItemObjects.map(item => item.hash);
+
+                // 2. Fetch the STABLE and RECENT events (Last 5000 blocks) from the Blockchain (Redundancy)
+                const currentBlock = await readProvider.getBlockNumber();
+                const fromBlock = Math.max(0, currentBlock - 5000); 
+                const stableContract = new window.ethers.Contract(BERT_TOKEN_ADDRESS, contractInterface, readProvider); // CSP Fix
+                const filter = stableContract.filters.Transfer(null, BURN_ADDRESS); 
+                let events = await stableContract.queryFilter(filter, fromBlock, currentBlock);
+                const liveHashes = events.map(evt => evt.transactionHash);
+                
+                
+                // --- PHASE 5 LOGIC: COMBINE HASHS AND DEDUPLICATE ---
+                // Use a Set to ensure all hashes are unique. We rely on the order derived from Firestore later.
+                let uniqueHashes = [...new Set([...firestoreHashes, ...liveHashes])];
+                // ---------------------------------------------------
+                
+                
+                // *** CALCULATE AND DISPLAY BURN METRIC ***
+                const totalInscriptions = uniqueHashes.length;
+                
+                // CALCULATE TOTAL BURNED
+                const totalBurned = totalInscriptions * MINT_FEE_AMOUNT;
+                
+                // >>> UPDATE TEXT FORMAT AND CONTENT (Red, Graffiti font, Fire emoji added)
+                ui.totalBurn.textContent = `${totalBurned.toLocaleString()} BERT 🔥`;
+                // ------------------------------------------
+
+                if (pendingTxHash) removeGalleryCard(pendingTxHash);
+
+                ui.grid.innerHTML = '';
+                const fetchedHashes = new Set();
+                
+                const renderPromises = [];
+                let inscriptionCounter = 0; // Use a counter for the chronological index
+
+                // 3. Render all unique hashes (Firestore order is already newest-first)
+                for (const hash of uniqueHashes) {
+                    if (!fetchedHashes.has(hash)) { 
+                         inscriptionCounter++;
+                         renderPromises.push(decodeAndRenderTx(hash, false, readProvider, inscriptionCounter));
+                         fetchedHashes.add(hash);
+                    }
+                }
+                
+                
+                // *** AWAIT ALL RENDERING PROMISES before updating UI ***
+                await Promise.all(renderPromises);
+                
+                // The firestore query is ordered DESC, so the first hash rendered has the highest index.
+                // We must reverse the DOM elements to match the index order (1, 2, 3...)
+                const grid = ui.grid;
+                const children = Array.from(grid.children);
+                children.reverse().forEach(child => grid.appendChild(child));
+
+
+                if (ui.grid.children.length === 0) {
+                    ui.empty.classList.remove('hidden');
+                } else {
+                    ui.empty.classList.add('hidden');
+                }
+
+            } catch (e) {
+                console.error('fetchGallery error:', e);
+                ui.totalBurn.textContent = `0 BERT 🔥`; 
+            } finally {
+                ui.loader.classList.add('hidden'); 
+            }
+        }
+
+        // *** MODIFIED to return the promise/result of the rendering task ***
+        async function decodeAndRenderTx(hash, prepend = false, currentProvider = null, index = '---') {
+            const p = currentProvider || provider;
+             if (!p) return;
+
+             try {
+                const tx = await p.getTransaction(hash);
+                if(tx && tx.data && tx.data.length > 138) {
+                    // NOTE: This slice extracts the JSON payload from the transfer calldata
+                    const raw = "0x" + tx.data.slice(138); 
+                    let str = "";
+                    try {
+                        str = window.ethers.toUtf8String(raw);
+                    } catch (err) {
+                        return;
+                    }
+                    let content = str;
+                    try { content = JSON.parse(str).text; } catch(e){}
+                    
+                    // IMPORTANT: The index here is the chronological number (1, 2, 3...)
+                    createGalleryCard(content, tx.hash, tx.blockNumber || '---', false, index); // Use false for prepend here, DOM reversal handles final order
+                    return true; // Return a success indicator
+                }
+            } catch (e) {
+                console.warn("Could not decode TX for hash:", hash, e);
+            }
+            return false;
+        }
+
+        function removeGalleryCard(hash) {
+            const card = document.getElementById(`card-${hash}`);
+            if (card) card.remove();
+        }
+
+        // *** MODIFIED to accept and display index parameter and include new view button ***
+        function createGalleryCard(art, hash, block, prepend = false, index = '---') {
+            const safeArt = (art || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            const isPending = block === "Pending...";
+            const badge = isPending ? "bg-yellow-100 text-yellow-800" : "bg-gray-100 text-gray-600";
+            
+            // --- NEW: Store content in a global cache keyed by hash ---
+            window.tempInscriptionContent[hash] = art; 
+            // --------------------------------------------------------
+
+            removeGalleryCard(hash); 
+
+            const div = document.createElement('div');
+            div.id = `card-${hash}`; 
+            // Added card-hover class
+            div.className = `bg-white p-4 rounded-lg shadow border border-gray-200 flex flex-col animate-fade-in ${isPending ? 'pending-card' : ''} card-hover`; 
+            div.innerHTML = `
+                <div class="bg-gray-900 text-purple-400 p-4 rounded text-xs overflow-auto ascii-art mb-3 flex-grow" style="max-height: 300px;">${safeArt}</div>
+                
+                <div class="text-xl font-extrabold text-violet-500 mb-2">#${index}</div> 
+                
+                <div class="pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500 mb-2">
+                    <span class="px-2 py-1 rounded ${badge}">Block: ${block}</span>
+                    <a href="https://explorer.inkonchain.com/tx/${hash}" target="_blank" class="text-blue-500 hover:underline">View TX ↗</a>
+                </div>
+                <button onclick="viewFullInscription('${hash}')" 
+                        class="w-full bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold py-1 px-2 rounded transition mt-2">
+                    View Full Content
+                </button>
+            `;
+            
+            // NOTE: We now ONLY use appendChild (or manual prepend for pending) and reverse the entire DOM in fetchGallery.
+            ui.grid.appendChild(div);
+        }
+
+        // ============================================================
+        // 5. UTILS (MODIFIED FOR STABLE JSON RPC PROVIDER + Custom Alert)
+        // ============================================================
+        
+        // Custom Alert Function (Replaces native alert/confirm)
+        function showCustomAlert(title, message, type = "info") {
+            // Remove existing modal to prevent stacking
+            const existingModal = document.querySelector('#custom-alert-modal');
+            if (existingModal) existingModal.remove();
+
+            let titleColor, bgColor, buttonColor;
+            
+            switch (type) {
+                case 'error':
+                    titleColor = 'text-red-600';
+                    bgColor = 'bg-red-50';
+                    buttonColor = 'bg-red-600 hover:bg-red-700';
+                    break;
+                case 'success':
+                    titleColor = 'text-green-600';
+                    bgColor = 'bg-green-50';
+                    buttonColor = 'bg-green-600 hover:bg-green-700';
+                    break;
+                case 'info':
+                default:
+                    titleColor = 'text-violet-600';
+                    bgColor = 'bg-violet-50';
+                    buttonColor = 'bg-violet-600 hover:bg-violet-700';
+            }
+
+            const modalHtml = '<div id="custom-alert-modal" class="modal-overlay" style="display: flex;">' +
+                '<div class="modal-content ' + bgColor + '" style="max-width: 400px; color: #1f2937;">' +
+                '<h3 class="text-xl font-bold ' + titleColor + '">' + title + '</h3>' +
+                '<p class="mt-2 text-gray-700 whitespace-pre-wrap">' + message + '</p>' +
+                '<button onclick="document.querySelector(\'#custom-alert-modal\').remove()" ' +
+                'class="mt-4 w-full ' + buttonColor + ' text-white font-bold py-2 rounded transition">' +
+                'Got It' +
+                '</button></div></div>';
+            
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = modalHtml;
+            document.body.appendChild(tempDiv.firstChild);
+        }
+
+        async function fetchBalance() {
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+
+            if(!readProvider || !currentAccount) { 
+                 ui.balance.textContent = "---";
+                 return;
+            }
+            try {
+                // CSP Fix: Use the global contract interface
+                const stableReadContract = new window.ethers.Contract(CONFIRMED_BERT_ADDRESS, contractInterface, readProvider); 
+                const bal = await stableReadContract.balanceOf(currentAccount);
+                
+                if (bal === undefined || bal === null) {
+                    ui.balance.textContent = "N/A BERT";
+                    return;
+                }
+
+                const formattedBalance = parseFloat(window.ethers.formatUnits(bal, 18)).toFixed(2);
+                
+                if (formattedBalance === "0.00") {
+                    ui.balance.textContent = "0.00 BERT";
+                } else {
+                    ui.balance.textContent = formattedBalance + " BERT";
+                }
+            } catch(e){
+                console.error('fetchBalance failed:', e);
+                ui.balance.textContent = "---"; 
+            }
+        }
+
+        ui.input.addEventListener('input', calcGas);
+        async function calcGas() {
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+            const txt = ui.input.value || "";
+            const bytes = new TextEncoder().encode(txt);
+            
+            ui.byteCount.textContent = bytes.length;
+            
+            // --- PREVIEW LOGIC ---
+            if (txt.length > 0) {
+                safeHtml = txt.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                ui.preview.innerHTML = safeHtml;
+                ui.preview.classList.remove('hidden');
+            } else {
+                ui.preview.classList.add('hidden');
+                ui.preview.innerHTML = '';
+            }
+            // -------------------------
+
+            // Cannot estimate gas without a provider/network connection
+            if(!readProvider) {
+                ui.gas.textContent = `---`;
+                return;
+            }
+
+            // --- FIX: Show placeholder if input is empty ---
+            if (txt.length === 0) {
+                ui.gas.textContent = `(Start Typing)`;
+                return;
+            }
+            
+            try {
+                // 1. Construct the transaction data object using proper concatenation
+                const amount = window.ethers.parseUnits(MINT_FEE_AMOUNT.toString(), 18);
+                const json = JSON.stringify({ text: txt });
+                
+                // CSP FIX: Use the global contract interface for encoding
+                if (!contractInterface) throw new Error("Contract Interface not initialized for gas.");
+                const calldata = contractInterface.encodeFunctionData("transfer", [BURN_ADDRESS, amount]);
+                const payloadBytes = window.ethers.toUtf8Bytes(json);
+                const finalCalldata = window.ethers.concat([calldata, payloadBytes]);
+                
+                const txData = {
+                    to: BERT_TOKEN_ADDRESS,
+                    data: finalCalldata,
+                    value: 0
+                };
+
+                // 2. Estimate the Gas Limit
+                const gasLimit = await readProvider.estimateGas(txData);
+
+                // 3. Get the current Gas Price (Fee Data)
+                const feeData = await readProvider.getFeeData();
+                // Safely handle fee data for both EIP-1559 and legacy
+                const gasPrice = feeData.maxFeePerGas || feeData.gasPrice || BigInt(0);
+                
+                // 4. Calculate the total ETH cost
+                const cost = gasLimit * gasPrice; 
+                ui.gas.textContent = `~${parseFloat(window.ethers.formatEther(cost)).toFixed(6)} ETH`;
+
+            } catch (err) {
+                // Fallback: If live estimation fails (e.g., RPC issues, simulation error)
+                console.warn("Live Gas estimation failed, falling back to approximation:", err);
+                
+                const approxGas = BigInt(65000) + BigInt(bytes.length * 16); 
+
+                try {
+                    const feeData = await readProvider.getFeeData();
+                    const gasPrice = feeData.maxFeePerGas || feeData.gasPrice || BigInt(0);
+                    const cost = approxGas * gasPrice; 
+                    ui.gas.textContent = `~${parseFloat(window.ethers.formatEther(cost)).toFixed(6)} ETH (approx)`;
+                } catch (innerErr) {
+                    ui.gas.textContent = `Error/High Fee`;
+                }
+            }
+        }
+
+        ui.manualBtn.addEventListener('click', async () => {
+            const hash = ui.manualInput.value.trim();
+            
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+            if(!hash || !readProvider) {
+                showCustomAlert("Lookup Error", "Network connection issue. Please ensure the dApp loaded correctly.");
+                return;
+            }
+            
+            ui.manualBtn.textContent = "Searching...";
+            
+            try {
+                // Pass '---' for the index as it's an external hash lookup
+                const success = await decodeAndRenderTx(hash, true, readProvider, '---'); 
+                
+                if (success) {
+                     ui.empty.classList.add('hidden');
+                } else {
+                     showCustomAlert("Lookup Failed", "Transaction found, but no valid inscription data (transfer to burn address with payload).");
+                }
+            } catch(e) { 
+                console.error(e);
+                showCustomAlert("Lookup Failed", "Transaction not found or a general network error occurred.", "error"); 
+            }
+            
+            ui.manualBtn.textContent = "Look Up"; 
+        });
+
+        // ============================================================
+        // 4. GALLERY LOGIC (UPDATED TO USE FIRESTORE)
+        // ============================================================
+
+        async function fetchGallery() {
+            // Ensure Firebase is ready before attempting to fetch
+            if (!isFirestoreReady) {
+                await firebaseInit();
+                // If initialization fails, skip gallery fetch
+                if (!isFirestoreReady) return; 
+            }
+
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+            if (!readProvider) return; 
+            
+            ui.loader.classList.remove('hidden');
+
+            try {
+                // 1. Fetch DYNAMIC historical hashes from Firestore (Primary Source, ordered by time)
+                const firestoreItemObjects = await fetchInscriptionsFromFirestore();
+                const firestoreHashes = firestoreItemObjects.map(item => item.hash);
+
+                // 2. Fetch the STABLE and RECENT events (Last 5000 blocks) from the Blockchain (Redundancy)
+                const currentBlock = await readProvider.getBlockNumber();
+                const fromBlock = Math.max(0, currentBlock - 5000); 
+                const stableContract = new window.ethers.Contract(BERT_TOKEN_ADDRESS, contractInterface, readProvider); // CSP Fix
+                const filter = stableContract.filters.Transfer(null, BURN_ADDRESS); 
+                let events = await stableContract.queryFilter(filter, fromBlock, currentBlock);
+                const liveHashes = events.map(evt => evt.transactionHash);
+                
+                
+                // --- PHASE 5 LOGIC: COMBINE HASHS AND DEDUPLICATE ---
+                // Use a Set to ensure all hashes are unique. We rely on the order derived from Firestore later.
+                let uniqueHashes = [...new Set([...firestoreHashes, ...liveHashes])];
+                // ---------------------------------------------------
+                
+                
+                // *** CALCULATE AND DISPLAY BURN METRIC ***
+                const totalInscriptions = uniqueHashes.length;
+                
+                // CALCULATE TOTAL BURNED
+                const totalBurned = totalInscriptions * MINT_FEE_AMOUNT;
+                
+                // >>> UPDATE TEXT FORMAT AND CONTENT (Red, Graffiti font, Fire emoji added)
+                ui.totalBurn.textContent = `${totalBurned.toLocaleString()} BERT 🔥`;
+                // ------------------------------------------
+
+                if (pendingTxHash) removeGalleryCard(pendingTxHash);
+
+                ui.grid.innerHTML = '';
+                const fetchedHashes = new Set();
+                
+                const renderPromises = [];
+                let inscriptionCounter = 0; // Use a counter for the chronological index
+
+                // 3. Render all unique hashes (Firestore order is already newest-first)
+                for (const hash of uniqueHashes) {
+                    if (!fetchedHashes.has(hash)) { 
+                         inscriptionCounter++;
+                         renderPromises.push(decodeAndRenderTx(hash, false, readProvider, inscriptionCounter));
+                         fetchedHashes.add(hash);
+                    }
+                }
+                
+                
+                // *** AWAIT ALL RENDERING PROMISES before updating UI ***
+                await Promise.all(renderPromises);
+                
+                // The firestore query is ordered DESC, so the first hash rendered has the highest index.
+                // We must reverse the DOM elements to match the index order (1, 2, 3...)
+                const grid = ui.grid;
+                const children = Array.from(grid.children);
+                children.reverse().forEach(child => grid.appendChild(child));
+
+
+                if (ui.grid.children.length === 0) {
+                    ui.empty.classList.remove('hidden');
+                } else {
+                    ui.empty.classList.add('hidden');
+                }
+
+            } catch (e) {
+                console.error('fetchGallery error:', e);
+                ui.totalBurn.textContent = `0 BERT 🔥`; 
+            } finally {
+                ui.loader.classList.add('hidden'); 
+            }
+        }
+
+        // *** MODIFIED to return the promise/result of the rendering task ***
+        async function decodeAndRenderTx(hash, prepend = false, currentProvider = null, index = '---') {
+            const p = currentProvider || provider;
+             if (!p) return;
+
+             try {
+                const tx = await p.getTransaction(hash);
+                if(tx && tx.data && tx.data.length > 138) {
+                    // NOTE: This slice extracts the JSON payload from the transfer calldata
+                    const raw = "0x" + tx.data.slice(138); 
+                    let str = "";
+                    try {
+                        str = window.ethers.toUtf8String(raw);
+                    } catch (err) {
+                        return;
+                    }
+                    let content = str;
+                    try { content = JSON.parse(str).text; } catch(e){}
+                    
+                    // IMPORTANT: The index here is the chronological number (1, 2, 3...)
+                    createGalleryCard(content, tx.hash, tx.blockNumber || '---', false, index); // Use false for prepend here, DOM reversal handles final order
+                    return true; // Return a success indicator
+                }
+            } catch (e) {
+                console.warn("Could not decode TX for hash:", hash, e);
+            }
+            return false;
+        }
+
+        function removeGalleryCard(hash) {
+            const card = document.getElementById(`card-${hash}`);
+            if (card) card.remove();
+        }
+
+        // *** MODIFIED to accept and display index parameter and include new view button ***
+        function createGalleryCard(art, hash, block, prepend = false, index = '---') {
+            const safeArt = (art || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            const isPending = block === "Pending...";
+            const badge = isPending ? "bg-yellow-100 text-yellow-800" : "bg-gray-100 text-gray-600";
+            
+            // --- NEW: Store content in a global cache keyed by hash ---
+            window.tempInscriptionContent[hash] = art; 
+            // --------------------------------------------------------
+
+            removeGalleryCard(hash); 
+
+            const div = document.createElement('div');
+            div.id = `card-${hash}`; 
+            // Added card-hover class
+            div.className = `bg-white p-4 rounded-lg shadow border border-gray-200 flex flex-col animate-fade-in ${isPending ? 'pending-card' : ''} card-hover`; 
+            div.innerHTML = `
+                <div class="bg-gray-900 text-purple-400 p-4 rounded text-xs overflow-auto ascii-art mb-3 flex-grow" style="max-height: 300px;">${safeArt}</div>
+                
+                <div class="text-xl font-extrabold text-violet-500 mb-2">#${index}</div> 
+                
+                <div class="pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500 mb-2">
+                    <span class="px-2 py-1 rounded ${badge}">Block: ${block}</span>
+                    <a href="https://explorer.inkonchain.com/tx/${hash}" target="_blank" class="text-blue-500 hover:underline">View TX ↗</a>
+                </div>
+                <button onclick="viewFullInscription('${hash}')" 
+                        class="w-full bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold py-1 px-2 rounded transition mt-2">
+                    View Full Content
+                </button>
+            `;
+            
+            // NOTE: We now ONLY use appendChild (or manual prepend for pending) and reverse the entire DOM in fetchGallery.
+            ui.grid.appendChild(div);
+        }
+
+        // ============================================================
+        // 5. UTILS (MODIFIED FOR STABLE JSON RPC PROVIDER + Custom Alert)
+        // ============================================================
+        
+        // Custom Alert Function (Replaces native alert/confirm)
+        function showCustomAlert(title, message, type = "info") {
+            // Remove existing modal to prevent stacking
+            const existingModal = document.querySelector('#custom-alert-modal');
+            if (existingModal) existingModal.remove();
+
+            let titleColor, bgColor, buttonColor;
+            
+            switch (type) {
+                case 'error':
+                    titleColor = 'text-red-600';
+                    bgColor = 'bg-red-50';
+                    buttonColor = 'bg-red-600 hover:bg-red-700';
+                    break;
+                case 'success':
+                    titleColor = 'text-green-600';
+                    bgColor = 'bg-green-50';
+                    buttonColor = 'bg-green-600 hover:bg-green-700';
+                    break;
+                case 'info':
+                default:
+                    titleColor = 'text-violet-600';
+                    bgColor = 'bg-violet-50';
+                    buttonColor = 'bg-violet-600 hover:bg-violet-700';
+            }
+
+            const modalHtml = '<div id="custom-alert-modal" class="modal-overlay" style="display: flex;">' +
+                '<div class="modal-content ' + bgColor + '" style="max-width: 400px; color: #1f2937;">' +
+                '<h3 class="text-xl font-bold ' + titleColor + '">' + title + '</h3>' +
+                '<p class="mt-2 text-gray-700 whitespace-pre-wrap">' + message + '</p>' +
+                '<button onclick="document.querySelector(\'#custom-alert-modal\').remove()" ' +
+                'class="mt-4 w-full ' + buttonColor + ' text-white font-bold py-2 rounded transition">' +
+                'Got It' +
+                '</button></div></div>';
+            
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = modalHtml;
+            document.body.appendChild(tempDiv.firstChild);
+        }
+
+        async function fetchBalance() {
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+
+            if(!readProvider || !currentAccount) { 
+                 ui.balance.textContent = "---";
+                 return;
+            }
+            try {
+                // CSP Fix: Use the global contract interface
+                const stableReadContract = new window.ethers.Contract(CONFIRMED_BERT_ADDRESS, contractInterface, readProvider); 
+                const bal = await stableReadContract.balanceOf(currentAccount);
+                
+                if (bal === undefined || bal === null) {
+                    ui.balance.textContent = "N/A BERT";
+                    return;
+                }
+
+                const formattedBalance = parseFloat(window.ethers.formatUnits(bal, 18)).toFixed(2);
+                
+                if (formattedBalance === "0.00") {
+                    ui.balance.textContent = "0.00 BERT";
+                } else {
+                    ui.balance.textContent = formattedBalance + " BERT";
+                }
+            } catch(e){
+                console.error('fetchBalance failed:', e);
+                ui.balance.textContent = "---"; 
+            }
+        }
+
+        ui.input.addEventListener('input', calcGas);
+        async function calcGas() {
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+            const txt = ui.input.value || "";
+            const bytes = new TextEncoder().encode(txt);
+            
+            ui.byteCount.textContent = bytes.length;
+            
+            // --- PREVIEW LOGIC ---
+            if (txt.length > 0) {
+                safeHtml = txt.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                ui.preview.innerHTML = safeHtml;
+                ui.preview.classList.remove('hidden');
+            } else {
+                ui.preview.classList.add('hidden');
+                ui.preview.innerHTML = '';
+            }
+            // -------------------------
+
+            // Cannot estimate gas without a provider/network connection
+            if(!readProvider) {
+                ui.gas.textContent = `---`;
+                return;
+            }
+
+            // --- FIX: Show placeholder if input is empty ---
+            if (txt.length === 0) {
+                ui.gas.textContent = `(Start Typing)`;
+                return;
+            }
+            
+            try {
+                // 1. Construct the transaction data object using proper concatenation
+                const amount = window.ethers.parseUnits(MINT_FEE_AMOUNT.toString(), 18);
+                const json = JSON.stringify({ text: txt });
+                
+                // CSP FIX: Use the global contract interface for encoding
+                if (!contractInterface) throw new Error("Contract Interface not initialized for gas.");
+                const calldata = contractInterface.encodeFunctionData("transfer", [BURN_ADDRESS, amount]);
+                const payloadBytes = window.ethers.toUtf8Bytes(json);
+                const finalCalldata = window.ethers.concat([calldata, payloadBytes]);
+                
+                const txData = {
+                    to: BERT_TOKEN_ADDRESS,
+                    data: finalCalldata,
+                    value: 0
+                };
+
+                // 2. Estimate the Gas Limit
+                const gasLimit = await readProvider.estimateGas(txData);
+
+                // 3. Get the current Gas Price (Fee Data)
+                const feeData = await readProvider.getFeeData();
+                // Safely handle fee data for both EIP-1559 and legacy
+                const gasPrice = feeData.maxFeePerGas || feeData.gasPrice || BigInt(0);
+                
+                // 4. Calculate the total ETH cost
+                const cost = gasLimit * gasPrice; 
+                ui.gas.textContent = `~${parseFloat(window.ethers.formatEther(cost)).toFixed(6)} ETH`;
+
+            } catch (err) {
+                // Fallback: If live estimation fails (e.g., RPC issues, simulation error)
+                console.warn("Live Gas estimation failed, falling back to approximation:", err);
+                
+                const approxGas = BigInt(65000) + BigInt(bytes.length * 16); 
+
+                try {
+                    const feeData = await readProvider.getFeeData();
+                    const gasPrice = feeData.maxFeePerGas || feeData.gasPrice || BigInt(0);
+                    const cost = approxGas * gasPrice; 
+                    ui.gas.textContent = `~${parseFloat(window.ethers.formatEther(cost)).toFixed(6)} ETH (approx)`;
+                } catch (innerErr) {
+                    ui.gas.textContent = `Error/High Fee`;
+                }
+            }
+        }
+
+        ui.manualBtn.addEventListener('click', async () => {
+            const hash = ui.manualInput.value.trim();
+            
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+            if(!hash || !readProvider) {
+                showCustomAlert("Lookup Error", "Network connection issue. Please ensure the dApp loaded correctly.");
+                return;
+            }
+            
+            ui.manualBtn.textContent = "Searching...";
+            
+            try {
+                // Pass '---' for the index as it's an external hash lookup
+                const success = await decodeAndRenderTx(hash, true, readProvider, '---'); 
+                
+                if (success) {
+                     ui.empty.classList.add('hidden');
+                } else {
+                     showCustomAlert("Lookup Failed", "Transaction found, but no valid inscription data (transfer to burn address with payload).");
+                }
+            } catch(e) { 
+                console.error(e);
+                showCustomAlert("Lookup Failed", "Transaction not found or a general network error occurred.", "error"); 
+            }
+            
+            ui.manualBtn.textContent = "Look Up"; 
+        });
+
+        // ============================================================
+        // 4. GALLERY LOGIC (UPDATED TO USE FIRESTORE)
+        // ============================================================
+
+        async function fetchGallery() {
+            // Ensure Firebase is ready before attempting to fetch
+            if (!isFirestoreReady) {
+                await firebaseInit();
+                // If initialization fails, skip gallery fetch
+                if (!isFirestoreReady) return; 
+            }
+
+            const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+            if (!readProvider) return; 
+            
+            ui.loader.classList.remove('hidden');
+
+            try {
+                // 1. Fetch DYNAMIC historical hashes from Firestore (Primary Source, ordered by time)
+                const firestoreItemObjects = await fetchInscriptionsFromFirestore();
+                const firestoreHashes = firestoreItemObjects.map(item => item.hash);
+
+                // 2. Fetch the STABLE and RECENT events (Last 5000 blocks) from the Blockchain (Redundancy)
+                const currentBlock = await readProvider.getBlockNumber();
+                const fromBlock = Math.max(0, currentBlock - 5000); 
+                const stableContract = new window.ethers.Contract(BERT_TOKEN_ADDRESS, contractInterface, readProvider); // CSP Fix
+                const filter = stableContract.filters.Transfer(null, BURN_ADDRESS); 
+                let events = await stableContract.queryFilter(filter, fromBlock, currentBlock);
+                const liveHashes = events.map(evt => evt.transactionHash);
+                
+                
+                // --- PHASE 5 LOGIC: COMBINE HASHS AND DEDUPLICATE ---
+                // Use a Set to ensure all hashes are unique. We rely on the order derived from Firestore later.
+                let uniqueHashes = [...new Set([...firestoreHashes, ...liveHashes])];
+                // ---------------------------------------------------
+                
+                
+                // *** CALCULATE AND DISPLAY BURN METRIC ***
+                const totalInscriptions = uniqueHashes.length;
+                
+                // CALCULATE TOTAL BURNED
+                const totalBurned = totalInscriptions * MINT_FEE_AMOUNT;
+                
+                // >>> UPDATE TEXT FORMAT AND CONTENT (Red, Graffiti font, Fire emoji added)
+                ui.totalBurn.textContent = `${totalBurned.toLocaleString()} BERT 🔥`;
+                // ------------------------------------------
+
+                if (pendingTxHash) removeGalleryCard(pendingTxHash);
+
+                ui.grid.innerHTML = '';
+                const fetchedHashes = new Set();
+                
+                const renderPromises = [];
+                let inscriptionCounter = 0; // Use a counter for the chronological index
+
+                // 3. Render all unique hashes (Firestore order is already newest-first)
+                for (const hash of uniqueHashes) {
+                    if (!fetchedHashes.has(hash)) { 
+                         inscriptionCounter++;
+                         renderPromises.push(decodeAndRenderTx(hash, false, readProvider, inscriptionCounter));
+                         fetchedHashes.add(hash);
+                    }
+                }
+                
+                
+                // *** AWAIT ALL RENDERING PROMISES before updating UI ***
+                await Promise.all(renderPromises);
+                
+                // The firestore query is ordered DESC, so the first hash rendered has the highest index.
+                // We must reverse the DOM elements to match the index order (1, 2, 3...)
+                const grid = ui.grid;
+                const children = Array.from(grid.children);
+                children.reverse().forEach(child => grid.appendChild(child));
+
+
+                if (ui.grid.children.length === 0) {
+                    ui.empty.classList.remove('hidden');
+                } else {
+                    ui.empty.classList.add('hidden');
+                }
+
+            } catch (e) {
+                console.error('fetchGallery error:', e);
+                ui.totalBurn.textContent = `0 BERT 🔥`; 
+            } finally {
+                ui.loader.classList.add('hidden'); 
+            }
+        }
+
+        // *** MODIFIED to return the promise/result of the rendering task ***
+        async function decodeAndRenderTx(hash, prepend = false, currentProvider = null, index = '---') {
+            const p = currentProvider || provider;
+             if (!p) return;
+
+             try {
+                const tx = await p.getTransaction(hash);
+                if(tx && tx.data && tx.data.length > 138) {
+                    // NOTE: This slice extracts the JSON payload from the transfer calldata
+                    const raw = "0x" + tx.data.slice(138); 
+                    let str = "";
+                    try {
+                        str = window.ethers.toUtf8String(raw);
+                    } catch (err) {
+                        return;
+                    }
+                    let content = str;
+                    try { content = JSON.parse(str).text; } catch(e){}
+                    
+                    // IMPORTANT: The index here is the chronological number (1, 2, 3...)
+                    createGalleryCard(content, tx.hash, tx.blockNumber || '---', false, index); // Use false for prepend here, DOM reversal handles final order
+                    return true; // Return a success indicator
+                }
+            } catch (e) {
+                console.warn("Could not decode TX for hash:", hash, e);
+            }
+            return false;
+        }
+
+        function removeGalleryCard(hash) {
+            const card = document.getElementById(`card-${hash}`);
+            if (card) card.remove();
+        }
+
+        // *** MODIFIED to accept and display index parameter and include new view button ***
+        function createGalleryCard(art, hash, block, prepend = false, index = '---') {
+            const safeArt = (art || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            const isPending = block === "Pending...";
+            const badge = isPending ? "bg-yellow-100 text-yellow-800" : "bg-gray-100 text-gray-600";
+            
+            // --- NEW: Store content in a global cache keyed by hash ---
+            window.tempInscriptionContent[hash] = art; 
+            // --------------------------------------------------------
+
+            removeGalleryCard(hash); 
+
+            const div = document.createElement('div');
+            div.id = `card-${hash}`; 
+            // Added card-hover class
+            div.className = `bg-white p-4 rounded-lg shadow border border-gray-200 flex flex-col animate-fade-in ${isPending ? 'pending-card' : ''} card-hover`; 
+            div.innerHTML = `
+                <div class="bg-gray-900 text-purple-400 p-4 rounded text-xs overflow-auto ascii-art mb-3 flex-grow" style="max-height: 300px;">${safeArt}</div>
+                
+                <div class="text-xl font-extrabold text-violet-500 mb-2">#${index}</div> 
+                
+                <div class="pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500 mb-2">
+                    <span class="px-2 py-1 rounded ${badge}">Block: ${block}</span>
+                    <a href="https://explorer.inkonchain.com/tx/${hash}" target="_blank" class="text-blue-500 hover:underline">View TX ↗</a>
+                </div>
+                <button onclick="viewFullInscription('${hash}')" 
+                        class="w-full bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold py-1 px-2 rounded transition mt-2">
+                    View Full Content
+                </button>
+            `;
+            
+            // NOTE: We now ONLY use appendChild (or manual prepend for pending) and reverse the entire DOM in fetchGallery.
+            ui.grid.appendChild(div);
+        }
+
+        // ============================================================
         // 6. INIT: check connected accounts on load (Simplified)
         // ============================================================
         (async function init() {
