@@ -842,9 +842,11 @@
 
                 // --- NEW ERROR COALESCENCE CHECK ---
                 if (e.code === 'UNKNOWN_ERROR' && e.message.includes("could not coalesce error") && e.payload?.method === 'eth_getBlockByNumber') {
-                     msg = "Mint Confirmed. Failed to fetch final block details (RPC hiccup). The inscription is on the blockchain. Please refresh the gallery manually.";
+                     // *** MODIFIED MESSAGE FOR CLARITY ***
+                     msg = "Mint confirmed, but the network RPC failed to fetch final details. The app is attempting an automatic gallery refresh now.";
+                     
                      // Since we know the mint was successful (it passed tx.wait()), we can confirm it to the user.
-                     ui.statusMsg.textContent = `✅ MINT CONFIRMED (Minor Data Error)\n${msg}`;
+                     ui.statusMsg.textContent = `✅ MINT CONFIRMED (RPC Hiccup)\n${msg}`;
                      ui.statusBox.classList.remove('hidden');
                      
                      // Run fetchGallery one last time to attempt recovery
