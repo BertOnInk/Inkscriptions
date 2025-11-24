@@ -458,11 +458,11 @@
         async function firebaseInit() {
             if (isFirestoreReady) return true;
             
-            // Check if firebaseConfig is actually usable before attempting init
-            if (!firebaseConfig || !firebaseConfig.apiKey) {
-                 console.error("Firebase config is missing or invalid. Skipping initialization.");
-                 showCustomAlert("Database Error", "The Firebase configuration (API Key) is missing or invalid. Gallery cannot load.", "error");
-                 return false;
+            // NOTE: Relaxing the check here to allow initialization even if apiKey is missing,
+            // as the Firebase SDK can sometimes proceed using auth tokens alone in this environment.
+            if (!firebaseConfig || Object.keys(firebaseConfig).length === 0) {
+                 console.warn("Firebase config object is empty. Attempting init anyway.");
+                 // We will NOT show an alert here, relying on the try/catch block below to handle the ultimate failure.
             }
 
             try {
@@ -483,6 +483,7 @@
                 return true;
             } catch (e) {
                 console.error("Firebase initialization failed:", e);
+                // The explicit check is removed, so we rely entirely on this generic error message.
                 showCustomAlert("Database Error", "Failed to connect to the Firebase database. Gallery may not load correctly.", "error");
                 return false;
             }
