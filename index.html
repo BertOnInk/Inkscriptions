@@ -398,12 +398,11 @@
         // The Gallery (GET) function is now MOCKED to bypass unstable Google Script CORS.
         const GALLERY_API_URL = 'https://script.google.com/macros/s/AKfycbz-G5ZCZANs1arV8xbWdFkNbL_2MRP_T0JfQ2M3F6JcbqIiONiNsq-lpsSadqbX5C0/exec';
         // Collector URL is now the Firebase Function URL
-        const COLLECTOR_URL = 'https://us-central1-bert-on-ink.cloudfunctions.net/logInscription';
+        const COLLECTOR_URL = 'https://loginscription-ozhxovytsq-uc.a.run.app';
         // >>> END CORRECTED GLOBAL CONSTANTS <<<
 
-        // --- HARD-CODED GUARANTEE (FIXED: Only contains the two original mints) ---
+        // --- HARD-CODED GUARANTEE (Fallback if DB fails) ---
         const GUARANTEED_MINTS = [
-            // These two hashes represent the original data you wanted loaded from the sheet.
             { hash: "0xeb85a7dd5e847e2cb32aec12cf13a87ca33900eadd64c0880db8a6a2224e3a00" }, 
             { hash: "0x7f6d5341a49dc56706117eed565f2b7f41a71081db92d8ee792b8dcdf11be21b" }
         ];
@@ -809,15 +808,25 @@
         // ============================================================
         ui.refresh.addEventListener('click', fetchGallery);
 
-        // *** MOCK FUNCTION: Bypasses the failed Google Apps Script call ***
-        function fetchGuaranteedMintsFromAPI() {
-            // Returns a promise that resolves immediately with the mock data.
-            console.warn("MOCK DATA LOADED: Bypassing Google Script due to CORS failures.");
-            // 🚨 NOTE on Step 3.3: This function is still using the hard-coded GUARANTEED_MINTS array.
-            // To fully complete the migration (Step 3.3/4.0), you would create a new Firebase Function
-            // to fetch data from Firestore and update this function to call that Firebase GET endpoint.
-            // For now, we continue to rely on the MOCK data and on-chain events.
-            return Promise.resolve(GUARANTEED_MINTS);
+        // *** REAL FUNCTION: Fetches from Firebase Cloud Function ***
+        async function fetchGuaranteedMintsFromAPI() {
+            try {
+                // The COLLECTOR_URL now serves as a getter when method is GET (default for fetch)
+                // We use the same endpoint but rely on the function logic to handle the GET.
+                const response = await fetch(COLLECTOR_URL);
+                
+                if (!response.ok) {
+                    throw new Error(`Server status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                // Return the list from Firestore
+                return data; 
+            } catch (error) {
+                console.error("Failed to fetch from Firebase API:", error);
+                // Fallback to hardcoded values if the API is down
+                return GUARANTEED_MINTS;
+            }
         }
 
         async function fetchGallery() {
@@ -830,22 +839,23 @@
                 const currentBlock = await readProvider.getBlockNumber();
                 
                 // 1. Fetch the STABLE and RECENT events (Last 5000 blocks)
+                // This keeps the gallery live even if the API lags slightly
                 const fromBlock = Math.max(0, currentBlock - 5000); 
                 const stableContract = new window.ethers.Contract(BERT_TOKEN_ADDRESS, BERT_ABI_SNIPPET, readProvider);
                 const filter = stableContract.filters.Transfer(null, BURN_ADDRESS); 
                 let events = await stableContract.queryFilter(filter, fromBlock, currentBlock);
                 
                 
-                // 2. Fetch the DYNAMIC historical hashes from your MOCKED source
+                // 2. Fetch the HISTORICAL data from your Firebase Function
                 const externalGuaranteedHashes = await fetchGuaranteedMintsFromAPI();
                 
-                // --- PHASE 5 LOGIC: COMBINE HASHS AND DEDUPLICATE ---
+                // --- PHASE 5 LOGIC: COMBINE HASHES AND DEDUPLICATE ---
                 const liveHashes = events.map(evt => evt.transactionHash);
-                // Extract hashes from the mock objects
-                const mockHashes = externalGuaranteedHashes.map(item => item.hash);
+                // Extract hashes from the API objects
+                const apiHashes = externalGuaranteedHashes.map(item => item.hash);
 
                 // Combine live events and historical API hashes, removing duplicates
-                let combinedHashes = [...new Set([...liveHashes, ...mockHashes])];
+                let combinedHashes = [...new Set([...liveHashes, ...apiHashes])];
                 // ---------------------------------------------------
                 
                 
