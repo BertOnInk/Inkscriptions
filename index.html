@@ -245,7 +245,7 @@
         
         <div id="gallery-loader" class="text-center py-10 hidden">
             <div class="spinner h-8 w-8 border-4 border-violet-500 rounded-full mx-auto"></div>
-            <p class="text-gray-500 mt-2">Scanning Blockchain...</p>
+            <p class="text-gray-500 mt-2">Scanning Database...</p>
         </div>
 
         <div id="gallery-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
@@ -366,21 +366,30 @@
     </script>
     
     <script type="module">
+        // ============================================================
+        // FIREBASE CLIENT SDK IMPORTS & INITIALIZATION
+        // ============================================================
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, query, getDocs, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // --- End Firebase Imports ---
+
         // *** This simple import structure works best for local testing ***
         import { 
             INK_CHAIN_ID, 
             INK_RPC_URL, 
-            NFT_CONTRACT_ADDRESS, 
+            // NFT_CONTRACT_ADDRESS, // Not used in this logic
             BERT_TOKEN_ADDRESS, 
             BURN_ADDRESS, 
             MINT_FEE_AMOUNT, 
             BERT_ABI_SNIPPET,
-            NFT_ABI_SNIPPET, 
-            TOKEN_URI_ABI_SNIPPET 
+            // NFT_ABI_SNIPPET, // Not used in this logic
+            // TOKEN_URI_ABI_SNIPPET // Not used in this logic
         } from './contract_details.js';
 
         // ============================================================
-        // 1. FIX: GLOBAL VARIABLE INITIALIZATION
+        // GLOBAL VARIABLE INITIALIZATION
         // ============================================================
         let provider = null;
         let signer = null;
@@ -388,28 +397,24 @@
         let currentAccount = null;
         let currentChainId = null;
         let pendingTxHash = null;
-        // ============================================================
 
+        // Firebase Globals
+        let db = null;
+        let auth = null;
+        let isFirestoreReady = false;
+        
+        // Canvas Global Variables (MANDATORY)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        // ============================================================
 
         // *** CONFIRMED BERT TOKEN ADDRESS (Used for balance reading stability) ***
         const CONFIRMED_BERT_ADDRESS = "0x62c99FAc20B33b5423fdf9226179e973A8353e36";
 
-        // >>> CORRECTED GLOBAL CONSTANTS FOR FIREBASE ENDPOINTS (STATE BEFORE GALLERY FIX) <<<
-        // The Gallery (GET) function is still using the mock URL for now
-        const GALLERY_API_URL = 'https://script.google.com/macros/s/AKfycbz-G5ZCZANs1arV8xbWdFkNbL_2MRP_T0JfQ2M3F6JcbqIiONiNsq-lpsSadqbX5C0/exec';
         // Collector URL is the Firebase Function URL that WORKED
         const COLLECTOR_URL = 'https://us-central1-bert-on-ink.cloudfunctions.net/logInscription';
-        // >>> END CORRECTED GLOBAL CONSTANTS <<<
-
-        // --- HARD-CODED GUARANTEE (FIXED: Only contains the two original mints) ---
-        const GUARANTEED_MINTS = [
-            // These two hashes represent the original data you wanted loaded from the sheet.
-            { hash: "0xeb85a7dd5e847e2cb32aec12cf13a87ca33900eadd64c0880db8a6a2224e3a00" }, 
-            { hash: "0x7f6d5341a49dc56706117eed565f2b7f41a71081db92d8ee792b8dcdf11be21b" }
-        ];
-        let fetchedHashes = new Set(); 
-        // -----------------------------
-
+        
         // --- ELEMENTS ---
         const $ = (id) => document.getElementById(id);
         const ui = {
@@ -434,6 +439,70 @@
             empty: $('gallery-empty'),
             refresh: $('refresh-btn'),
         };
+
+
+        // ============================================================
+        // FIREBASE INITIALIZATION AND GALLERY DATA FETCHING
+        // ============================================================
+
+        async function firebaseInit() {
+            if (isFirestoreReady) return true;
+            try {
+                // setLogLevel('debug'); // Uncomment for debugging
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                // Authenticate using the custom token or anonymously
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                
+                isFirestoreReady = true;
+                console.log("Firebase initialized and signed in successfully.");
+                return true;
+            } catch (e) {
+                console.error("Firebase initialization failed:", e);
+                showCustomAlert("Database Error", "Failed to connect to the Firebase database. Gallery may not load correctly.", "error");
+                return false;
+            }
+        }
+
+        /**
+         * Fetches all public inscription hashes from the Firestore database.
+         * The data is ordered by the server-side timestamp (newest first).
+         * @returns {Array<Object>} Array of inscription objects { hash, block, timestamp }
+         */
+        async function fetchInscriptionsFromFirestore() {
+            if (!isFirestoreReady || !db) return [];
+
+            try {
+                // Public data path: /artifacts/{appId}/public/data/inscriptions
+                // Collection name is 'inscriptions' (as used in index.js)
+                const collectionPath = `artifacts/${appId}/public/data/inscriptions`;
+                
+                // Query the inscriptions collection, ordered by the server's creation timestamp
+                const q = query(collection(db, collectionPath), orderBy('createdAt', 'desc'));
+                const querySnapshot = await getDocs(q);
+                
+                // Map documents to the required format
+                const firestoreItems = querySnapshot.docs.map(doc => ({ 
+                    hash: doc.id, // The hash is the document ID
+                    block: doc.data().block || 'N/A', // Block number (optional for rendering)
+                    timestamp: doc.data().createdAt ? doc.data().createdAt.toDate().getTime() : 0 // For stable sorting
+                }));
+                
+                return firestoreItems;
+
+            } catch (e) {
+                console.error("Error fetching inscriptions from Firestore:", e);
+                // On error, return an empty array gracefully.
+                return [];
+            }
+        }
+
 
         // ============================================================
         // 1. CORE CONNECTION LOGIC
@@ -511,7 +580,6 @@
             contract = null;
             pendingTxHash = null;
             currentChainId = null; // NEW: Reset chain ID
-            fetchedHashes.clear(); 
             
             ui.header.classList.add('hidden');
             ui.balance.textContent = "---";
@@ -580,8 +648,6 @@
                 if (currentAccount) {
                     await rebuildConnection(currentAccount);
                 } else {
-                    // If not connected, just update the chain ID and re-check the expected network.
-                    // This relies on the chain ID check logic in rebuildConnection being robust.
                     await fetchGallery(); // Re-fetch gallery on the new chain.
                 }
             });
@@ -599,6 +665,7 @@
         });
 
         ui.disconnect.addEventListener('click', handleDisconnect);
+        ui.refresh.addEventListener('click', fetchGallery);
 
         // NEW: Function to switch network
         async function switchNetwork() {
@@ -722,7 +789,6 @@
                 const visibility = document.querySelector('input[name="gallery-visibility"]:checked').value;
                 
                 if (visibility === 'public') {
-                    // Collector URL is the Firebase Function URL that WORKED
                     const YOUR_FIREBASE_ENDPOINT = COLLECTOR_URL; 
                     
                     const dataToCollect = { 
@@ -735,8 +801,6 @@
                         // Send the hash to the Firebase collector endpoint
                         await fetch(YOUR_FIREBASE_ENDPOINT, {
                             method: 'POST',
-                            // The 'mode: no-cors' is REMOVED, allowing the browser to correctly
-                            // handle the POST request with the Content-Type header and Firebase's CORS.
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(dataToCollect)
                         });
@@ -754,7 +818,7 @@
 
                 
                 await fetchBalance();
-                await fetchGallery(); 
+                await fetchGallery(); // Force gallery refresh to pull from Firestore
 
                 ui.btn.disabled = false;
                 ui.spinner.classList.add('hidden');
@@ -805,48 +869,43 @@
         }
 
         // ============================================================
-        // 4. GALLERY LOGIC 
+        // 4. GALLERY LOGIC (UPDATED TO USE FIRESTORE)
         // ============================================================
-        ui.refresh.addEventListener('click', fetchGallery);
-
-        // *** MOCK FUNCTION: Bypasses the failed Google Apps Script call ***
-        function fetchGuaranteedMintsFromAPI() {
-            // Returns a promise that resolves immediately with the mock data.
-            console.warn("MOCK DATA LOADED: Bypassing Google Script due to CORS failures.");
-            return Promise.resolve(GUARANTEED_MINTS);
-        }
 
         async function fetchGallery() {
+            // Ensure Firebase is ready before attempting to fetch
+            if (!isFirestoreReady) {
+                await firebaseInit();
+                if (!isFirestoreReady) return;
+            }
+
             const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
             if (!readProvider) return; 
             
             ui.loader.classList.remove('hidden');
 
             try {
+                // 1. Fetch DYNAMIC historical hashes from Firestore (Primary Source, ordered by time)
+                const firestoreItemObjects = await fetchInscriptionsFromFirestore();
+                const firestoreHashes = firestoreItemObjects.map(item => item.hash);
+
+                // 2. Fetch the STABLE and RECENT events (Last 5000 blocks) from the Blockchain (Redundancy)
                 const currentBlock = await readProvider.getBlockNumber();
-                
-                // 1. Fetch the STABLE and RECENT events (Last 5000 blocks)
                 const fromBlock = Math.max(0, currentBlock - 5000); 
                 const stableContract = new window.ethers.Contract(BERT_TOKEN_ADDRESS, BERT_ABI_SNIPPET, readProvider);
                 const filter = stableContract.filters.Transfer(null, BURN_ADDRESS); 
                 let events = await stableContract.queryFilter(filter, fromBlock, currentBlock);
+                const liveHashes = events.map(evt => evt.transactionHash);
                 
-                
-                // 2. Fetch the DYNAMIC historical hashes from your MOCKED source
-                const externalGuaranteedHashes = await fetchGuaranteedMintsFromAPI();
                 
                 // --- PHASE 5 LOGIC: COMBINE HASHS AND DEDUPLICATE ---
-                const liveHashes = events.map(evt => evt.transactionHash);
-                // Extract hashes from the mock objects
-                const mockHashes = externalGuaranteedHashes.map(item => item.hash);
-
-                // Combine live events and historical API hashes, removing duplicates
-                let combinedHashes = [...new Set([...liveHashes, ...mockHashes])];
+                // Use a Set to ensure all hashes are unique. We rely on the order derived from Firestore later.
+                let uniqueHashes = [...new Set([...firestoreHashes, ...liveHashes])];
                 // ---------------------------------------------------
                 
                 
                 // *** CALCULATE AND DISPLAY BURN METRIC ***
-                const totalInscriptions = combinedHashes.length;
+                const totalInscriptions = uniqueHashes.length;
                 
                 // CALCULATE TOTAL BURNED
                 const totalBurned = totalInscriptions * MINT_FEE_AMOUNT;
@@ -858,16 +917,17 @@
                 if (pendingTxHash) removeGalleryCard(pendingTxHash);
 
                 ui.grid.innerHTML = '';
-                fetchedHashes.clear();
+                const fetchedHashes = new Set();
                 
                 const renderPromises = [];
-                let inscriptionCounter = 1;
+                let inscriptionCounter = 0; // Use a counter for the chronological index
 
-                // 3. Render all unique hashes (Both live and historical/curated)
-                for (const hash of combinedHashes) {
-                    // Only render if not already fetched from event scan (rare overlap, but safe)
+                // 3. Render all unique hashes (Firestore order is already newest-first)
+                for (const hash of uniqueHashes) {
                     if (!fetchedHashes.has(hash)) { 
-                         renderPromises.push(decodeAndRenderTx(hash, false, readProvider, inscriptionCounter++));
+                         inscriptionCounter++;
+                         renderPromises.push(decodeAndRenderTx(hash, false, readProvider, inscriptionCounter));
+                         fetchedHashes.add(hash);
                     }
                 }
                 
@@ -875,7 +935,8 @@
                 // *** AWAIT ALL RENDERING PROMISES before updating UI ***
                 await Promise.all(renderPromises);
                 
-                // Fix: Reverse the DOM order to show newest (highest index) first.
+                // The firestore query is ordered DESC, so the first hash rendered has the highest index.
+                // We must reverse the DOM elements to match the index order (1, 2, 3...)
                 const grid = ui.grid;
                 const children = Array.from(grid.children);
                 children.reverse().forEach(child => grid.appendChild(child));
@@ -898,12 +959,12 @@
         // *** MODIFIED to return the promise/result of the rendering task ***
         async function decodeAndRenderTx(hash, prepend = false, currentProvider = null, index = '---') {
             const p = currentProvider || provider;
-             if (!p || fetchedHashes.has(hash)) return;
+             if (!p) return;
 
              try {
                 const tx = await p.getTransaction(hash);
                 if(tx && tx.data && tx.data.length > 138) {
-                    // NOTE: The previous method for slicing the data (tx.data.slice(138)) assumes the calldata is 4 bytes (function selector) + 32 bytes (address) + 32 bytes (amount), which is 68 bytes * 2 hex chars = 136, but index 138 is often used to grab the remaining data safely. We rely on the existing logic here.
+                    // NOTE: This slice extracts the JSON payload from the transfer calldata
                     const raw = "0x" + tx.data.slice(138); 
                     let str = "";
                     try {
@@ -916,21 +977,12 @@
                     
                     // IMPORTANT: The index here is the chronological number (1, 2, 3...)
                     createGalleryCard(content, tx.hash, tx.blockNumber || '---', false, index); // Use false for prepend here, DOM reversal handles final order
-                    fetchedHashes.add(tx.hash);
                     return true; // Return a success indicator
                 }
             } catch (e) {
                 console.warn("Could not decode TX for hash:", hash, e);
             }
             return false;
-        }
-
-        // *** MODIFIED to return the promise/result of the rendering task ***
-        async function decodeEvent(evt, prepend = false, currentProvider = null, index = '---') {
-            if (!evt.transactionHash || fetchedHashes.has(evt.transactionHash)) return;
-            
-            // IMPORTANT: The index here is the chronological number (1, 2, 3...)
-            return decodeAndRenderTx(evt.transactionHash, false, currentProvider, index); // Use false for prepend here, DOM reversal handles final order
         }
 
         function removeGalleryCard(hash) {
@@ -969,9 +1021,8 @@
                 </button>
             `;
             
-            // NOTE: We now ONLY use appendChild (or manual prepend for pending) and reverse the entire DOM.
-            if (prepend) ui.grid.prepend(div); 
-            else ui.grid.appendChild(div);
+            // NOTE: We now ONLY use appendChild (or manual prepend for pending) and reverse the entire DOM in fetchGallery.
+            ui.grid.appendChild(div);
         }
 
         // ============================================================
@@ -1155,11 +1206,13 @@
         // 6. INIT: check connected accounts on load (Simplified)
         // ============================================================
         (async function init() {
-            // Only fetch gallery on load. We rely on the user clicking "Connect Wallet"
-            // to trigger eth_requestAccounts for a session.
+            // 1. Initialize Firebase first
+            await firebaseInit(); 
+            
+            // 2. Fetch gallery (uses the new Firestore data)
             await fetchGallery(); 
             
-            // Check for existing session automatically, only if Ethereum is available
+            // 3. Check for existing wallet session
             if (window.ethereum) {
                 try {
                     const acc = await window.ethereum.request({ method: 'eth_accounts' });
