@@ -394,18 +394,19 @@
         // *** CONFIRMED BERT TOKEN ADDRESS (Used for balance reading stability) ***
         const CONFIRMED_BERT_ADDRESS = "0x62c99FAc20B33b5423fdf9226179e973A8353e36";
 
-        // >>> FINAL CORRECTED GLOBAL CONSTANTS (Using Firebase for both Collector and Gallery) <<<
-        // GALLERY_API_URL now points to the new Firebase GET endpoint
-        const GALLERY_API_URL = 'https://us-central1-bert-on-ink.cloudfunctions.net/getGallery'; 
-        // Collector URL remains the POST endpoint
+        // >>> CORRECTED GLOBAL CONSTANTS FOR FIREBASE ENDPOINTS (STEP 3.1) <<<
+        // The Gallery (GET) function is now MOCKED to bypass unstable Google Script CORS.
+        const GALLERY_API_URL = 'https://script.google.com/macros/s/AKfycbz-G5ZCZANs1arV8xbWdFkNbL_2MRP_T0JfQ2M3F6JcbqIiONiNsq-lpsSadqbX5C0/exec';
+        // Collector URL is now the Firebase Function URL
         const COLLECTOR_URL = 'https://us-central1-bert-on-ink.cloudfunctions.net/logInscription';
-        // >>> END FINAL CORRECTED GLOBAL CONSTANTS <<<
-        
-        // --- HARD-CODED GUARANTEE (REMOVED) ---
-        // const GUARANTEED_MINTS = [
-        //     { hash: "0xeb85a7dd5e847e2cb32aec12cf13a87ca33900eadd64c0880db8a6a2224e3a00" }, 
-        //     { hash: "0x7f6d5341a49dc56706117eed565f2b7f41a71081db92d8ee792b8dcdf11be21b" }
-        // ];
+        // >>> END CORRECTED GLOBAL CONSTANTS <<<
+
+        // --- HARD-CODED GUARANTEE (FIXED: Only contains the two original mints) ---
+        const GUARANTEED_MINTS = [
+            // These two hashes represent the original data you wanted loaded from the sheet.
+            { hash: "0xeb85a7dd5e847e2cb32aec12cf13a87ca33900eadd64c0880db8a6a2224e3a00" }, 
+            { hash: "0x7f6d5341a49dc56706117eed565f2b7f41a71081db92d8ee792b8dcdf11be21b" }
+        ];
         let fetchedHashes = new Set(); 
         // -----------------------------
 
@@ -717,7 +718,7 @@
 
                 const receipt = await tx.wait(); // Wait for transaction to be mined
 
-                // --- START NEW LOGIC: SEND HASH TO COLLECTOR (FIREBASE POST) ---
+                // --- START NEW LOGIC: SEND HASH TO COLLECTOR (STEP 3.2 FIX) ---
                 const visibility = document.querySelector('input[name="gallery-visibility"]:checked').value;
                 
                 if (visibility === 'public') {
@@ -734,7 +735,8 @@
                         // Send the hash to the Firebase collector endpoint
                         await fetch(YOUR_FIREBASE_ENDPOINT, {
                             method: 'POST',
-                            // The 'mode: no-cors' is REMOVED
+                            // The 'mode: no-cors' is REMOVED, allowing the browser to correctly
+                            // handle the POST request with the Content-Type header and Firebase's CORS.
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(dataToCollect)
                         });
@@ -807,21 +809,15 @@
         // ============================================================
         ui.refresh.addEventListener('click', fetchGallery);
 
-        // *** FINAL GALLERY API CALL: Reads from the new Firebase Function ***
-        async function fetchGuaranteedMintsFromAPI() {
-            console.log("Fetching historical hashes from Firebase Gallery API.");
-            try {
-                const response = await fetch(GALLERY_API_URL);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
-                return data; // Returns an array of { hash, block, timestamp }
-            } catch (e) {
-                console.error("Failed to fetch gallery data from Firebase:", e);
-                // Fallback: Return empty array on failure
-                return [];
-            }
+        // *** MOCK FUNCTION: Bypasses the failed Google Apps Script call ***
+        function fetchGuaranteedMintsFromAPI() {
+            // Returns a promise that resolves immediately with the mock data.
+            console.warn("MOCK DATA LOADED: Bypassing Google Script due to CORS failures.");
+            // 🚨 NOTE on Step 3.3: This function is still using the hard-coded GUARANTEED_MINTS array.
+            // To fully complete the migration (Step 3.3/4.0), you would create a new Firebase Function
+            // to fetch data from Firestore and update this function to call that Firebase GET endpoint.
+            // For now, we continue to rely on the MOCK data and on-chain events.
+            return Promise.resolve(GUARANTEED_MINTS);
         }
 
         async function fetchGallery() {
@@ -840,16 +836,16 @@
                 let events = await stableContract.queryFilter(filter, fromBlock, currentBlock);
                 
                 
-                // 2. Fetch the DYNAMIC historical hashes from your Firebase source
+                // 2. Fetch the DYNAMIC historical hashes from your MOCKED source
                 const externalGuaranteedHashes = await fetchGuaranteedMintsFromAPI();
                 
                 // --- PHASE 5 LOGIC: COMBINE HASHS AND DEDUPLICATE ---
                 const liveHashes = events.map(evt => evt.transactionHash);
-                // Extract hashes from the Firebase objects
-                const externalHashes = externalGuaranteedHashes.map(item => item.hash);
+                // Extract hashes from the mock objects
+                const mockHashes = externalGuaranteedHashes.map(item => item.hash);
 
                 // Combine live events and historical API hashes, removing duplicates
-                let combinedHashes = [...new Set([...liveHashes, ...externalHashes])];
+                let combinedHashes = [...new Set([...liveHashes, ...mockHashes])];
                 // ---------------------------------------------------
                 
                 
