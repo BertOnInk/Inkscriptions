@@ -775,16 +775,60 @@
 
                 let msg = e.reason || e.message || "Unknown Error";
 
-                // --- NEW ERROR COALESCENCE CHECK ---
+                // --- NEW ERROR COALESCENCE CHECK WITH RECOVERY ---
                 if (e.code === 'UNKNOWN_ERROR' && e.message.includes("could not coalesce error") && e.payload?.method === 'eth_getBlockByNumber') {
-                     msg = "Mint Confirmed. Failed to fetch final block details (RPC hiccup). The inscription is on the blockchain. Please refresh the gallery manually.";
-                     // Since we know the mint was successful (it passed tx.wait()), we can confirm it to the user.
-                     ui.statusMsg.textContent = `✅ MINT CONFIRMED (Minor Data Error)\n${msg}`;
-                     ui.statusBox.classList.remove('hidden');
                      
-                     // Run fetchGallery one last time to attempt recovery
-                     await fetchGallery(); 
-                     return; 
+                     // ATTEMPT TO RECOVER AND LOG ANYWAY
+                     try {
+                        let blockNumber = null;
+                        if (provider) {
+                             // Try to fetch receipt manually one more time
+                             try {
+                                const r = await provider.getTransactionReceipt(pendingTxHash);
+                                // If receipt exists use its block
+                                if (r) blockNumber = r.blockNumber;
+                             } catch (ignore) {}
+
+                             // If receipt fetch failed or returned null, FALLBACK to current block
+                             if (!blockNumber) {
+                                 blockNumber = await provider.getBlockNumber();
+                             }
+                        }
+                        
+                        // If we managed to get a block number (or estimate), send to DB
+                        if (blockNumber) {
+                            const visibility = document.querySelector('input[name="gallery-visibility"]:checked').value;
+                            if (visibility === 'public') {
+                                await fetch(COLLECTOR_URL, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ 
+                                        hash: pendingTxHash,
+                                        block: blockNumber,
+                                        timestamp: Date.now()
+                                    })
+                                });
+                            }
+                            // Success message update
+                            ui.statusMsg.textContent = `✅ MINT CONFIRMED!\nHash: ${pendingTxHash}\n(Recovered from RPC Timeout)`;
+                            ui.statusBox.classList.remove('hidden');
+                            await fetchGallery();
+                            
+                            // Re-enable UI
+                            ui.btn.disabled = false;
+                            ui.spinner.classList.add('hidden');
+                            ui.btn.classList.remove('btn-primary-loading');
+                            ui.btnText.textContent = `MINT INKSCRIPTION (BURN ${MINT_FEE_AMOUNT} BERT)`;
+                            ui.input.value = '';
+                            calcGas();
+                            
+                            return;
+                        }
+                     } catch (recErr) {
+                         console.warn("Recovery logging failed:", recErr);
+                     }
+
+                     msg = "Mint Confirmed. Failed to fetch final block details (RPC hiccup). The inscription is on the blockchain. Please refresh the gallery manually.";
                 }
                 // -----------------------------------
 
@@ -870,7 +914,7 @@
                 
                 // Sort by Block Number ASCENDING (Oldest -> Newest)
                 // This is crucial for assigning correct chronological IDs (#1, #2...)
-                allItems.sort((a, b) => a.block - b.block);
+                allItems.sort((a, b) => (a.block || 0) - (b.block || 0));
                 
                 for(const item of allItems) {
                     if(!seenHashes.has(item.hash)) {
