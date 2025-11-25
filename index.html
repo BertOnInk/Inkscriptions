@@ -173,9 +173,7 @@
                     <p class="text-xs font-bold text-violet-800 uppercase tracking-wide">Connected As</p>
                     <p id="address-display" class="font-mono text-sm font-bold text-gray-800">...</p>
                 </div>
-                <!-- START OF EDIT: Disconnect button color matching -->
                 <button id="disconnect-btn" class="bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold px-3 py-1.5 rounded transition">Disconnect</button>
-                <!-- END OF EDIT -->
             </div>
             <div class="border-t border-gray-200 pt-4">
                 <div class="flex justify-between items-end">
@@ -206,7 +204,17 @@
         </div>
 
         <div class="space-y-2">
-            <label class="block text-sm font-medium text-black">Gallery Visibility:</label>
+            <div class="flex items-center gap-2">
+                <label class="block text-sm font-medium text-black">Gallery Visibility:</label>
+                <div class="group relative flex items-center">
+                    <div class="cursor-help text-violet-600 font-bold bg-violet-100 hover:bg-violet-200 rounded-full w-4 h-4 flex items-center justify-center text-[10px] border border-violet-300 transition">?</div>
+                    <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 text-left leading-relaxed">
+                        <p class="mb-2"><strong class="text-violet-400">Public:</strong> Your Inkscription and a link to your transaction on the Ink chain will be reflected in the Gallery.</p>
+                        <p><strong class="text-violet-400">Private:</strong> Your Inkscription will not be recorded and will not be displayed in the Gallery. You can still view your Inkscription privately in the Gallery by entering the tx ID in the "Find Specific Artifact" field.</p>
+                        <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                    </div>
+                </div>
+            </div>
             <div class="flex items-center space-x-4 bg-gray-50 p-2 rounded border border-violet-200">
                 
                 <div class="flex items-center">
@@ -222,12 +230,11 @@
                 </div>
             </div>
         </div>
-        <!-- BEGIN CHANGE: Replaced 'btn-primary' with 'bg-violet-600 hover:bg-violet-700' to match the Look Up button -->
+        
         <button id="main-btn" class="bg-violet-600 hover:bg-violet-700 w-full text-white font-bold py-3 rounded-lg flex items-center justify-center transition-all">
             <div id="spinner" class="spinner h-5 w-5 border-4 rounded-full mr-2 hidden"></div>
             <span id="btn-text">Connect Wallet</span>
         </button>
-        <!-- END CHANGE -->
 
         <div id="status-box" class="hidden bg-gray-100 p-4 rounded-lg mt-4">
             <pre id="status-msg" class="text-sm text-gray-800 overflow-x-auto whitespace-pre-wrap"></pre>
@@ -237,15 +244,12 @@
     <div class="w-full max-w-4xl mb-8 bg-white p-6 rounded-xl card">
         <h3 class="font-bold text-gray-800 mb-2">🔍 Find Specific Artifact</h3>
         <div class="flex gap-2">
-            <!-- START OF EDIT: Added text-black class to manual-hash input -->
             <input type="text" id="manual-hash" placeholder="0x..." class="text-black flex-grow p-3 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-violet-500 outline-none">
-            <!-- END OF EDIT -->
             <button id="manual-btn" class="bg-violet-600 hover:bg-violet-700 text-white font-bold px-6 rounded-lg transition">Look Up</button>
         </div>
     </div>
 
     <div class="w-full max-w-4xl">
-        <!-- MODIFIED: Added Filter Checkbox -->
         <div class="flex flex-col md:flex-row items-center justify-between mb-6 gap-4">
             <h2 class="text-2xl font-bold text-white">🏛️ Live Gallery</h2>
             
@@ -319,6 +323,74 @@
             document.body.removeChild(a);
             
             URL.revokeObjectURL(blobUrl);
+        }
+
+        // --- NEW: Helper function to generate an image from the inscription text ---
+        function viewAsImage(hash) {
+            const art = window.tempInscriptionContent[hash];
+            if (!art) {
+                // Reuse custom alert
+                const modal = document.createElement('div');
+                modal.innerHTML = '<div class="modal-overlay" id="custom-alert-modal" style="display: flex;">' +
+                    '<div class="modal-content" style="background-color: #fef2f2; border-color: #fecaca;">' +
+                    '<h3 class="text-xl font-bold text-red-600">Lookup Error</h3>' +
+                    '<p class="mt-2 text-gray-700">Could not find inscription content to generate image.</p>' +
+                    '<button onclick="this.closest(\'.modal-overlay\').remove()" class="mt-4 w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded transition">OK</button>' +
+                    '</div>' +
+                    '</div>';
+                document.body.appendChild(modal.firstChild);
+                return;
+            }
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d', { alpha: false }); // Optimizing for no transparency
+            
+            // HIGH QUALITY CONFIGURATION
+            const scale = 4; // 4x upscale for high density/quality (effectively 4K text)
+            const baseFontSize = 13;
+            const fontSize = baseFontSize * scale;
+            const lineHeight = Math.floor(fontSize * 1.2);
+            // Use 'bold' to ensure the purple color pops against black, preventing thin-line washout
+            const fontFamily = "bold " + fontSize + "px 'Courier New', Courier, monospace"; 
+            const padding = 20 * scale;
+            const bgColor = "#000000";
+            const textColor = "#c084fc";
+
+            // Prepare text
+            const lines = art.replace(/\t/g, '    ').split('\n');
+            
+            // Measure Text Width with the scaled font
+            ctx.font = fontFamily; 
+            let maxWidth = 0;
+            lines.forEach(line => {
+                const w = ctx.measureText(line).width;
+                if (w > maxWidth) maxWidth = w;
+            });
+
+            // Set Dimensions
+            canvas.width = Math.ceil(maxWidth + (padding * 2));
+            canvas.height = Math.ceil((lines.length * lineHeight) + (padding * 2));
+
+            // Draw Background
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Text
+            ctx.font = fontFamily;
+            ctx.fillStyle = textColor;
+            ctx.textBaseline = 'top'; 
+            
+            lines.forEach((line, i) => {
+                ctx.fillText(line, padding, padding + (i * lineHeight));
+            });
+
+            // Export to Blob and Open
+            canvas.toBlob(blob => {
+                const url = URL.createObjectURL(blob);
+                window.open(url, '_blank');
+                // Auto-revoke to clean up memory after a minute
+                setTimeout(() => URL.revokeObjectURL(url), 60000); 
+            }, 'image/png');
         }
 
         // --- NEW FAQ MODAL FUNCTIONS ---
@@ -447,7 +519,7 @@
             loader: $('gallery-loader'),
             empty: $('gallery-empty'),
             refresh: $('refresh-btn'),
-            filterCheckbox: $('my-artifacts-filter'), // NEW: Add filter checkbox
+            filterCheckbox: $('my-artifacts-filter'), 
         };
 
         // ============================================================
@@ -1112,11 +1184,15 @@
                 
                 <div class="pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500 mb-2">
                     <span class="px-2 py-1 rounded ${badge}">Block: ${block}</span>
-                    <a href="https://explorer.inkonchain.com/tx/${hash}" target="_blank" class="text-blue-500 hover:underline">View TX ↗</a>
+                    <div class="flex gap-2 items-center">
+                        <button onclick="viewAsImage('${hash}')" class="text-violet-500 hover:text-violet-700 hover:underline font-bold transition">View IMG 🖼️</button>
+                        <span class="text-gray-300">|</span>
+                        <a href="https://explorer.inkonchain.com/tx/${hash}" target="_blank" class="text-violet-500 hover:text-violet-700 hover:underline font-bold transition">View TX ↗</a>
+                    </div>
                 </div>
                 <button onclick="viewFullInscription('${hash}')" 
                         class="w-full bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold py-1 px-2 rounded transition mt-2">
-                    View Full Content
+                    View Raw
                 </button>
             `;
             
