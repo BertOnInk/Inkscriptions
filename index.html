@@ -46,6 +46,7 @@
         .btn-primary { background-color: #9333ea; transition: background-color 0.3s; }
         .btn-primary:hover { background-color: #7c3aed; }
         .spinner { border-top-color: #fff; border-right-color: transparent; -webkit-animation: spin 1s linear infinite; animation: spin 1s linear infinite; }
+        .btn-primary-loading { opacity: 0.7; cursor: not-allowed; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .btn-primary-loading { opacity: 0.7; cursor: not-allowed; }
         .ascii-art { 
@@ -172,7 +173,9 @@
                     <p class="text-xs font-bold text-violet-800 uppercase tracking-wide">Connected As</p>
                     <p id="address-display" class="font-mono text-sm font-bold text-gray-800">...</p>
                 </div>
+                <!-- START OF EDIT: Disconnect button color matching -->
                 <button id="disconnect-btn" class="bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold px-3 py-1.5 rounded transition">Disconnect</button>
+                <!-- END OF EDIT -->
             </div>
             <div class="border-t border-gray-200 pt-4">
                 <div class="flex justify-between items-end">
@@ -219,10 +222,12 @@
                 </div>
             </div>
         </div>
-        <button id="main-btn" class="btn-primary w-full text-white font-bold py-3 rounded-lg flex items-center justify-center transition-all">
+        <!-- BEGIN CHANGE: Replaced 'btn-primary' with 'bg-violet-600 hover:bg-violet-700' to match the Look Up button -->
+        <button id="main-btn" class="bg-violet-600 hover:bg-violet-700 w-full text-white font-bold py-3 rounded-lg flex items-center justify-center transition-all">
             <div id="spinner" class="spinner h-5 w-5 border-4 rounded-full mr-2 hidden"></div>
             <span id="btn-text">Connect Wallet</span>
         </button>
+        <!-- END CHANGE -->
 
         <div id="status-box" class="hidden bg-gray-100 p-4 rounded-lg mt-4">
             <pre id="status-msg" class="text-sm text-gray-800 overflow-x-auto whitespace-pre-wrap"></pre>
@@ -232,15 +237,25 @@
     <div class="w-full max-w-4xl mb-8 bg-white p-6 rounded-xl card">
         <h3 class="font-bold text-gray-800 mb-2">🔍 Find Specific Artifact</h3>
         <div class="flex gap-2">
-            <input type="text" id="manual-hash" placeholder="0x..." class="flex-grow p-3 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-violet-500 outline-none">
+            <!-- START OF EDIT: Added text-black class to manual-hash input -->
+            <input type="text" id="manual-hash" placeholder="0x..." class="text-black flex-grow p-3 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-violet-500 outline-none">
+            <!-- END OF EDIT -->
             <button id="manual-btn" class="bg-violet-600 hover:bg-violet-700 text-white font-bold px-6 rounded-lg transition">Look Up</button>
         </div>
     </div>
 
     <div class="w-full max-w-4xl">
-        <div class="flex items-center justify-between mb-6">
+        <!-- MODIFIED: Added Filter Checkbox -->
+        <div class="flex flex-col md:flex-row items-center justify-between mb-6 gap-4">
             <h2 class="text-2xl font-bold text-white">🏛️ Live Gallery</h2>
-            <button id="refresh-btn" class="text-black text-sm bg-white border border-gray-300 px-3 py-1 rounded hover:bg-gray-50">↻ Refresh</button>
+            
+            <div class="flex items-center gap-4">
+                <label class="flex items-center space-x-2 bg-white px-3 py-1.5 rounded cursor-pointer hover:bg-gray-50 border border-gray-300 transition shadow-sm">
+                    <input type="checkbox" id="my-artifacts-filter" class="form-checkbox h-4 w-4 text-violet-600 rounded focus:ring-violet-500 border-gray-300">
+                    <span class="text-sm font-bold text-gray-700">My Mints Only</span>
+                </label>
+                <button id="refresh-btn" class="text-black text-sm bg-white border border-gray-300 px-3 py-1.5 rounded hover:bg-gray-50 font-medium shadow-sm">↻ Refresh</button>
+            </div>
         </div>
         
         <div id="gallery-loader" class="text-center py-10 hidden">
@@ -432,6 +447,7 @@
             loader: $('gallery-loader'),
             empty: $('gallery-empty'),
             refresh: $('refresh-btn'),
+            filterCheckbox: $('my-artifacts-filter'), // NEW: Add filter checkbox
         };
 
         // ============================================================
@@ -709,7 +725,9 @@
                 pendingTxHash = tx.hash;
 
                 // Index is unknown for a pending transaction
-                createGalleryCard(text, tx.hash, "Pending...", true, '---'); 
+                // NOTE: Pending tx usually doesn't have a 'from' yet in this context unless we use currentAccount,
+                // but for gallery consistency, we can pass currentAccount as the sender for the pending card.
+                createGalleryCard(text, tx.hash, "Pending...", true, '---', currentAccount); 
                 ui.empty.classList.add('hidden');
 
                 ui.statusMsg.textContent = `⏳ TRANSACTION PENDING\nHash: ${tx.hash}`;
@@ -844,6 +862,50 @@
         // 4. GALLERY LOGIC 
         // ============================================================
         ui.refresh.addEventListener('click', fetchGallery);
+        
+        // NEW: Filter Event Listener
+        ui.filterCheckbox.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            const cards = document.querySelectorAll('#gallery-grid > div');
+            
+            if (isChecked && !currentAccount) {
+                // Uncheck if no wallet connected
+                e.target.checked = false;
+                showCustomAlert("Wallet Required", "Please connect your wallet to filter by your inscriptions.");
+                return;
+            }
+
+            if (cards.length === 0) return;
+
+            let visibleCount = 0;
+            cards.forEach(card => {
+                if (isChecked) {
+                    // FILTER MODE: Hide if sender doesn't match currentAccount
+                    const sender = card.dataset.sender;
+                    if (!sender || sender.toLowerCase() !== currentAccount.toLowerCase()) {
+                        card.classList.add('hidden');
+                    } else {
+                        card.classList.remove('hidden');
+                        visibleCount++;
+                    }
+                } else {
+                    // ALL MODE: Show everything
+                    card.classList.remove('hidden');
+                    visibleCount++;
+                }
+            });
+
+            // Toggle empty state message if filter hides everything
+            if (visibleCount === 0 && isChecked) {
+                ui.empty.textContent = "No inscriptions found for your address.";
+                ui.empty.classList.remove('hidden');
+            } else if (visibleCount > 0) {
+                ui.empty.classList.add('hidden');
+            } else {
+                ui.empty.textContent = "No inscriptions found.";
+                ui.empty.classList.remove('hidden');
+            }
+        });
 
         // *** REAL FUNCTION: Fetches from Firebase Cloud Function ***
         async function fetchGuaranteedMintsFromAPI() {
@@ -873,15 +935,11 @@
             ui.loader.classList.remove('hidden');
 
             try {
-                const currentBlock = await readProvider.getBlockNumber();
+                // REMOVED BLOCKCHAIN EVENT SCANNING TO RESPECT PRIVACY SETTINGS
+                // The gallery now relies purely on the DB API (Public Mints Only)
                 
-                // 1. Fetch the STABLE and RECENT events (Last 5000 blocks)
-                // This keeps the gallery live even if the API lags slightly
-                const fromBlock = Math.max(0, currentBlock - 5000); 
+                // We still need the contract instance for calculating the Total Burn
                 const stableContract = new window.ethers.Contract(BERT_TOKEN_ADDRESS, BERT_ABI_SNIPPET, readProvider);
-                const filter = stableContract.filters.Transfer(null, BURN_ADDRESS); 
-                let events = await stableContract.queryFilter(filter, fromBlock, currentBlock);
-                
                 
                 // 2. Fetch the HISTORICAL data from your Firebase Function
                 const externalGuaranteedMints = await fetchGuaranteedMintsFromAPI();
@@ -894,11 +952,6 @@
                 // Add API items (API items should have a 'block' field)
                 externalGuaranteedMints.forEach(item => {
                     allItems.push({ hash: item.hash, block: Number(item.block) });
-                });
-                
-                // Add Live items (Events have 'blockNumber')
-                events.forEach(evt => {
-                     allItems.push({ hash: evt.transactionHash, block: Number(evt.blockNumber) });
                 });
                 
                 // Deduplicate based on hash
@@ -976,7 +1029,20 @@
         // *** MODIFIED to return the promise/result of the rendering task ***
         async function decodeAndRenderTx(hash, prepend = false, currentProvider = null, index = '---') {
             const p = currentProvider || provider;
-             if (!p || fetchedHashes.has(hash)) return;
+             
+             // FIX: Handle case where hash is already fetched
+             if (fetchedHashes.has(hash)) {
+                 const existingCard = document.getElementById(`card-${hash}`);
+                 if (existingCard) {
+                     existingCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                     // Add a temporary highlight effect
+                     existingCard.classList.add('ring-4', 'ring-violet-500');
+                     setTimeout(() => existingCard.classList.remove('ring-4', 'ring-violet-500'), 2000);
+                 }
+                 return true; // Return true because it IS a valid inscription
+             }
+
+             if (!p) return;
 
              try {
                 const tx = await p.getTransaction(hash);
@@ -993,7 +1059,8 @@
                     try { content = JSON.parse(str).text; } catch(e){}
                     
                     // IMPORTANT: The index here is the chronological number (1, 2, 3...)
-                    createGalleryCard(content, tx.hash, tx.blockNumber || '---', false, index); // Use false for prepend here, DOM reversal handles final order
+                    // CRITICAL FIX: Pass 'tx.from' to createGalleryCard so we can filter by sender later
+                    createGalleryCard(content, tx.hash, tx.blockNumber || '---', false, index, tx.from); 
                     fetchedHashes.add(tx.hash);
                     return true; // Return a success indicator
                 }
@@ -1017,7 +1084,8 @@
         }
 
         // *** MODIFIED to accept and display index parameter and include new view button ***
-        function createGalleryCard(art, hash, block, prepend = false, index = '---') {
+        // *** MODIFIED: Now accepts 'sender' argument ***
+        function createGalleryCard(art, hash, block, prepend = false, index = '---', sender = null) {
             const safeArt = (art || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
             const isPending = block === "Pending...";
             const badge = isPending ? "bg-yellow-100 text-yellow-800" : "bg-gray-100 text-gray-600";
@@ -1030,6 +1098,11 @@
 
             const div = document.createElement('div');
             div.id = `card-${hash}`; 
+            // NEW: Store sender address in dataset for filtering
+            if (sender) {
+                div.dataset.sender = sender;
+            }
+            
             // Added card-hover class
             div.className = `bg-white p-4 rounded-lg shadow border border-gray-200 flex flex-col animate-fade-in ${isPending ? 'pending-card' : ''} card-hover`; 
             div.innerHTML = `
@@ -1213,16 +1286,26 @@
             ui.manualBtn.textContent = "Searching...";
             
             try {
+                // --- CHANGE: Clear grid to show ONLY the searched artifact ---
+                ui.grid.innerHTML = '';
+                fetchedHashes.clear();
+                ui.empty.classList.add('hidden');
+                // -------------------------------------------------------------
+
                 // Pass '---' for the index as it's an external hash lookup
                 const success = await decodeAndRenderTx(hash, true, readProvider, '---'); 
                 
                 if (success) {
                      ui.empty.classList.add('hidden');
                 } else {
+                     ui.empty.textContent = "No inscription found.";
+                     ui.empty.classList.remove('hidden');
                      showCustomAlert("Lookup Failed", "Transaction found, but no valid inscription data (transfer to burn address with payload).");
                 }
             } catch(e) { 
                 console.error(e);
+                ui.empty.textContent = "Error during lookup.";
+                ui.empty.classList.remove('hidden');
                 showCustomAlert("Lookup Failed", "Transaction not found or a general network error occurred.", "error"); 
             }
             
