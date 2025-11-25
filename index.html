@@ -783,16 +783,9 @@
                         let blockNumber = null;
                         if (provider) {
                              // Try to fetch receipt manually one more time
-                             try {
-                                const r = await provider.getTransactionReceipt(pendingTxHash);
-                                // If receipt exists use its block
-                                if (r) blockNumber = r.blockNumber;
-                             } catch (ignore) {}
-
-                             // If receipt fetch failed or returned null, FALLBACK to current block
-                             if (!blockNumber) {
-                                 blockNumber = await provider.getBlockNumber();
-                             }
+                             const r = await provider.getTransactionReceipt(pendingTxHash);
+                             // If receipt exists use its block, otherwise fallback to current block number
+                             blockNumber = r ? r.blockNumber : await provider.getBlockNumber();
                         }
                         
                         // If we managed to get a block number (or estimate), send to DB
@@ -925,9 +918,21 @@
                 // ---------------------------------------------------
                 
                 // *** CALCULATE AND DISPLAY BURN METRIC ***
-                const totalInscriptions = uniqueItems.length;
-                const totalBurned = totalInscriptions * MINT_FEE_AMOUNT;
-                ui.totalBurn.textContent = `${totalBurned.toLocaleString()} BERT 🔥`;
+                // ===> REPLACEMENT: FETCH TRUE BURN BALANCE <===
+                try {
+                    const burnBalance = await stableContract.balanceOf(BURN_ADDRESS);
+                    // Format the balance (assuming 18 decimals)
+                    // Use Math.floor or similar if you want integer values, or toLocaleString for commas
+                    const formattedBurn = parseFloat(window.ethers.formatUnits(burnBalance, 18));
+                    ui.totalBurn.textContent = `${formattedBurn.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})} BERT 🔥`;
+                } catch (burnErr) {
+                    console.warn("Failed to fetch burn balance, falling back to list count:", burnErr);
+                    // Fallback to old method if contract read fails
+                    const totalInscriptions = uniqueItems.length;
+                    const totalBurned = totalInscriptions * MINT_FEE_AMOUNT;
+                    ui.totalBurn.textContent = `${totalBurned.toLocaleString()} BERT 🔥`;
+                }
+                // ==============================================
 
                 if (pendingTxHash) removeGalleryCard(pendingTxHash);
 
