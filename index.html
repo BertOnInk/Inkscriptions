@@ -31,6 +31,13 @@
         .graffiti-font {
             font-family: 'Bungee', cursive;
         }
+        /* NEW: Force font loading */
+        .font-loader {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+            z-index: -1;
+        }
         .card { 
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
             background-color: rgba(255, 255, 255, 0.05);
@@ -198,6 +205,10 @@
 </head>
 <body class="min-h-screen p-4 flex flex-col items-center">
 
+    <!-- NEW: Force font preloading so Canvas can use them immediately -->
+    <div class="font-loader" style="font-family: 'Permanent Marker';">.</div>
+    <div class="font-loader" style="font-family: 'Bungee';">.</div>
+
     <div class="w-full max-w-xl mb-8 text-center mt-8">
         <h1 class="text-4xl font-bold graffiti-title">Bert's Inkscriptions 🐔🖋️</h1>
         <p class="text-white mt-2">Permanent artifacts inked on chain.</p>
@@ -210,8 +221,9 @@
             <div class="flex flex-col items-center justify-center -mt-2 mb-1"> 
                 <img src="burning_chicken.png" onerror="this.onerror=null;this.src='https://placehold.co/40x40/9333ea/ffffff?text=🐔🔥'" alt="Burning Chicken" class="h-10 w-10 mt-1 mb-2"> 
                 <p class="text-sm font-medium text-black flex items-center gap-2">
-                    Burn BERT, ink history
-                    <button id="faq-btn" class="text-xs text-violet-600 font-bold hover:text-violet-700 transition underline">FAQ</button>
+                    <!-- MODIFIED: Applied Permanent Marker font here to ensure loading -->
+                    <span style="font-family: 'Permanent Marker', cursive; font-size: 1.1rem;">Burn BERT, ink history</span>
+                    <button id="faq-btn" class="text-xs text-violet-600 font-bold hover:text-violet-700 transition underline" style="font-family: 'Inter', sans-serif;">FAQ</button>
                 </p>
             </div>
 
@@ -355,6 +367,9 @@
     <script>
         // Global storage for inscription content
         window.tempInscriptionContent = {};
+        
+        // FLAG TO PREVENT DOUBLE WELCOME ALERTS
+        let welcomeAlertShown = false;
 
         // Helper function to safely open the full view
         function viewFullInscription(hash) {
@@ -435,9 +450,18 @@
         }
 
         // --- NEW: OFFICIAL TRADING CARD GENERATOR (OWNER ONLY) ---
-        function generateTradingCard(hash, rarityColor, rarityName, index, sender) {
+        async function generateTradingCard(hash, rarityColor, rarityName, index, sender) {
             const art = window.tempInscriptionContent[hash];
             if (!art) return;
+
+            // --- FIX 2: WAIT FOR FONTS TO LOAD ---
+            try {
+                await document.fonts.load("160px 'Bungee'");
+                await document.fonts.load("100px 'Permanent Marker'");
+            } catch (e) {
+                console.warn("Fonts possibly not loaded yet, rendering might fallback.", e);
+            }
+            // -------------------------------------
 
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
@@ -737,8 +761,11 @@
                 await fetchGallery(); 
                 calcGas();
                 
-                // Alert the user about the new feature
-                showCustomAlert("Welcome Back!", "You can now mint official Trading Cards for your artifacts. Look for the '✨ Mint Card' button on your own inscriptions!", "success");
+                // Alert the user about the new feature (Check Flag first)
+                if (!welcomeAlertShown) {
+                    showCustomAlert("Welcome Back!", "You can now mint official Trading Cards for your artifacts. Look for the '✨ Mint Card' button on your own inscriptions!", "success");
+                    welcomeAlertShown = true;
+                }
 
             } catch (err) {
                 console.error('rebuildConnection error:', err);
@@ -754,6 +781,7 @@
             pendingTxHash = null;
             currentChainId = null;
             fetchedHashes.clear(); 
+            welcomeAlertShown = false; // Reset flag on disconnect
             
             ui.header.classList.add('hidden');
             ui.balance.textContent = "---";
