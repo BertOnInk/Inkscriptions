@@ -4,7 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Bert's Inkscriptions 🐔🖋️</title>
-    <link href="https://fonts.googleapis.com/css2?family=Bungee&display=swap" rel="stylesheet">
+    <!-- CHANGED: Switched Sedgwick Ave Display to Permanent Marker -->
+    <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Permanent+Marker&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
     <style>
@@ -167,6 +168,32 @@
         .faq-answer strong {
             color: #4c1d95;
         }
+        
+        /* NEW: Button animation for owner card */
+        .btn-shine {
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-shine::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.2),
+                transparent
+            );
+            animation: shine 3s infinite;
+        }
+        @keyframes shine {
+            0% { left: -100%; }
+            20% { left: 100%; }
+            100% { left: 100%; }
+        }
     </style>
 </head>
 <body class="min-h-screen p-4 flex flex-col items-center">
@@ -287,7 +314,6 @@
             </div>
         </div>
 
-        <!-- NEW: Rarity Legend (UPDATED TO VALID HEX) -->
         <div class="flex flex-wrap gap-3 mb-6 bg-black/20 p-3 rounded-lg border border-white/10 text-xs">
             <span class="text-gray-300 font-bold uppercase tracking-wider mr-2 self-center">Rarity Guide:</span>
             <div class="flex items-center gap-1.5 bg-gray-800/50 px-2 py-1 rounded border border-gray-600">
@@ -334,16 +360,7 @@
         function viewFullInscription(hash) {
             const art = window.tempInscriptionContent[hash];
             if (!art) {
-                // Use a custom UI alert instead of the native alert()
-                const modal = document.createElement('div');
-                modal.innerHTML = '<div class="modal-overlay" id="custom-alert-modal" style="display: flex;">' +
-                    '<div class="modal-content" style="background-color: #fef2f2; border-color: #fecaca;">' +
-                    '<h3 class="text-xl font-bold text-red-600">Lookup Error</h3>' +
-                    '<p class="mt-2 text-gray-700">Could not find inscription content for hash: ' + hash.substring(0, 10) + '...</p>' +
-                    '<button onclick="this.closest(\'.modal-overlay\').remove()" class="mt-4 w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded transition">OK</button>' +
-                    '</div>' +
-                    '</div>';
-                document.body.appendChild(modal.firstChild);
+                showCustomAlert("Lookup Error", 'Could not find inscription content for hash: ' + hash.substring(0, 10) + '...', 'error');
                 return;
             }
 
@@ -371,37 +388,24 @@
         function viewAsImage(hash) {
             const art = window.tempInscriptionContent[hash];
             if (!art) {
-                // Reuse custom alert
-                const modal = document.createElement('div');
-                modal.innerHTML = '<div class="modal-overlay" id="custom-alert-modal" style="display: flex;">' +
-                    '<div class="modal-content" style="background-color: #fef2f2; border-color: #fecaca;">' +
-                    '<h3 class="text-xl font-bold text-red-600">Lookup Error</h3>' +
-                    '<p class="mt-2 text-gray-700">Could not find inscription content to generate image.</p>' +
-                    '<button onclick="this.closest(\'.modal-overlay\').remove()" class="mt-4 w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded transition">OK</button>' +
-                    '</div>' +
-                    '</div>';
-                document.body.appendChild(modal.firstChild);
+                showCustomAlert("Lookup Error", 'Could not find inscription content to generate image.', 'error');
                 return;
             }
 
             const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d', { alpha: false }); // Optimizing for no transparency
+            const ctx = canvas.getContext('2d', { alpha: false }); 
             
-            // HIGH QUALITY CONFIGURATION
-            const scale = 4; // 4x upscale for high density/quality (effectively 4K text)
+            const scale = 4; 
             const baseFontSize = 13;
             const fontSize = baseFontSize * scale;
             const lineHeight = Math.floor(fontSize * 1.2);
-            // Use 'bold' to ensure the purple color pops against black, preventing thin-line washout
             const fontFamily = "bold " + fontSize + "px 'Courier New', Courier, monospace"; 
             const padding = 20 * scale;
             const bgColor = "#000000";
             const textColor = "#c084fc";
 
-            // Prepare text
             const lines = art.replace(/\t/g, '    ').split('\n');
             
-            // Measure Text Width with the scaled font
             ctx.font = fontFamily; 
             let maxWidth = 0;
             lines.forEach(line => {
@@ -409,15 +413,12 @@
                 if (w > maxWidth) maxWidth = w;
             });
 
-            // Set Dimensions
             canvas.width = Math.ceil(maxWidth + (padding * 2));
             canvas.height = Math.ceil((lines.length * lineHeight) + (padding * 2));
 
-            // Draw Background
             ctx.fillStyle = bgColor;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Draw Text
             ctx.font = fontFamily;
             ctx.fillStyle = textColor;
             ctx.textBaseline = 'top'; 
@@ -426,12 +427,149 @@
                 ctx.fillText(line, padding, padding + (i * lineHeight));
             });
 
-            // Export to Blob and Open
             canvas.toBlob(blob => {
                 const url = URL.createObjectURL(blob);
                 window.open(url, '_blank');
-                // Auto-revoke to clean up memory after a minute
                 setTimeout(() => URL.revokeObjectURL(url), 60000); 
+            }, 'image/png');
+        }
+
+        // --- NEW: OFFICIAL TRADING CARD GENERATOR (OWNER ONLY) ---
+        function generateTradingCard(hash, rarityColor, rarityName, index, sender) {
+            const art = window.tempInscriptionContent[hash];
+            if (!art) return;
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            // --- INCREASED QUALITY: 2X SCALING (2400 x 3600) ---
+            const cw = 2400;
+            const ch = 3600;
+            canvas.width = cw;
+            canvas.height = ch;
+
+            // Background
+            ctx.fillStyle = "#0f0f0f";
+            ctx.fillRect(0, 0, cw, ch);
+
+            // Dynamic Border based on rarity
+            ctx.strokeStyle = rarityColor;
+            ctx.lineWidth = 80; // Scaled x2
+            ctx.strokeRect(0, 0, cw, ch);
+
+            // Inner Glow
+            ctx.shadowColor = rarityColor;
+            ctx.shadowBlur = 100; // Scaled x2
+            ctx.fillStyle = "#1a1a1a";
+            ctx.fillRect(100, 100, cw - 200, ch - 200); // Scaled x2
+            ctx.shadowBlur = 0; // Reset
+
+            // Header Area
+            ctx.fillStyle = rarityColor;
+            // CHANGED: Use Bungee Graffiti font for the Header (Scaled x2)
+            ctx.font = "160px 'Bungee', cursive";
+            ctx.textAlign = "center";
+            ctx.fillText(`INKSCRIPTION #` + index, cw / 2, 320);
+
+            // Rarity Badge on Card (COOLER STYLE: Glow + Graffiti Font)
+            ctx.save();
+            ctx.shadowColor = rarityColor;
+            ctx.shadowBlur = 40; // Neon glow effect Scaled x2
+            ctx.fillStyle = "#ffffff";
+            // CHANGED: Uses 'Permanent Marker' for graffiti style
+            ctx.font = "100px 'Permanent Marker', cursive";
+            ctx.textAlign = "center"; // Ensure center logic in case it was affected
+            ctx.fillText(rarityName.toUpperCase(), cw / 2, 440);
+            ctx.restore();
+            
+            // TX HASH Underneath (In Rarity Color)
+            ctx.fillStyle = rarityColor;
+            ctx.font = "bold 48px 'Courier New', monospace";
+            ctx.textAlign = "center"; // Explicitly set center for the hash too
+            ctx.fillText(hash, cw / 2, 520);
+
+            // --- ASCII ART DRAWING (SCALED TO FIT) ---
+            const artBoxX = 200;
+            const artBoxY = 600;
+            const artBoxW = cw - 400;
+            const artBoxH = ch - 1200;
+
+            // Draw Art Box Background
+            ctx.fillStyle = "#000000";
+            ctx.fillRect(artBoxX, artBoxY, artBoxW, artBoxH);
+            ctx.strokeStyle = "#333";
+            ctx.lineWidth = 10;
+            ctx.strokeRect(artBoxX, artBoxY, artBoxW, artBoxH);
+
+            // Calculate Scale
+            const lines = art.split('\n');
+            ctx.font = "bold 200px 'Courier New', monospace"; // Start huge to measure
+            
+            // Find widest line
+            let maxLineW = 0;
+            lines.forEach(l => {
+                const w = ctx.measureText(l).width;
+                if (w > maxLineW) maxLineW = w;
+            });
+
+            // Calculate scaling factor to fit width and height
+            const scaleX = (artBoxW - 160) / maxLineW; // 160px padding
+            const totalTextHeight = lines.length * 200 * 1.1; // 1.1 lineHeight
+            const scaleY = (artBoxH - 160) / totalTextHeight;
+
+            const finalScale = Math.min(scaleX, scaleY);
+            const finalFontSize = Math.floor(200 * finalScale);
+            const lineHeight = Math.floor(finalFontSize * 1.1);
+
+            ctx.font = `bold ${finalFontSize}px 'Courier New', monospace`;
+            ctx.fillStyle = rarityColor; // Art matches rarity color
+            ctx.textAlign = "left"; // Reset to left for art
+            ctx.textBaseline = "top";
+
+            // Center vertically/horizontally in the box
+            const actualTextH = lines.length * lineHeight;
+            const startY = artBoxY + (artBoxH - actualTextH) / 2;
+            
+            // Simple horizontal centering (approximate for monospaced)
+            const actualTextW = maxLineW * finalScale; // Approximate
+            
+            lines.forEach((line, i) => {
+                ctx.fillText(line, artBoxX + 80, startY + (i * lineHeight));
+            });
+
+            // --- FOOTER ---
+            // Verified Logo area - CHANGED TO BUNGEE FONT WITH GLOW
+            ctx.save();
+            ctx.shadowColor = "#ffffff";
+            ctx.shadowBlur = 30; // White glow
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "80px 'Bungee', cursive";
+            ctx.textAlign = "center";
+            ctx.fillText("VERIFIED INKSCRIPTION", cw / 2, ch - 440);
+            ctx.restore();
+            
+            // FIX: Explicitly set center alignment again as drawing art set it to 'left'
+            ctx.textAlign = "center"; 
+            ctx.fillStyle = "#666";
+            ctx.font = "60px 'Inter', sans-serif";
+            ctx.fillText("Block: " + window.tempInscriptionContent[hash + '_block'], cw / 2, ch - 340);
+
+            // SIGNATURE (The Anti-Theft Feature)
+            ctx.fillStyle = rarityColor;
+            ctx.font = "bold 60px 'Courier New', monospace";
+            ctx.fillText("MINTED BY: " + sender.toUpperCase(), cw / 2, ch - 160);
+
+            // Download
+            canvas.toBlob(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                // CHANGED: Filename is now the hash
+                a.download = `${hash}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
             }, 'image/png');
         }
 
@@ -491,11 +629,9 @@
                 if (e.target === overlay) closeFaqModal();
             });
         });
-        // ---------------------------------
     </script>
     
     <script type="module">
-        // *** This simple import structure works best for local testing ***
         import { 
             INK_CHAIN_ID, 
             INK_RPC_URL, 
@@ -508,37 +644,23 @@
             TOKEN_URI_ABI_SNIPPET 
         } from './contract_details.js';
 
-        // ============================================================
-        // 1. FIX: GLOBAL VARIABLE INITIALIZATION
-        // ============================================================
         let provider = null;
         let signer = null;
         let contract = null;
         let currentAccount = null;
         let currentChainId = null;
         let pendingTxHash = null;
-        // ============================================================
 
-
-        // *** CONFIRMED BERT TOKEN ADDRESS (Used for balance reading stability) ***
         const CONFIRMED_BERT_ADDRESS = "0x62c99FAc20B33b5423fdf9226179e973A8353e36";
-
-        // >>> CORRECTED GLOBAL CONSTANTS FOR FIREBASE ENDPOINTS (STEP 3.1) <<<
-        // The Gallery (GET) function is now MOCKED to bypass unstable Google Script CORS.
         const GALLERY_API_URL = 'https://script.google.com/macros/s/AKfycbz-G5ZCZANs1arV8xbWdFkNbL_2MRP_T0JfQ2M3F6JcbqIiONiNsq-lpsSadqbX5C0/exec';
-        // Collector URL is now the Firebase Function URL
         const COLLECTOR_URL = 'https://loginscription-ozhxovytsq-uc.a.run.app';
-        // >>> END CORRECTED GLOBAL CONSTANTS <<<
 
-        // --- HARD-CODED GUARANTEE (Fallback if DB fails) ---
         const GUARANTEED_MINTS = [
             { hash: "0xeb85a7dd5e847e2cb32aec12cf13a87ca33900eadd64c0880db8a6a2224e3a00" }, 
             { hash: "0x7f6d5341a49dc56706117eed565f2b7f41a71081db92d8ee792b8dcdf11be21b" }
         ];
         let fetchedHashes = new Set(); 
-        // -----------------------------
 
-        // --- ELEMENTS ---
         const $ = (id) => document.getElementById(id);
         const ui = {
             header: $('wallet-bar'),
@@ -564,10 +686,6 @@
             filterCheckbox: $('my-artifacts-filter'), 
         };
 
-        // ============================================================
-        // 1. CORE CONNECTION LOGIC
-        // ============================================================
-
         async function rebuildConnection(forcedAccount = null) {
             if (typeof window.ethereum === 'undefined') {
                 console.warn('No wallet found when rebuilding connection');
@@ -576,12 +694,10 @@
             }
 
             try {
-                // *** STRICT RE-INITIALIZATION (Wallet Provider for Signing) ***
                 provider = new window.ethers.BrowserProvider(window.ethereum);
                 signer = await provider.getSigner();
                 currentChainId = Number(await window.ethereum.request({ method: 'eth_chainId' }));
 
-                // --- PRIORITY ADDRESS LOGIC ---
                 let definitiveAccount;
                 if (forcedAccount) {
                     definitiveAccount = forcedAccount;
@@ -595,38 +711,35 @@
                     }
                 }
                 
-                // Set the current account state and update the UI
                 currentAccount = window.ethers.getAddress(definitiveAccount);
-                // ---------------------------------------------------
 
-                // Recreate contract with the fresh signer (using the address from contract_details for minting/signing)
                 contract = new window.ethers.Contract(BERT_TOKEN_ADDRESS, BERT_ABI_SNIPPET, signer);
 
-                // Update UI elements 
                 ui.header.classList.remove('hidden');
                 ui.address.textContent = currentAccount || 'Unknown';
                 
-                // === START CHAIN CHECK LOGIC (No UI update needed here, just button state) ===
                 const expectedChainId = parseInt(INK_CHAIN_ID);
                 if (currentChainId !== expectedChainId) {
                     ui.btn.disabled = true;
                     ui.btnText.textContent = `SWITCH TO CHAIN ${expectedChainId}`;
-                    // Optional: Alert the user if they connect on the wrong chain silently
                     showCustomAlert("Wrong Network", `Your wallet is on the wrong network (ID: ${currentChainId}). Please click the button below to switch to Ink L2 Mainnet (ID: ${expectedChainId}).`, "error");
                 } else {
                     ui.btn.disabled = false;
                     ui.btnText.textContent = `MINT INKSCRIPTION (BURN ${MINT_FEE_AMOUNT} BERT)`;
                 }
-                // === END CHAIN CHECK LOGIC ===
 
                 ui.spinner.classList.add('hidden');
                 ui.btn.classList.remove('btn-primary-loading');
 
-                // Fetch live data (uses dedicated readProvider now)
                 await fetchBalance();
-                // When connected, we fetch the gallery here
-                await fetchGallery(); // <-- Ensure gallery loads after successful connection setup
+                // We re-fetch the gallery here. This is crucial because it triggers 'createGalleryCard'
+                // which now contains the logic to show the "Mint Card" button for owned items.
+                await fetchGallery(); 
                 calcGas();
+                
+                // Alert the user about the new feature
+                showCustomAlert("Welcome Back!", "You can now mint official Trading Cards for your artifacts. Look for the '✨ Mint Card' button on your own inscriptions!", "success");
+
             } catch (err) {
                 console.error('rebuildConnection error:', err);
                 handleDisconnect();
@@ -639,7 +752,7 @@
             signer = null;
             contract = null;
             pendingTxHash = null;
-            currentChainId = null; // NEW: Reset chain ID
+            currentChainId = null;
             fetchedHashes.clear(); 
             
             ui.header.classList.add('hidden');
@@ -655,18 +768,15 @@
 
         async function connectWallet() {
             if (typeof window.ethereum === 'undefined') {
-                // Use custom UI alert instead of native alert()
                 showCustomAlert("No Wallet Found", "Please install MetaMask, Rabby, or another Web3 wallet to use this dApp.", "error");
                 return;
             }
             try {
-                // Request accounts. This will trigger MetaMask/Rabby to connect/confirm/unlock
                 const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
                 
                 if (accounts && accounts.length > 0) {
                     await rebuildConnection(accounts[0]);
                 } else {
-                    // This scenario is rare but covers cases where the request returns an empty array
                     handleDisconnect();
                 }
                 return accounts;
@@ -682,36 +792,24 @@
             }
         }
 
-        // ============================================================
-        // 2. EVENT LISTENERS
-        // ============================================================
         if (window.ethereum) {
             window.ethereum.on('accountsChanged', async (accounts) => {
                 console.log("Wallet accountsChanged event fired:", accounts);
-                
-                // In many modern wallets, this handles disconnects correctly, but we'll re-init anyway
                 if (!accounts || accounts.length === 0) {
                     handleDisconnect();
                     return;
                 }
-                
-                // *** DELAYED REBUILD ***
                 setTimeout(async () => {
                     await rebuildConnection(accounts[0]);
-                    console.log("Wallet address updated after 100ms delay.");
                 }, 100);
             });
 
             window.ethereum.on('chainChanged', async (chainId) => {
-                console.log("Chain changed event fired:", chainId);
-                // Update the currentChainId state and re-check connection
                 currentChainId = Number(chainId);
                 if (currentAccount) {
                     await rebuildConnection(currentAccount);
                 } else {
-                    // If not connected, just update the chain ID and re-check the expected network.
-                    // This relies on the chain ID check logic in rebuildConnection being robust.
-                    await fetchGallery(); // Re-fetch gallery on the new chain.
+                    await fetchGallery(); 
                 }
             });
         }
@@ -720,7 +818,6 @@
             if (!currentAccount) {
                 connectWallet();
             } else if (currentChainId !== parseInt(INK_CHAIN_ID)) {
-                // NEW: If wrong chain, attempt to switch
                 switchNetwork();
             } else {
                 mintInscription();
@@ -729,7 +826,6 @@
 
         ui.disconnect.addEventListener('click', handleDisconnect);
 
-        // NEW: Function to switch network
         async function switchNetwork() {
             const expectedChainId = parseInt(INK_CHAIN_ID);
             const chainIdHex = window.ethers.toBeHex(expectedChainId);
@@ -740,11 +836,9 @@
                     params: [{ chainId: chainIdHex }],
                 });
             } catch (switchError) {
-                // This error code indicates that the chain has not been added to MetaMask.
                 if (switchError.code === 4902) {
-                    // CRITICAL FIX: Use the INK_RPC_URL from contract_details.js to suggest adding the network.
                     const rpcUrl = INK_RPC_URL; 
-                    const networkName = "Ink L2 Mainnet"; // Name derived from contract_details.js comment
+                    const networkName = "Ink L2 Mainnet"; 
                     
                     showCustomAlert(
                         "Network Not Added", 
@@ -764,11 +858,9 @@
                                     symbol: 'ETH',
                                     decimals: 18,
                                 },
-                                // Block explorer URL is helpful, assuming it's available or known (e.g., Ink's explorer)
                                 blockExplorerUrls: ['https://explorer.inkonchain.com/'], 
                             }],
                         });
-                        // If successfully added, the chainChanged event will fire and rebuild connection.
                     } catch (addError) {
                         showCustomAlert("Add Network Failed", "Failed to add the network. Please add the Ink L2 Mainnet manually using Chain ID 57073 and RPC: " + rpcUrl, "error");
                     }
@@ -779,34 +871,26 @@
             }
         }
 
-
-        // ============================================================
-        // 3. MINTING (Uses wallet's signer, now with locked wallet check)
-        // ============================================================
         async function mintInscription() {
             const text = ui.input.value.trim();
             if (!text) {
-                // Use custom UI alert instead of native alert()
                 showCustomAlert("Input Required", "Please enter text or ASCII art for your Inkscription.");
                 return;
             }
             
-            // CRITICAL FIX: Explicit Chain ID check before sending TX
             if (currentChainId !== parseInt(INK_CHAIN_ID)) {
                 showCustomAlert("Wrong Network", `Please switch your wallet to the correct network (Chain ID: ${parseInt(INK_CHAIN_ID)}) before minting.`, "error");
-                switchNetwork(); // Offer to switch network
+                switchNetwork(); 
                 return; 
             }
             
             if (!currentAccount || !signer) {
-                console.warn("Signer object is missing. Attempting to re-acquire signer.");
                 await rebuildConnection(currentAccount);
                 if (!signer) {
                     showCustomAlert("Wallet Locked", "Wallet is currently locked or requires attention. Please unlock your wallet and try again.", "error");
                     return; 
                 }
             }
-            // ----------------------------------------
 
             try {
                 ui.btn.disabled = true;
@@ -819,41 +903,30 @@
                 const amount = window.ethers.parseUnits(MINT_FEE_AMOUNT.toString(), 18);
                 const json = JSON.stringify({ text: text });
                 
-                // --- CRITICAL FIX: Use ethers.concat for proper byte concatenation ---
                 const calldata = contract.interface.encodeFunctionData("transfer", [BURN_ADDRESS, amount]);
                 const payloadBytes = window.ethers.toUtf8Bytes(json);
-                
-                // Concatenate the function call calldata and the inscription payload
                 const finalCalldata = window.ethers.concat([calldata, payloadBytes]);
-                // -------------------------------------------------------------------
 
-                // The transaction simulation failing here is the source of the 500 error.
                 const tx = await signer.sendTransaction({
                     to: BERT_TOKEN_ADDRESS,
-                    data: finalCalldata, // Use the properly concatenated byte data
+                    data: finalCalldata, 
                     value: 0
-                    // No gasLimit needed, let the wallet estimate gas again (now that the data is clean)
                 });
 
                 ui.btnText.textContent = "Minting...";
                 pendingTxHash = tx.hash;
 
-                // Index is unknown for a pending transaction
-                // NOTE: Pending tx usually doesn't have a 'from' yet in this context unless we use currentAccount,
-                // but for gallery consistency, we can pass currentAccount as the sender for the pending card.
                 createGalleryCard(text, tx.hash, "Pending...", true, '---', currentAccount); 
                 ui.empty.classList.add('hidden');
 
                 ui.statusMsg.textContent = `⏳ TRANSACTION PENDING\nHash: ${tx.hash}`;
                 ui.statusBox.classList.remove('hidden');
 
-                const receipt = await tx.wait(); // Wait for transaction to be mined
+                const receipt = await tx.wait(); 
 
-                // --- START NEW LOGIC: SEND HASH TO COLLECTOR (STEP 3.2 FIX) ---
                 const visibility = document.querySelector('input[name="gallery-visibility"]:checked').value;
                 
                 if (visibility === 'public') {
-                    // Use the Firebase Collector URL
                     const YOUR_FIREBASE_ENDPOINT = COLLECTOR_URL; 
                     
                     const dataToCollect = { 
@@ -863,26 +936,19 @@
                     };
 
                     try {
-                        // Send the hash to the Firebase collector endpoint
                         await fetch(YOUR_FIREBASE_ENDPOINT, {
                             method: 'POST',
-                            // The 'mode: no-cors' is REMOVED, allowing the browser to correctly
-                            // handle the POST request with the Content-Type header and Firebase's CORS.
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(dataToCollect)
                         });
-                        // Assume success if fetch completes without throwing an error
                         ui.statusMsg.textContent = `✅ TRANSACTION CONFIRMED!\nHash: ${tx.hash}\n(Gallery Log Sent: Public)`;
                     } catch (e) {
                         console.warn("Failed to send TX Hash to Firebase Function:", e);
                         ui.statusMsg.textContent = `✅ TRANSACTION CONFIRMED!\nHash: ${tx.hash}\n(ERROR: Gallery Log Failed)`;
                     }
                 } else {
-                    // User chose Private
                     ui.statusMsg.textContent = `✅ TRANSACTION CONFIRMED!\nHash: ${tx.hash}\n(Gallery Log: Private)`;
                 }
-                // --- END NEW LOGIC ---
-
                 
                 await fetchBalance();
                 await fetchGallery(); 
@@ -907,20 +973,14 @@
 
                 let msg = e.reason || e.message || "Unknown Error";
 
-                // --- NEW ERROR COALESCENCE CHECK WITH RECOVERY ---
                 if (e.code === 'UNKNOWN_ERROR' && e.message.includes("could not coalesce error") && e.payload?.method === 'eth_getBlockByNumber') {
-                     
-                     // ATTEMPT TO RECOVER AND LOG ANYWAY
                      try {
                         let blockNumber = null;
                         if (provider) {
-                             // Try to fetch receipt manually one more time
                              const r = await provider.getTransactionReceipt(pendingTxHash);
-                             // If receipt exists use its block, otherwise fallback to current block number
                              blockNumber = r ? r.blockNumber : await provider.getBlockNumber();
                         }
                         
-                        // If we managed to get a block number (or estimate), send to DB
                         if (blockNumber) {
                             const visibility = document.querySelector('input[name="gallery-visibility"]:checked').value;
                             if (visibility === 'public') {
@@ -934,12 +994,10 @@
                                     })
                                 });
                             }
-                            // Success message update
                             ui.statusMsg.textContent = `✅ MINT CONFIRMED!\nHash: ${pendingTxHash}\n(Recovered from RPC Timeout)`;
                             ui.statusBox.classList.remove('hidden');
                             await fetchGallery();
                             
-                            // Re-enable UI
                             ui.btn.disabled = false;
                             ui.spinner.classList.add('hidden');
                             ui.btn.classList.remove('btn-primary-loading');
@@ -955,9 +1013,7 @@
 
                      msg = "Mint Confirmed. Failed to fetch final block details (RPC hiccup). The inscription is on the blockchain. Please refresh the gallery manually.";
                 }
-                // -----------------------------------
 
-                // CRITICAL CATCH: Check for the 500 error specifically
                 if (typeof msg === 'string' && msg.includes("status code 500")) {
                      msg = "RPC Error (500): The live network RPC node failed to process the transaction pre-flight check. This is highly likely due to the RPC being unstable or the transaction failing during simulation. Please check your token balance and ensure the network is functioning.";
                 } else if (typeof msg === 'string' && msg.includes("insufficient")) {
@@ -972,18 +1028,13 @@
             }
         }
 
-        // ============================================================
-        // 4. GALLERY LOGIC 
-        // ============================================================
         ui.refresh.addEventListener('click', fetchGallery);
         
-        // NEW: Filter Event Listener
         ui.filterCheckbox.addEventListener('change', (e) => {
             const isChecked = e.target.checked;
             const cards = document.querySelectorAll('#gallery-grid > div');
             
             if (isChecked && !currentAccount) {
-                // Uncheck if no wallet connected
                 e.target.checked = false;
                 showCustomAlert("Wallet Required", "Please connect your wallet to filter by your inscriptions.");
                 return;
@@ -994,7 +1045,6 @@
             let visibleCount = 0;
             cards.forEach(card => {
                 if (isChecked) {
-                    // FILTER MODE: Hide if sender doesn't match currentAccount
                     const sender = card.dataset.sender;
                     if (!sender || sender.toLowerCase() !== currentAccount.toLowerCase()) {
                         card.classList.add('hidden');
@@ -1003,13 +1053,11 @@
                         visibleCount++;
                     }
                 } else {
-                    // ALL MODE: Show everything
                     card.classList.remove('hidden');
                     visibleCount++;
                 }
             });
 
-            // Toggle empty state message if filter hides everything
             if (visibleCount === 0 && isChecked) {
                 ui.empty.textContent = "No inscriptions found for your address.";
                 ui.empty.classList.remove('hidden');
@@ -1021,11 +1069,8 @@
             }
         });
 
-        // *** REAL FUNCTION: Fetches from Firebase Cloud Function ***
         async function fetchGuaranteedMintsFromAPI() {
             try {
-                // The COLLECTOR_URL now serves as a getter when method is GET (default for fetch)
-                // We use the same endpoint but rely on the function logic to handle the GET.
                 const response = await fetch(COLLECTOR_URL);
                 
                 if (!response.ok) {
@@ -1033,11 +1078,9 @@
                 }
 
                 const data = await response.json();
-                // Return the list from Firestore
                 return data; 
             } catch (error) {
                 console.error("Failed to fetch from Firebase API:", error);
-                // Fallback to hardcoded values if the API is down
                 return GUARANTEED_MINTS;
             }
         }
@@ -1049,31 +1092,19 @@
             ui.loader.classList.remove('hidden');
 
             try {
-                // REMOVED BLOCKCHAIN EVENT SCANNING TO RESPECT PRIVACY SETTINGS
-                // The gallery now relies purely on the DB API (Public Mints Only)
-                
-                // We still need the contract instance for calculating the Total Burn
                 const stableContract = new window.ethers.Contract(BERT_TOKEN_ADDRESS, BERT_ABI_SNIPPET, readProvider);
                 
-                // 2. Fetch the HISTORICAL data from your Firebase Function
                 const externalGuaranteedMints = await fetchGuaranteedMintsFromAPI();
-                
-                // --- PHASE 5 LOGIC: COMBINE AND SORT BY BLOCK NUMBER ---
-                // We create a unified list of objects { hash, block } to allow strict sorting
                 
                 const allItems = [];
                 
-                // Add API items (API items should have a 'block' field)
                 externalGuaranteedMints.forEach(item => {
                     allItems.push({ hash: item.hash, block: Number(item.block) });
                 });
                 
-                // Deduplicate based on hash
                 const uniqueItems = [];
                 const seenHashes = new Set();
                 
-                // Sort by Block Number ASCENDING (Oldest -> Newest)
-                // This is crucial for assigning correct chronological IDs (#1, #2...)
                 allItems.sort((a, b) => (a.block || 0) - (b.block || 0));
                 
                 for(const item of allItems) {
@@ -1082,24 +1113,17 @@
                         uniqueItems.push(item);
                     }
                 }
-                // ---------------------------------------------------
                 
-                // *** CALCULATE AND DISPLAY BURN METRIC ***
-                // ===> REPLACEMENT: FETCH TRUE BURN BALANCE <===
                 try {
                     const burnBalance = await stableContract.balanceOf(BURN_ADDRESS);
-                    // Format the balance (assuming 18 decimals)
-                    // Use Math.floor or similar if you want integer values, or toLocaleString for commas
                     const formattedBurn = parseFloat(window.ethers.formatUnits(burnBalance, 18));
                     ui.totalBurn.textContent = `${formattedBurn.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})} BERT 🔥`;
                 } catch (burnErr) {
                     console.warn("Failed to fetch burn balance, falling back to list count:", burnErr);
-                    // Fallback to old method if contract read fails
                     const totalInscriptions = uniqueItems.length;
                     const totalBurned = totalInscriptions * MINT_FEE_AMOUNT;
                     ui.totalBurn.textContent = `${totalBurned.toLocaleString()} BERT 🔥`;
                 }
-                // ==============================================
 
                 if (pendingTxHash) removeGalleryCard(pendingTxHash);
 
@@ -1109,18 +1133,14 @@
                 const renderPromises = [];
                 let inscriptionCounter = 1;
 
-                // 3. Render all unique hashes in strictly sorted order
                 for (const item of uniqueItems) {
-                    // Only render if not already fetched (double check logic)
                     if (!fetchedHashes.has(item.hash)) { 
                          renderPromises.push(decodeAndRenderTx(item.hash, false, readProvider, inscriptionCounter++));
                     }
                 }
                 
-                // *** AWAIT ALL RENDERING PROMISES before updating UI ***
                 await Promise.all(renderPromises);
                 
-                // Fix: Reverse the DOM order to show newest (highest index) first.
                 const grid = ui.grid;
                 const children = Array.from(grid.children);
                 children.reverse().forEach(child => grid.appendChild(child));
@@ -1140,20 +1160,17 @@
             }
         }
 
-        // *** MODIFIED to return the promise/result of the rendering task ***
         async function decodeAndRenderTx(hash, prepend = false, currentProvider = null, index = '---') {
             const p = currentProvider || provider;
              
-             // FIX: Handle case where hash is already fetched
              if (fetchedHashes.has(hash)) {
                  const existingCard = document.getElementById(`card-${hash}`);
                  if (existingCard) {
                      existingCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                     // Add a temporary highlight effect
                      existingCard.classList.add('ring-4', 'ring-violet-500');
                      setTimeout(() => existingCard.classList.remove('ring-4', 'ring-violet-500'), 2000);
                  }
-                 return true; // Return true because it IS a valid inscription
+                 return true; 
              }
 
              if (!p) return;
@@ -1161,7 +1178,6 @@
              try {
                 const tx = await p.getTransaction(hash);
                 if(tx && tx.data && tx.data.length > 138) {
-                    // NOTE: The previous method for slicing the data (tx.data.slice(138)) assumes the calldata is 4 bytes (function selector) + 32 bytes (address) + 32 bytes (amount), which is 68 bytes * 2 hex chars = 136, but index 138 is often used to grab the remaining data safely. We rely on the existing logic here.
                     const raw = "0x" + tx.data.slice(138); 
                     let str = "";
                     try {
@@ -1172,11 +1188,9 @@
                     let content = str;
                     try { content = JSON.parse(str).text; } catch(e){}
                     
-                    // IMPORTANT: The index here is the chronological number (1, 2, 3...)
-                    // CRITICAL FIX: Pass 'tx.from' to createGalleryCard so we can filter by sender later
                     createGalleryCard(content, tx.hash, tx.blockNumber || '---', false, index, tx.from); 
                     fetchedHashes.add(tx.hash);
-                    return true; // Return a success indicator
+                    return true; 
                 }
             } catch (e) {
                 console.warn("Could not decode TX for hash:", hash, e);
@@ -1184,70 +1198,58 @@
             return false;
         }
 
-        // *** MODIFIED to return the promise/result of the rendering task ***
-        async function decodeEvent(evt, prepend = false, currentProvider = null, index = '---') {
-            if (!evt.transactionHash || fetchedHashes.has(evt.transactionHash)) return;
-            
-            // IMPORTANT: The index here is the chronological number (1, 2, 3...)
-            return decodeAndRenderTx(evt.transactionHash, false, currentProvider, index); // Use false for prepend here, DOM reversal handles final order
-        }
-
         function removeGalleryCard(hash) {
             const card = document.getElementById(`card-${hash}`);
             if (card) card.remove();
         }
 
-        // *** MODIFIED to accept and display index parameter and include new view button ***
-        // *** MODIFIED: Now accepts 'sender' argument ***
+        // *** MODIFIED: Now includes logic for Owner-Only Trading Cards ***
         function createGalleryCard(art, hash, block, prepend = false, index = '---', sender = null) {
             const safeArt = (art || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
             const isPending = block === "Pending...";
             
-            // --- NEW: RARITY LOGIC ---
             let rarityClass = "";
+            let rarityColor = "#9ca3af"; // default gray
             let badgeText = "Common";
             let badgeClass = "badge-common";
 
-            // Get last character and last 2 characters of hash for RNG
             const lastChar = hash.slice(-1).toLowerCase();
             const lastTwo = hash.slice(-2).toLowerCase();
 
-            // Legendary Check: Ends in double characters (e.g., 'aa', '77', 'bb') or '00'
             const isLegendary = (lastTwo[0] === lastTwo[1]); 
-            
-            // Rare Check: Ends in 'b', 'e', 'f' (Bert, Ethereum, Foundation - thematic letters)
             const isRare = ['b', 'e', '7'].includes(lastChar);
 
             if (isPending) {
-                // Pending cards get no rarity until confirmed
                 badgeClass = "bg-yellow-100 text-yellow-800";
             } else if (isLegendary) {
                 rarityClass = "card-legendary";
                 badgeText = "Legendary ✨";
                 badgeClass = "badge-legendary";
+                rarityColor = "#ffd700";
             } else if (isRare) {
                 rarityClass = "card-rare";
                 badgeText = "Rare 🔮";
                 badgeClass = "badge-rare";
+                rarityColor = "#a855f7";
             } else {
-                // Common
                 badgeClass = "bg-gray-100 text-gray-600";
             }
 
-            // --- NEW: Store content in a global cache keyed by hash ---
             window.tempInscriptionContent[hash] = art; 
-            // --------------------------------------------------------
+            // Store block number for the card generator
+            window.tempInscriptionContent[hash + '_block'] = block;
+
+            // --- CHECK: IS THE USER THE OWNER? ---
+            const isOwner = currentAccount && sender && (currentAccount.toLowerCase() === sender.toLowerCase());
 
             removeGalleryCard(hash); 
 
             const div = document.createElement('div');
             div.id = `card-${hash}`; 
-            // NEW: Store sender address in dataset for filtering
             if (sender) {
                 div.dataset.sender = sender;
             }
             
-            // Added card-hover class and NEW rarity class
             div.className = `bg-white p-4 rounded-lg shadow border border-gray-200 flex flex-col animate-fade-in ${isPending ? 'pending-card' : ''} card-hover ${rarityClass}`; 
             div.innerHTML = `
                 <div class="bg-gray-900 text-purple-400 p-4 rounded text-xs overflow-auto ascii-art mb-3 flex-grow" style="max-height: 300px;">${safeArt}</div>
@@ -1265,24 +1267,26 @@
                         <a href="https://explorer.inkonchain.com/tx/${hash}" target="_blank" class="text-violet-500 hover:text-violet-700 hover:underline font-bold transition">View TX ↗</a>
                     </div>
                 </div>
-                <button onclick="viewFullInscription('${hash}')" 
-                        class="w-full bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold py-1 px-2 rounded transition mt-2">
-                    View Raw
-                </button>
+                
+                <div class="flex gap-2 mt-2">
+                    <button onclick="viewFullInscription('${hash}')" 
+                            class="flex-1 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold py-2 px-2 rounded transition">
+                        View Raw
+                    </button>
+                    ${isOwner && !isPending ? 
+                        `<button onclick="generateTradingCard('${hash}', '${rarityColor}', '${badgeText}', '${index}', '${sender}')" 
+                                 class="flex-1 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white text-xs font-bold py-2 px-2 rounded transition btn-shine shadow-md">
+                            ✨ Mint Card
+                        </button>` 
+                    : ''}
+                </div>
             `;
             
-            // NOTE: We now ONLY use appendChild (or manual prepend for pending) and reverse the entire DOM.
             if (prepend) ui.grid.prepend(div); 
             else ui.grid.appendChild(div);
         }
 
-        // ============================================================
-        // 5. UTILS (MODIFIED FOR STABLE JSON RPC PROVIDER + Custom Alert)
-        // ============================================================
-        
-        // Custom Alert Function (Replaces native alert/confirm)
         function showCustomAlert(title, message, type = "info") {
-            // Remove existing modal to prevent stacking
             const existingModal = document.querySelector('#custom-alert-modal');
             if (existingModal) existingModal.remove();
 
@@ -1357,7 +1361,6 @@
             
             ui.byteCount.textContent = bytes.length;
             
-            // --- PREVIEW LOGIC ---
             if (txt.length > 0) {
                 const safeHtml = txt.replace(/</g, "&lt;").replace(/>/g, "&gt;");
                 ui.preview.innerHTML = safeHtml;
@@ -1366,22 +1369,18 @@
                 ui.preview.classList.add('hidden');
                 ui.preview.innerHTML = '';
             }
-            // -------------------------
 
-            // Cannot estimate gas without a provider/network connection
             if(!readProvider) {
                 ui.gas.textContent = `---`;
                 return;
             }
 
-            // --- FIX: Show placeholder if input is empty ---
             if (txt.length === 0) {
                 ui.gas.textContent = `(Start Typing)`;
                 return;
             }
             
             try {
-                // 1. Construct the transaction data object using proper concatenation
                 const amount = window.ethers.parseUnits(MINT_FEE_AMOUNT.toString(), 18);
                 const json = JSON.stringify({ text: txt });
                 
@@ -1396,20 +1395,14 @@
                     value: 0
                 };
 
-                // 2. Estimate the Gas Limit
                 const gasLimit = await readProvider.estimateGas(txData);
-
-                // 3. Get the current Gas Price (Fee Data)
                 const feeData = await readProvider.getFeeData();
-                // Safely handle fee data for both EIP-1559 and legacy
                 const gasPrice = feeData.maxFeePerGas || feeData.gasPrice || BigInt(0);
                 
-                // 4. Calculate the total ETH cost
                 const cost = gasLimit * gasPrice; 
                 ui.gas.textContent = `~${parseFloat(window.ethers.formatEther(cost)).toFixed(6)} ETH`;
 
             } catch (err) {
-                // Fallback: If live estimation fails (e.g., RPC issues, simulation error)
                 console.warn("Live Gas estimation failed, falling back to approximation:", err);
                 
                 const approxGas = BigInt(65000) + BigInt(bytes.length * 16); 
@@ -1437,13 +1430,10 @@
             ui.manualBtn.textContent = "Searching...";
             
             try {
-                // --- CHANGE: Clear grid to show ONLY the searched artifact ---
                 ui.grid.innerHTML = '';
                 fetchedHashes.clear();
                 ui.empty.classList.add('hidden');
-                // -------------------------------------------------------------
 
-                // Pass '---' for the index as it's an external hash lookup
                 const success = await decodeAndRenderTx(hash, true, readProvider, '---'); 
                 
                 if (success) {
@@ -1451,7 +1441,7 @@
                 } else {
                      ui.empty.textContent = "No inscription found.";
                      ui.empty.classList.remove('hidden');
-                     showCustomAlert("Lookup Failed", "Transaction found, but no valid inscription data (transfer to burn address with payload).");
+                     showCustomAlert("Lookup Failed", "Transaction not found or a general network error occurred.");
                 }
             } catch(e) { 
                 console.error(e);
@@ -1463,20 +1453,13 @@
             ui.manualBtn.textContent = "Look Up"; 
         });
 
-        // ============================================================
-        // 6. INIT: check connected accounts on load (Simplified)
-        // ============================================================
         (async function init() {
-            // Only fetch gallery on load. We rely on the user clicking "Connect Wallet"
-            // to trigger eth_requestAccounts for a session.
             await fetchGallery(); 
             
-            // Check for existing session automatically, only if Ethereum is available
             if (window.ethereum) {
                 try {
                     const acc = await window.ethereum.request({ method: 'eth_accounts' });
                     if (acc && acc.length > 0) {
-                        // If permission already exists, rebuild connection silently
                         await rebuildConnection(acc[0]);
                     }
                 } catch (err) {
