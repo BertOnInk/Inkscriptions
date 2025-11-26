@@ -45,7 +45,7 @@
         }
         
         /* --- RARITY STYLES --- */
-        /* Rare: Ends in 'i', 'n', or 'k' (Ink) - Purple Glow */
+        /* Rare: Ends in 'b', 'e', or '7' - Purple Glow */
         .card-rare {
             border: 2px solid #a855f7 !important;
             box-shadow: 0 0 15px rgba(168, 85, 247, 0.5) !important;
@@ -235,7 +235,7 @@
                     <div class="cursor-help text-violet-600 font-bold bg-violet-100 hover:bg-violet-200 rounded-full w-4 h-4 flex items-center justify-center text-[10px] border border-violet-300 transition">?</div>
                     <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 text-left leading-relaxed">
                         <p class="mb-2"><strong class="text-violet-400">Public:</strong> Your Inkscription and a link to your transaction on the Ink chain will be reflected in the Gallery.</p>
-                        <p><strong class="text-violet-400">Private:</strong> Your Inkscription will not be recorded in the Inkscriptions database and will not be displayed in the Gallery. You can still view your Inkscription privately by entering the tx ID in the "Find Specific Artifact" field.</p>
+                        <p><strong class="text-violet-400">Private:</strong> Your Inkscription will not be recorded and will not be displayed in the Gallery. You can still view your Inkscription privately in the Gallery by entering the tx ID in the "Find Specific Artifact" field.</p>
                         <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
                     </div>
                 </div>
@@ -287,7 +287,7 @@
             </div>
         </div>
 
-        <!-- NEW: Rarity Legend -->
+        <!-- NEW: Rarity Legend (UPDATED TO VALID HEX) -->
         <div class="flex flex-wrap gap-3 mb-6 bg-black/20 p-3 rounded-lg border border-white/10 text-xs">
             <span class="text-gray-300 font-bold uppercase tracking-wider mr-2 self-center">Rarity Guide:</span>
             <div class="flex items-center gap-1.5 bg-gray-800/50 px-2 py-1 rounded border border-gray-600">
@@ -296,7 +296,7 @@
             </div>
             <div class="flex items-center gap-1.5 bg-purple-900/40 px-2 py-1 rounded border border-purple-500">
                 <div class="w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_5px_#a855f7]"></div>
-                <span class="text-purple-200">Rare (Ends in 'i', 'n', 'k')</span>
+                <span class="text-purple-200">Rare (Ends in 'b', 'e', '7')</span>
             </div>
             <div class="flex items-center gap-1.5 bg-yellow-900/40 px-2 py-1 rounded border border-yellow-500">
                 <div class="w-2 h-2 rounded-full bg-yellow-400 shadow-[0_0_5px_#eab308] animate-pulse"></div>
@@ -1216,7 +1216,7 @@
             const isLegendary = (lastTwo[0] === lastTwo[1]); 
             
             // Rare Check: Ends in 'b', 'e', 'f' (Bert, Ethereum, Foundation - thematic letters)
-            const isRare = ['i', 'n', 'k'].includes(lastChar);
+            const isRare = ['b', 'e', '7'].includes(lastChar);
 
             if (isPending) {
                 // Pending cards get no rarity until confirmed
