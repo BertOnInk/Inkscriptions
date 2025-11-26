@@ -43,6 +43,31 @@
             transform: translateY(-5px);
             box-shadow: 0 15px 35px rgba(147, 51, 234, 0.4);
         }
+        
+        /* --- RARITY STYLES --- */
+        /* Rare: Ends in 'i', 'n', or 'k' (Ink) - Purple Glow */
+        .card-rare {
+            border: 2px solid #a855f7 !important;
+            box-shadow: 0 0 15px rgba(168, 85, 247, 0.5) !important;
+        }
+        
+        /* Legendary: Ends in double characters or '00' - Gold/Animated Glow */
+        .card-legendary {
+            border: 2px solid #ffd700 !important;
+            animation: legendaryPulse 2s infinite;
+        }
+        @keyframes legendaryPulse {
+            0% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+            50% { box-shadow: 0 0 25px rgba(255, 215, 0, 0.9), 0 0 5px rgba(255, 255, 255, 0.8); }
+            100% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+        }
+        
+        /* Rarity Badge Styles */
+        .badge-common { background-color: #f3f4f6; color: #4b5563; }
+        .badge-rare { background-color: #f3e8ff; color: #7e22ce; border: 1px solid #d8b4fe; }
+        .badge-legendary { background-color: #fefce8; color: #b45309; border: 1px solid #fde047; }
+        /* --------------------- */
+
         .btn-primary { background-color: #9333ea; transition: background-color 0.3s; }
         .btn-primary:hover { background-color: #7c3aed; }
         .spinner { border-top-color: #fff; border-right-color: transparent; -webkit-animation: spin 1s linear infinite; animation: spin 1s linear infinite; }
@@ -210,7 +235,7 @@
                     <div class="cursor-help text-violet-600 font-bold bg-violet-100 hover:bg-violet-200 rounded-full w-4 h-4 flex items-center justify-center text-[10px] border border-violet-300 transition">?</div>
                     <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 text-left leading-relaxed">
                         <p class="mb-2"><strong class="text-violet-400">Public:</strong> Your Inkscription and a link to your transaction on the Ink chain will be reflected in the Gallery.</p>
-                        <p><strong class="text-violet-400">Private:</strong> Your Inkscription will not be recorded and will not be displayed in the Gallery. You can still view your Inkscription privately in the Gallery by entering the tx ID in the "Find Specific Artifact" field.</p>
+                        <p><strong class="text-violet-400">Private:</strong> Your Inkscription will not be recorded in the Inkscriptions database and will not be displayed in the Gallery. You can still view your Inkscription privately by entering the tx ID in the "Find Specific Artifact" field.</p>
                         <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
                     </div>
                 </div>
@@ -250,7 +275,7 @@
     </div>
 
     <div class="w-full max-w-4xl">
-        <div class="flex flex-col md:flex-row items-center justify-between mb-6 gap-4">
+        <div class="flex flex-col md:flex-row items-center justify-between mb-4 gap-4">
             <h2 class="text-2xl font-bold text-white">🏛️ Live Gallery</h2>
             
             <div class="flex items-center gap-4">
@@ -259,6 +284,23 @@
                     <span class="text-sm font-bold text-gray-700">My Mints Only</span>
                 </label>
                 <button id="refresh-btn" class="text-black text-sm bg-white border border-gray-300 px-3 py-1.5 rounded hover:bg-gray-50 font-medium shadow-sm">↻ Refresh</button>
+            </div>
+        </div>
+
+        <!-- NEW: Rarity Legend -->
+        <div class="flex flex-wrap gap-3 mb-6 bg-black/20 p-3 rounded-lg border border-white/10 text-xs">
+            <span class="text-gray-300 font-bold uppercase tracking-wider mr-2 self-center">Rarity Guide:</span>
+            <div class="flex items-center gap-1.5 bg-gray-800/50 px-2 py-1 rounded border border-gray-600">
+                <div class="w-2 h-2 rounded-full bg-gray-400"></div>
+                <span class="text-gray-300">Common</span>
+            </div>
+            <div class="flex items-center gap-1.5 bg-purple-900/40 px-2 py-1 rounded border border-purple-500">
+                <div class="w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_5px_#a855f7]"></div>
+                <span class="text-purple-200">Rare (Ends in 'i', 'n', 'k')</span>
+            </div>
+            <div class="flex items-center gap-1.5 bg-yellow-900/40 px-2 py-1 rounded border border-yellow-500">
+                <div class="w-2 h-2 rounded-full bg-yellow-400 shadow-[0_0_5px_#eab308] animate-pulse"></div>
+                <span class="text-yellow-200">Legendary (Double end char)</span>
             </div>
         </div>
         
@@ -1160,8 +1202,38 @@
         function createGalleryCard(art, hash, block, prepend = false, index = '---', sender = null) {
             const safeArt = (art || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
             const isPending = block === "Pending...";
-            const badge = isPending ? "bg-yellow-100 text-yellow-800" : "bg-gray-100 text-gray-600";
             
+            // --- NEW: RARITY LOGIC ---
+            let rarityClass = "";
+            let badgeText = "Common";
+            let badgeClass = "badge-common";
+
+            // Get last character and last 2 characters of hash for RNG
+            const lastChar = hash.slice(-1).toLowerCase();
+            const lastTwo = hash.slice(-2).toLowerCase();
+
+            // Legendary Check: Ends in double characters (e.g., 'aa', '77', 'bb') or '00'
+            const isLegendary = (lastTwo[0] === lastTwo[1]); 
+            
+            // Rare Check: Ends in 'b', 'e', 'f' (Bert, Ethereum, Foundation - thematic letters)
+            const isRare = ['i', 'n', 'k'].includes(lastChar);
+
+            if (isPending) {
+                // Pending cards get no rarity until confirmed
+                badgeClass = "bg-yellow-100 text-yellow-800";
+            } else if (isLegendary) {
+                rarityClass = "card-legendary";
+                badgeText = "Legendary ✨";
+                badgeClass = "badge-legendary";
+            } else if (isRare) {
+                rarityClass = "card-rare";
+                badgeText = "Rare 🔮";
+                badgeClass = "badge-rare";
+            } else {
+                // Common
+                badgeClass = "bg-gray-100 text-gray-600";
+            }
+
             // --- NEW: Store content in a global cache keyed by hash ---
             window.tempInscriptionContent[hash] = art; 
             // --------------------------------------------------------
@@ -1175,15 +1247,18 @@
                 div.dataset.sender = sender;
             }
             
-            // Added card-hover class
-            div.className = `bg-white p-4 rounded-lg shadow border border-gray-200 flex flex-col animate-fade-in ${isPending ? 'pending-card' : ''} card-hover`; 
+            // Added card-hover class and NEW rarity class
+            div.className = `bg-white p-4 rounded-lg shadow border border-gray-200 flex flex-col animate-fade-in ${isPending ? 'pending-card' : ''} card-hover ${rarityClass}`; 
             div.innerHTML = `
                 <div class="bg-gray-900 text-purple-400 p-4 rounded text-xs overflow-auto ascii-art mb-3 flex-grow" style="max-height: 300px;">${safeArt}</div>
                 
-                <div class="text-xl font-extrabold text-violet-500 mb-2">#${index}</div> 
+                <div class="flex justify-between items-center mb-2">
+                     <div class="text-xl font-extrabold text-violet-500">#${index}</div> 
+                     ${!isPending ? `<span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide ${badgeClass}">${badgeText}</span>` : ''}
+                </div>
                 
                 <div class="pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500 mb-2">
-                    <span class="px-2 py-1 rounded ${badge}">Block: ${block}</span>
+                    <span class="px-2 py-1 rounded ${isPending ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-50 text-gray-500'}">Block: ${block}</span>
                     <div class="flex gap-2 items-center">
                         <button onclick="viewAsImage('${hash}')" class="text-violet-500 hover:text-violet-700 hover:underline font-bold transition">View IMG 🖼️</button>
                         <span class="text-gray-300">|</span>
