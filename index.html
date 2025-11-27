@@ -82,6 +82,8 @@
         .btn-primary-loading { opacity: 0.7; cursor: not-allowed; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .btn-primary-loading { opacity: 0.7; cursor: not-allowed; }
+        
+        /* Default ASCII art style: No wrap, horizontal scroll (Best for Art) */
         .ascii-art { 
             font-family: 'Courier New', Courier, monospace; 
             white-space: pre; 
@@ -90,6 +92,13 @@
             letter-spacing: normal;
             font-size: 13px;
         }
+        
+        /* Toggleable class for text wrapping (Best for Standard Text) */
+        .preview-wrap-active {
+            white-space: pre-wrap !important;
+            word-wrap: break-word !important;
+        }
+
         .pending-card { opacity: 0.6; filter: grayscale(1); transition: opacity 0.5s; }
         .text-gray-800 { color: #e0e0e0; }
         .text-gray-600 { color: #b0b0b0; }
@@ -279,7 +288,8 @@
             </div>
             <div class="border-t border-gray-200 pt-4">
                 <div class="flex justify-between items-end">
-                    <div><p class="text-sm font-medium text-black">Inkscription Cost</p></div>
+                    <!-- UPDATED: Added Permanent Marker font -->
+                    <div><p class="text-sm font-medium text-black" style="font-family: 'Permanent Marker', cursive;">Inkscription Cost</p></div>
                     <div class="text-right">
                         <p class="text-sm font-medium text-black">1000 BERT</p>
                     </div>
@@ -293,7 +303,16 @@
         </div>
         
         <div class="space-y-2">
-            <label class="block text-sm font-medium text-black">Your Permanent Inkscription</label>
+            <!-- UPDATED LABEL WITH TOGGLE -->
+            <div class="flex justify-between items-end">
+                <!-- UPDATED: Added Permanent Marker font -->
+                <label class="block text-sm font-medium text-black" style="font-family: 'Permanent Marker', cursive;">Your Permanent Inkscription</label>
+                <div class="flex items-center space-x-2">
+                    <!-- UPDATED: Changed text-violet-600 to text-violet-500 for matching purple -->
+                    <input type="checkbox" id="wrap-toggle" class="h-4 w-4 text-violet-500 focus:ring-violet-500 border-gray-300 rounded cursor-pointer">
+                    <label for="wrap-toggle" class="text-xs text-gray-600 cursor-pointer select-none">Wrap Text</label>
+                </div>
+            </div>
             <textarea id="inscription-input" rows="6" placeholder="Etch your lore or paste your ASCII art here..." class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 font-mono text-xs"></textarea>
             
             <div id="preview-box" class="hidden bg-gray-900 text-purple-400 p-4 rounded overflow-auto ascii-art" style="min-height: 100px;">
@@ -301,7 +320,8 @@
 
             <div class="flex justify-between items-center text-xs bg-gray-50 p-2 rounded border border-gray-200">
                 <span class="text-gray-600">Size: <span id="byte-count" class="font-bold">0</span> bytes</span>
-                <span class="text-gray-600">Est. Gas: <span id="gas-display" class="font-bold text-blue-600">---</span></span>
+                <!-- UPDATED: Changed text-blue-600 to text-violet-500 for matching purple -->
+                <span class="text-gray-600">Est. Gas: <span id="gas-display" class="font-bold text-violet-500">---</span></span>
             </div>
         </div>
 
@@ -795,7 +815,9 @@
             loader: $('gallery-loader'),
             empty: $('gallery-empty'),
             refresh: $('refresh-btn'),
-            filterCheckbox: $('my-artifacts-filter'), 
+            filterCheckbox: $('my-artifacts-filter'),
+            // NEW:
+            wrapToggle: $('wrap-toggle'), 
         };
 
         async function rebuildConnection(forcedAccount = null) {
@@ -1535,6 +1557,17 @@
                     ui.gas.textContent = `Error/High Fee`;
                 }
             }
+        }
+
+        // NEW: Toggle Logic
+        if (ui.wrapToggle) {
+            ui.wrapToggle.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    ui.preview.classList.add('preview-wrap-active');
+                } else {
+                    ui.preview.classList.remove('preview-wrap-active');
+                }
+            });
         }
 
         ui.manualBtn.addEventListener('click', async () => {
