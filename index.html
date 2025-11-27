@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Bert's Inkscriptions 🐔🖋️</title>
-    <!-- CHANGED: Switched Sedgwick Ave Display to Permanent Marker -->
+    <!-- Font Imports: Bungee (Titles) and Permanent Marker (Handwritten/Graffiti) -->
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Permanent+Marker&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
@@ -31,7 +31,7 @@
         .graffiti-font {
             font-family: 'Bungee', cursive;
         }
-        /* NEW: Force font loading */
+        /* Hidden font loader to ensure Bungee is ready for Canvas */
         .font-loader {
             position: absolute;
             opacity: 0;
@@ -201,6 +201,44 @@
             20% { left: 100%; }
             100% { left: 100%; }
         }
+        
+        /* Disabled button state */
+        .btn-disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background-color: #4b5563 !important; /* Gray */
+            background-image: none !important;
+            box-shadow: none !important;
+        }
+        .btn-disabled::after {
+            display: none; /* No shine for disabled */
+        }
+
+        /* --- UPDATED ZOOM & PAN STYLING --- */
+        .preview-scroll-container {
+            overflow: hidden; /* Hide overflow so we can pan smoothly */
+            width: 100%;
+            height: 60vh; /* Fixed viewport height */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f3f4f6;
+            border-radius: 0.5rem;
+            cursor: grab; /* Indicates panning availability */
+            position: relative;
+        }
+        .preview-scroll-container:active {
+            cursor: grabbing;
+        }
+        #card-preview-img {
+            max-width: 95%; /* Start slightly smaller to fit nicely */
+            max-height: 95%;
+            object-fit: contain;
+            transition: transform 0.1s ease-out; /* Smooth transforms */
+            pointer-events: none; /* Allows mouse events to pass to container */
+            user-select: none;
+            -webkit-user-drag: none;
+        }
     </style>
 </head>
 <body class="min-h-screen p-4 flex flex-col items-center">
@@ -351,6 +389,24 @@
         <div id="gallery-empty" class="text-center py-10 text-gray-400 hidden">No inscriptions found.</div>
     </div>
 
+    <!-- NEW: CARD PREVIEW MODAL -->
+    <div id="card-preview-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content text-center" style="max-width: 600px; padding: 20px;">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-violet-600">Artifact Preview</h3>
+                <button onclick="document.getElementById('card-preview-modal').style.display='none'" class="text-gray-500 hover:text-gray-700 text-2xl font-bold">×</button>
+            </div>
+            <!-- UPDATED: preview-scroll-container now handles drag and zoom events via JS -->
+            <!-- 'oncontextmenu' is here to prevent right click menu during panning -->
+            <div id="preview-container" class="preview-scroll-container" oncontextmenu="return false;">
+                <img id="card-preview-img" src="" alt="Generating Preview..." class="shadow-lg rounded" draggable="false">
+                <div id="preview-spinner" class="spinner h-8 w-8 border-4 border-violet-500 rounded-full absolute" style="top: 50%; left: 50%; transform: translate(-50%, -50%);"></div>
+            </div>
+            <p class="text-xs text-gray-500 mb-2 mt-2">Use <strong>Mouse Wheel</strong> to zoom, <strong>Click & Drag</strong> to pan.</p>
+            <button onclick="document.getElementById('card-preview-modal').style.display='none'" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-6 rounded transition">Close</button>
+        </div>
+    </div>
+
     <div id="faq-modal-overlay" class="modal-overlay">
         <div id="faq-modal-content" class="modal-content">
             <div class="flex justify-between items-center mb-4">
@@ -370,6 +426,59 @@
         
         // FLAG TO PREVENT DOUBLE WELCOME ALERTS
         let welcomeAlertShown = false;
+
+        // --- NEW FLEXIBLE ZOOM & PAN IMPLEMENTATION ---
+        const zmContainer = document.getElementById('preview-container');
+        const zmImg = document.getElementById('card-preview-img');
+        
+        let zmState = {
+            scale: 1,
+            panning: false,
+            pointX: 0, pointY: 0,
+            startX: 0, startY: 0
+        };
+
+        function resetZoom() {
+            zmState.scale = 1;
+            zmState.pointX = 0;
+            zmState.pointY = 0;
+            zmState.panning = false;
+            updateTransform();
+        }
+
+        function updateTransform() {
+            zmImg.style.transform = `translate(${zmState.pointX}px, ${zmState.pointY}px) scale(${zmState.scale})`;
+        }
+
+        zmContainer.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            zmState.panning = true;
+            zmState.startX = e.clientX - zmState.pointX;
+            zmState.startY = e.clientY - zmState.pointY;
+            zmContainer.style.cursor = 'grabbing';
+        });
+
+        window.addEventListener('mouseup', () => {
+            zmState.panning = false;
+            zmContainer.style.cursor = 'grab';
+        });
+
+        zmContainer.addEventListener('mousemove', (e) => {
+            if (!zmState.panning) return;
+            e.preventDefault();
+            zmState.pointX = e.clientX - zmState.startX;
+            zmState.pointY = e.clientY - zmState.startY;
+            updateTransform();
+        });
+
+        zmContainer.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -0.1 : 0.1;
+            const newScale = Math.min(Math.max(0.2, zmState.scale + delta), 4); // Limits: 0.2x to 4x
+            zmState.scale = newScale;
+            updateTransform();
+        });
+        // ----------------------------------------------
 
         // Helper function to safely open the full view
         function viewFullInscription(hash) {
@@ -399,62 +508,26 @@
             URL.revokeObjectURL(blobUrl);
         }
 
-        // --- NEW: Helper function to generate an image from the inscription text ---
-        function viewAsImage(hash) {
-            const art = window.tempInscriptionContent[hash];
-            if (!art) {
-                showCustomAlert("Lookup Error", 'Could not find inscription content to generate image.', 'error');
-                return;
-            }
-
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d', { alpha: false }); 
-            
-            const scale = 4; 
-            const baseFontSize = 13;
-            const fontSize = baseFontSize * scale;
-            const lineHeight = Math.floor(fontSize * 1.2);
-            const fontFamily = "bold " + fontSize + "px 'Courier New', Courier, monospace"; 
-            const padding = 20 * scale;
-            const bgColor = "#000000";
-            const textColor = "#c084fc";
-
-            const lines = art.replace(/\t/g, '    ').split('\n');
-            
-            ctx.font = fontFamily; 
-            let maxWidth = 0;
-            lines.forEach(line => {
-                const w = ctx.measureText(line).width;
-                if (w > maxWidth) maxWidth = w;
-            });
-
-            canvas.width = Math.ceil(maxWidth + (padding * 2));
-            canvas.height = Math.ceil((lines.length * lineHeight) + (padding * 2));
-
-            ctx.fillStyle = bgColor;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            ctx.font = fontFamily;
-            ctx.fillStyle = textColor;
-            ctx.textBaseline = 'top'; 
-            
-            lines.forEach((line, i) => {
-                ctx.fillText(line, padding, padding + (i * lineHeight));
-            });
-
-            canvas.toBlob(blob => {
-                const url = URL.createObjectURL(blob);
-                window.open(url, '_blank');
-                setTimeout(() => URL.revokeObjectURL(url), 60000); 
-            }, 'image/png');
-        }
-
-        // --- NEW: OFFICIAL TRADING CARD GENERATOR (OWNER ONLY) ---
-        async function generateTradingCard(hash, rarityColor, rarityName, index, sender) {
+        // --- NEW: OFFICIAL TRADING CARD GENERATOR (VIEW & DOWNLOAD MODES) ---
+        async function generateTradingCard(hash, rarityColor, rarityName, index, sender, mode = 'download') {
             const art = window.tempInscriptionContent[hash];
             if (!art) return;
 
-            // --- FIX 2: WAIT FOR FONTS TO LOAD ---
+            // Show modal first if in view mode
+            if (mode === 'modal') {
+                const modal = document.getElementById('card-preview-modal');
+                const img = document.getElementById('card-preview-img');
+                const spinner = document.getElementById('preview-spinner');
+                
+                // Reset zoom state when opening new modal
+                resetZoom();
+
+                modal.style.display = 'flex';
+                img.style.opacity = '0.3';
+                spinner.style.display = 'block';
+            }
+
+            // --- FIX: WAIT FOR FONTS TO LOAD ---
             try {
                 await document.fonts.load("160px 'Bungee'");
                 await document.fonts.load("100px 'Permanent Marker'");
@@ -583,17 +656,32 @@
             ctx.font = "bold 60px 'Courier New', monospace";
             ctx.fillText("MINTED BY: " + sender.toUpperCase(), cw / 2, ch - 160);
 
-            // Download
+            // --- HANDLE MODE (MODAL vs DOWNLOAD) ---
             canvas.toBlob(blob => {
                 const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                // CHANGED: Filename is now the hash
-                a.download = `${hash}.png`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
+                
+                if (mode === 'modal') {
+                    const img = document.getElementById('card-preview-img');
+                    const spinner = document.getElementById('preview-spinner');
+                    
+                    img.onload = () => {
+                        spinner.style.display = 'none';
+                        img.style.opacity = '1';
+                    };
+                    img.src = url;
+                    
+                    // Cleanup previous object URLs to save memory
+                    // (optional, or rely on garbage collection if simple)
+                } else {
+                    // Download logic
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${hash}.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }
             }, 'image/png');
         }
 
@@ -1284,14 +1372,17 @@
                 
                 <div class="flex justify-between items-center mb-2">
                      <div class="text-xl font-extrabold text-violet-500">#${index}</div> 
-                     ${!isPending ? `<span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide ${badgeClass}">${badgeText}</span>` : ''}
+                     ${!isPending ? 
+                        `<button onclick="generateTradingCard('${hash}', '${rarityColor}', '${badgeText}', '${index}', '${sender}', 'modal')" 
+                                 class="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide ${badgeClass} hover:opacity-80 transition cursor-pointer" title="Click to View Card">
+                            ${badgeText} 🃏
+                         </button>` 
+                     : ''}
                 </div>
                 
                 <div class="pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500 mb-2">
                     <span class="px-2 py-1 rounded ${isPending ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-50 text-gray-500'}">Block: ${block}</span>
                     <div class="flex gap-2 items-center">
-                        <button onclick="viewAsImage('${hash}')" class="text-violet-500 hover:text-violet-700 hover:underline font-bold transition">View IMG 🖼️</button>
-                        <span class="text-gray-300">|</span>
                         <a href="https://explorer.inkonchain.com/tx/${hash}" target="_blank" class="text-violet-500 hover:text-violet-700 hover:underline font-bold transition">View TX ↗</a>
                     </div>
                 </div>
@@ -1301,10 +1392,10 @@
                             class="flex-1 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold py-2 px-2 rounded transition">
                         View Raw
                     </button>
-                    ${isOwner && !isPending ? 
-                        `<button onclick="generateTradingCard('${hash}', '${rarityColor}', '${badgeText}', '${index}', '${sender}')" 
-                                 class="flex-1 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white text-xs font-bold py-2 px-2 rounded transition btn-shine shadow-md">
-                            ✨ Mint Card
+                    ${!isPending ? 
+                        `<button onclick="generateTradingCard('${hash}', '${rarityColor}', '${badgeText}', '${index}', '${sender}', 'download')" 
+                                 class="flex-1 text-white text-xs font-bold py-2 px-2 rounded transition ${isOwner ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 btn-shine shadow-md' : 'btn-disabled'}" ${!isOwner ? 'disabled' : ''}>
+                            ${isOwner ? '✨ Mint Card' : 'Claim (Owner Only) 🔒'}
                         </button>` 
                     : ''}
                 </div>
