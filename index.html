@@ -69,11 +69,39 @@
             50% { box-shadow: 0 0 25px rgba(255, 215, 0, 0.9), 0 0 5px rgba(255, 255, 255, 0.8); }
             100% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
         }
+
+        /* Mythical: Ends in triple characters - Platinum/Prismatic Glow */
+        .card-mythical {
+            border: 2px solid #e2e8f0 !important; /* Platinum base */
+            background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(0,0,0,0.3)) !important;
+            animation: mythicalShine 3s infinite alternate;
+        }
+        @keyframes mythicalShine {
+            0% { 
+                border-color: #cbd5e1; 
+                box-shadow: 0 0 15px rgba(203, 213, 225, 0.5); 
+            }
+            50% { 
+                border-color: #ffffff; 
+                box-shadow: 0 0 30px rgba(255, 255, 255, 0.9), 0 0 60px rgba(192, 132, 252, 0.4); 
+            }
+            100% { 
+                border-color: #94a3b8; 
+                box-shadow: 0 0 15px rgba(148, 163, 184, 0.5); 
+            }
+        }
         
         /* Rarity Badge Styles */
         .badge-common { background-color: #f3f4f6; color: #4b5563; }
         .badge-rare { background-color: #f3e8ff; color: #7e22ce; border: 1px solid #d8b4fe; }
         .badge-legendary { background-color: #fefce8; color: #b45309; border: 1px solid #fde047; }
+        .badge-mythical { 
+            background: linear-gradient(90deg, #e2e8f0, #ffffff, #cbd5e1); 
+            color: #0f172a; 
+            border: 1px solid #94a3b8; 
+            font-weight: 800;
+            text-shadow: 0 0 2px rgba(255,255,255,0.8);
+        }
         /* --------------------- */
 
         .btn-primary { background-color: #9333ea; transition: background-color 0.3s; }
@@ -398,6 +426,11 @@
                 <div class="w-2 h-2 rounded-full bg-yellow-400 shadow-[0_0_5px_#eab308] animate-pulse"></div>
                 <span class="text-yellow-200">Legendary (Double end char)</span>
             </div>
+            <!-- NEW: Mythical Legend Item -->
+            <div class="flex items-center gap-1.5 bg-slate-100/20 px-2 py-1 rounded border border-slate-300">
+                <div class="w-2 h-2 rounded-full bg-white shadow-[0_0_8px_#ffffff] animate-pulse"></div>
+                <span class="text-white font-bold text-shadow">Mythical (Triple end char)</span>
+            </div>
         </div>
         
         <div id="gallery-loader" class="text-center py-10 hidden">
@@ -566,23 +599,156 @@
             canvas.height = ch;
 
             // Background
-            ctx.fillStyle = "#0f0f0f";
+            if (rarityName.includes("Mythical")) {
+                // Mythical Platinum Gradient Background
+                const bgGrad = ctx.createLinearGradient(0, 0, cw, ch);
+                bgGrad.addColorStop(0, "#1e293b"); // Slate 800
+                bgGrad.addColorStop(0.5, "#0f172a"); // Slate 900
+                bgGrad.addColorStop(1, "#334155"); // Slate 700
+                ctx.fillStyle = bgGrad;
+            } else {
+                ctx.fillStyle = "#0f0f0f";
+            }
             ctx.fillRect(0, 0, cw, ch);
 
+            // --- NEW: Ethereal Nebula Texture for the Dark Margin (Mythical Only) ---
+            if (rarityName.includes("Mythical")) {
+                ctx.save();
+                
+                const patCanvas = document.createElement('canvas');
+                const patCtx = patCanvas.getContext('2d');
+                patCanvas.width = 200;
+                patCanvas.height = 200;
+                
+                // Create random nebulous clouds
+                for(let i=0; i<20; i++) {
+                    const x = Math.random() * 200;
+                    const y = Math.random() * 200;
+                    const r = Math.random() * 40 + 10;
+                    // Low opacity white circles to simulate soft light clouds
+                    patCtx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.03})`;
+                    patCtx.beginPath();
+                    patCtx.arc(x, y, r, 0, Math.PI * 2);
+                    patCtx.fill();
+                }
+                
+                // Add tiny faint sparkles
+                for(let j=0; j<5; j++) {
+                    const x = Math.random() * 200;
+                    const y = Math.random() * 200;
+                    const size = Math.random() * 1.5;
+                    patCtx.fillStyle = "rgba(255, 255, 255, 0.4)";
+                    patCtx.beginPath();
+                    patCtx.arc(x, y, size, 0, Math.PI * 2);
+                    patCtx.fill();
+                }
+
+                const pattern = ctx.createPattern(patCanvas, 'repeat');
+                ctx.fillStyle = pattern;
+                // Fill the entire background with this subtle texture 
+                ctx.fillRect(0, 0, cw, ch);
+                
+                ctx.restore();
+            }
+            // ------------------------------------------------------------------------
+
             // Dynamic Border based on rarity
-            ctx.strokeStyle = rarityColor;
+            if (rarityName.includes("Mythical")) {
+                // Special Platinum/Holographic Gradient Border
+                const gradient = ctx.createLinearGradient(0, 0, cw, ch);
+                gradient.addColorStop(0, "#e2e8f0");
+                gradient.addColorStop(0.2, "#cbd5e1");
+                gradient.addColorStop(0.4, "#ffffff");
+                gradient.addColorStop(0.6, "#e2e8f0");
+                gradient.addColorStop(0.8, "#94a3b8");
+                gradient.addColorStop(1, "#f8fafc");
+                ctx.strokeStyle = gradient;
+            } else {
+                ctx.strokeStyle = rarityColor;
+            }
+            
             ctx.lineWidth = 80; // Scaled x2
             ctx.strokeRect(0, 0, cw, ch);
 
+            // NEW: Add "Premium" pinstripes to the Platinum Border for Mythical
+            if (rarityName.includes("Mythical")) {
+                ctx.save();
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
+                ctx.lineWidth = 2;
+                
+                // Outer pinstripe (inset slightly from the physical canvas edge)
+                ctx.strokeRect(10, 10, cw - 20, ch - 20);
+                
+                // Inner pinstripe (near the seam with the background)
+                ctx.strokeRect(30, 30, cw - 60, ch - 60);
+                
+                ctx.restore();
+            }
+
             // Inner Glow
-            ctx.shadowColor = rarityColor;
+            if (rarityName.includes("Mythical")) {
+                 ctx.shadowColor = "#ffffff";
+            } else {
+                 ctx.shadowColor = rarityColor;
+            }
             ctx.shadowBlur = 100; // Scaled x2
             ctx.fillStyle = "#1a1a1a";
             ctx.fillRect(100, 100, cw - 200, ch - 200); // Scaled x2
             ctx.shadowBlur = 0; // Reset
 
+            // --- NEW: Add Unique Background Image Overlay for Mythical (Layer behind text) ---
+            if (rarityName.includes("Mythical")) {
+                const img = new Image();
+                img.src = 'mbg.jpg';
+                await new Promise(r => img.onload = r); // Wait for image to load
+
+                ctx.save();
+                
+                // Define the drawing area
+                const x = 100;
+                const y = 100;
+                const w = cw - 200;
+                const h = ch - 200;
+
+                // Clip to ensure the image doesn't bleed onto the border
+                ctx.beginPath();
+                ctx.rect(x, y, w, h);
+                ctx.clip();
+
+                ctx.globalAlpha = 0.25; 
+
+                // Calculate aspect ratios
+                const imgRatio = img.width / img.height;
+                const targetRatio = w / h;
+                
+                let renderW, renderH, renderX, renderY;
+
+                // Logic for "background-size: cover"
+                if (imgRatio > targetRatio) {
+                    // Image is wider than container: constrain height, scale width
+                    renderH = h;
+                    renderW = h * imgRatio;
+                    renderY = y;
+                    renderX = x + (w - renderW) / 2; // Center horizontally
+                } else {
+                    // Image is taller than container: constrain width, scale height
+                    renderW = w;
+                    renderH = w / imgRatio;
+                    renderX = x;
+                    renderY = y + (h - renderH) / 2; // Center vertically
+                }
+
+                ctx.drawImage(img, renderX, renderY, renderW, renderH);
+                ctx.restore();
+            }
+            // ------------------------------------------------------------------------
+
             // Header Area
-            ctx.fillStyle = rarityColor;
+            if (rarityName.includes("Mythical")) {
+                 ctx.fillStyle = "#ffffff"; // White text for Mythical
+            } else {
+                 ctx.fillStyle = rarityColor;
+            }
             // CHANGED: Use Bungee Graffiti font for the Header (Scaled x2)
             ctx.font = "160px 'Bungee', cursive";
             ctx.textAlign = "center";
@@ -590,9 +756,16 @@
 
             // Rarity Badge on Card (COOLER STYLE: Glow + Graffiti Font)
             ctx.save();
-            ctx.shadowColor = rarityColor;
-            ctx.shadowBlur = 40; // Neon glow effect Scaled x2
-            ctx.fillStyle = "#ffffff";
+            if (rarityName.includes("Mythical")) {
+                ctx.shadowColor = "#ffffff";
+                ctx.shadowBlur = 60; // Stronger glow
+                ctx.fillStyle = "#ffffff"; 
+            } else {
+                ctx.shadowColor = rarityColor;
+                ctx.shadowBlur = 40; // Neon glow effect Scaled x2
+                ctx.fillStyle = "#ffffff";
+            }
+            
             // CHANGED: Uses 'Permanent Marker' for graffiti style
             ctx.font = "100px 'Permanent Marker', cursive";
             ctx.textAlign = "center"; // Ensure center logic in case it was affected
@@ -600,7 +773,11 @@
             ctx.restore();
             
             // TX HASH Underneath (In Rarity Color)
-            ctx.fillStyle = rarityColor;
+            if (rarityName.includes("Mythical")) {
+                ctx.fillStyle = "#cbd5e1";
+            } else {
+                ctx.fillStyle = rarityColor;
+            }
             ctx.font = "bold 48px 'Courier New', monospace";
             ctx.textAlign = "center"; // Explicitly set center for the hash too
             ctx.fillText(hash, cw / 2, 520);
@@ -614,9 +791,44 @@
             // Draw Art Box Background
             ctx.fillStyle = "#000000";
             ctx.fillRect(artBoxX, artBoxY, artBoxW, artBoxH);
-            ctx.strokeStyle = "#333";
-            ctx.lineWidth = 10;
-            ctx.strokeRect(artBoxX, artBoxY, artBoxW, artBoxH);
+
+            if (rarityName.includes("Mythical")) {
+                // Special Glowing Border for Mythical Art Box
+                ctx.save();
+                
+                // Create a metallic mesh pattern for the border
+                const meshCanvas = document.createElement('canvas');
+                meshCanvas.width = 20;
+                meshCanvas.height = 20;
+                const mCtx = meshCanvas.getContext('2d');
+                
+                // Base
+                const grad = mCtx.createLinearGradient(0,0,20,20);
+                grad.addColorStop(0, '#94a3b8');
+                grad.addColorStop(1, '#e2e8f0');
+                mCtx.fillStyle = grad;
+                mCtx.fillRect(0,0,20,20);
+                
+                // Texture lines
+                mCtx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+                mCtx.lineWidth = 1;
+                mCtx.beginPath();
+                mCtx.moveTo(0, 20); mCtx.lineTo(20, 0);
+                mCtx.stroke();
+                
+                const meshPattern = ctx.createPattern(meshCanvas, 'repeat');
+                ctx.strokeStyle = meshPattern;
+                
+                ctx.lineWidth = 15;
+                ctx.shadowColor = "#ffffff";
+                ctx.shadowBlur = 20;
+                ctx.strokeRect(artBoxX, artBoxY, artBoxW, artBoxH);
+                ctx.restore();
+            } else {
+                ctx.strokeStyle = "#333";
+                ctx.lineWidth = 10;
+                ctx.strokeRect(artBoxX, artBoxY, artBoxW, artBoxH);
+            }
 
             // Calculate Scale
             const lines = art.split('\n');
@@ -639,7 +851,13 @@
             const lineHeight = Math.floor(finalFontSize * 1.1);
 
             ctx.font = `bold ${finalFontSize}px 'Courier New', monospace`;
-            ctx.fillStyle = rarityColor; // Art matches rarity color
+            
+            if (rarityName.includes("Mythical")) {
+                ctx.fillStyle = "#ffffff"; // White text for Mythical
+            } else {
+                ctx.fillStyle = rarityColor; // Art matches rarity color
+            }
+            
             ctx.textAlign = "left"; // Reset to left for art
             ctx.textBaseline = "top";
 
@@ -672,7 +890,11 @@
             ctx.fillText("Block: " + window.tempInscriptionContent[hash + '_block'], cw / 2, ch - 340);
 
             // SIGNATURE (The Anti-Theft Feature)
-            ctx.fillStyle = rarityColor;
+            if (rarityName.includes("Mythical")) {
+                ctx.fillStyle = "#cbd5e1";
+            } else {
+                ctx.fillStyle = rarityColor;
+            }
             ctx.font = "bold 60px 'Courier New', monospace";
             ctx.fillText("MINTED BY: " + sender.toUpperCase(), cw / 2, ch - 160);
 
@@ -1352,12 +1574,21 @@
 
             const lastChar = hash.slice(-1).toLowerCase();
             const lastTwo = hash.slice(-2).toLowerCase();
+            // NEW: Mythical Check (last 3 chars)
+            const lastThree = hash.slice(-3).toLowerCase();
 
+            const isMythical = (lastThree.length === 3 && lastThree[0] === lastThree[1] && lastThree[1] === lastThree[2]);
             const isLegendary = (lastTwo[0] === lastTwo[1]); 
             const isRare = ['b', 'e', '7'].includes(lastChar);
 
             if (isPending) {
                 badgeClass = "bg-yellow-100 text-yellow-800";
+            } else if (isMythical) {
+                // NEW: MYTHICAL TIER
+                rarityClass = "card-mythical";
+                badgeText = "Mythical 💎";
+                badgeClass = "badge-mythical";
+                rarityColor = "#e2e8f0"; // Platinum
             } else if (isLegendary) {
                 rarityClass = "card-legendary";
                 badgeText = "Legendary ✨";
