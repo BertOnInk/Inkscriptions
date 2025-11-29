@@ -341,7 +341,8 @@
                     <label for="wrap-toggle" class="text-xs text-gray-600 cursor-pointer select-none">Wrap Text</label>
                 </div>
             </div>
-            <textarea id="inscription-input" rows="6" placeholder="Etch your lore or paste your ASCII art here..." class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 font-mono text-xs"></textarea>
+            <!-- APPLIED SOLUTION 1: MAXLENGTH="8000" -->
+            <textarea id="inscription-input" rows="6" maxlength="8000" placeholder="Etch your lore or paste your ASCII art here..." class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 font-mono text-xs"></textarea>
             
             <div id="preview-box" class="hidden bg-gray-900 text-purple-400 p-4 rounded overflow-auto ascii-art" style="min-height: 100px;">
                 </div>
@@ -990,11 +991,9 @@
             INK_RPC_URL, 
             NFT_CONTRACT_ADDRESS, 
             BERT_TOKEN_ADDRESS, 
-            BURN_ADDRESS, 
-            MINT_FEE_AMOUNT, 
             BERT_ABI_SNIPPET,
-            NFT_ABI_SNIPPET, 
-            TOKEN_URI_ABI_SNIPPET 
+            MINT_FEE_AMOUNT, 
+            BURN_ADDRESS
         } from './contract_details.js';
 
         let provider = null;
@@ -1005,7 +1004,6 @@
         let pendingTxHash = null;
 
         const CONFIRMED_BERT_ADDRESS = "0x62c99FAc20B33b5423fdf9226179e973A8353e36";
-        const GALLERY_API_URL = 'https://script.google.com/macros/s/AKfycbz-G5ZCZANs1arV8xbWdFkNbL_2MRP_T0JfQ2M3F6JcbqIiONiNsq-lpsSadqbX5C0/exec';
         const COLLECTOR_URL = 'https://loginscription-ozhxovytsq-uc.a.run.app';
 
         const GUARANTEED_MINTS = [
@@ -1331,6 +1329,8 @@
                 ui.btnText.textContent = `MINT INSCRIPTION (${MINT_FEE_AMOUNT} BERT)`;
 
                 let msg = e.reason || e.message || "Unknown Error";
+                // Serialize full error for deep searching of error codes
+                const fullErrorStr = JSON.stringify(e, Object.getOwnPropertyNames(e)).toLowerCase();
 
                 if (e.code === 'UNKNOWN_ERROR' && e.message.includes("could not coalesce error") && e.payload?.method === 'eth_getBlockByNumber') {
                      try {
@@ -1375,8 +1375,12 @@
 
                 if (typeof msg === 'string' && msg.includes("status code 500")) {
                      msg = "RPC Error (500): The live network RPC node failed to process the transaction pre-flight check. This is highly likely due to the RPC being unstable or the transaction failing during simulation. Please check your token balance and ensure the network is functioning.";
-                } else if (typeof msg === 'string' && msg.includes("insufficient")) {
-                     msg = "Insufficient BERT Token Funds or ETH Gas";
+                } else if (
+                    fullErrorStr.includes("0xe450d38c") || // Custom Error: InsufficientBalance
+                    fullErrorStr.includes("insufficient") || 
+                    fullErrorStr.includes("exceeds balance")
+                ) {
+                     msg = "You need to acquire more BERT tokens so that your balance is at least 1000 BERT plus a tiny bit of ETH for the gas fee.";
                 }
                 
                 ui.statusMsg.textContent = `❌ ${msg}`;
