@@ -59,7 +59,7 @@
             box-shadow: 0 0 15px rgba(168, 85, 247, 0.5) !important;
         }
 
-        /* NEW: Epic - Ends in 'a' or 'f' - Magenta Glow */
+        /* NEW: Epic - Ends in '0' or 'f' - Magenta Glow */
         .card-epic {
             border: 2px solid #FF00FF !important; /* Magenta */
             box-shadow: 0 0 20px rgba(255, 0, 255, 0.6) !important;
@@ -449,7 +449,7 @@
             <!-- NEW: Epic -->
             <div class="flex items-center gap-1.5 bg-fuchsia-900/40 px-2 py-1 rounded border border-fuchsia-500">
                 <div class="w-2 h-2 rounded-full bg-fuchsia-500 shadow-[0_0_8px_#ff00ff]"></div>
-                <span class="text-fuchsia-200">Epic (Ends in 'a', 'f')</span>
+                <span class="text-fuchsia-200">Epic (Ends in '0', 'f')</span>
             </div>
 
             <!-- Legendary -->
@@ -1615,10 +1615,10 @@
             const isMythical = (lastThree.length === 3 && lastThree[0] === lastThree[1] && lastThree[1] === lastThree[2]);
             const isLegendary = (lastTwo[0] === lastTwo[1]); 
             
-            // --- NEW: EPIC CHECK (Ends in 'a' or 'f') ---
-            // Note: Legendary checks (last two same) happen first, so 'aa' or 'ff' become Legendary.
-            // This catches any other 'a' or 'f'.
-            const isEpic = ['a', 'f'].includes(lastChar);
+            // --- NEW: EPIC CHECK (Ends in '0' or 'f') ---
+            // Note: Legendary checks (last two same) happen first, so '00' or 'ff' become Legendary.
+            // This catches any other '0' or 'f'.
+            const isEpic = ['0', 'f'].includes(lastChar);
 
             const isRare = ['b', 'e', '7'].includes(lastChar);
 
