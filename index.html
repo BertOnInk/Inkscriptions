@@ -58,6 +58,12 @@
             border: 2px solid #a855f7 !important;
             box-shadow: 0 0 15px rgba(168, 85, 247, 0.5) !important;
         }
+
+        /* NEW: Epic - Ends in two mixed letters - Magenta Glow */
+        .card-epic {
+            border: 2px solid #FF00FF !important; /* Magenta */
+            box-shadow: 0 0 20px rgba(255, 0, 255, 0.6) !important;
+        }
         
         /* Legendary: Ends in double characters or '00' - Gold/Animated Glow */
         .card-legendary {
@@ -94,6 +100,15 @@
         /* Rarity Badge Styles */
         .badge-common { background-color: #f3f4f6; color: #4b5563; }
         .badge-rare { background-color: #f3e8ff; color: #7e22ce; border: 1px solid #d8b4fe; }
+        
+        /* NEW: Epic Badge */
+        .badge-epic { 
+            background-color: #fae8ff; 
+            color: #d946ef; /* Fuchsia-600 */
+            border: 1px solid #FF00FF; 
+            text-shadow: 0 0 5px rgba(255, 0, 255, 0.2);
+        }
+
         .badge-legendary { background-color: #fefce8; color: #b45309; border: 1px solid #fde047; }
         .badge-mythical { 
             background: linear-gradient(90deg, #e2e8f0, #ffffff, #cbd5e1); 
@@ -418,19 +433,32 @@
 
         <div class="flex flex-wrap gap-3 mb-6 bg-black/20 p-3 rounded-lg border border-white/10 text-xs">
             <span class="text-gray-300 font-bold uppercase tracking-wider mr-2 self-center">Rarity Guide:</span>
+            
+            <!-- Common -->
             <div class="flex items-center gap-1.5 bg-gray-800/50 px-2 py-1 rounded border border-gray-600">
                 <div class="w-2 h-2 rounded-full bg-gray-400"></div>
                 <span class="text-gray-300">Common</span>
             </div>
+            
+            <!-- Rare -->
             <div class="flex items-center gap-1.5 bg-purple-900/40 px-2 py-1 rounded border border-purple-500">
                 <div class="w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_5px_#a855f7]"></div>
                 <span class="text-purple-200">Rare (Ends in 'b', 'e', '7')</span>
             </div>
+
+            <!-- NEW: Epic -->
+            <div class="flex items-center gap-1.5 bg-fuchsia-900/40 px-2 py-1 rounded border border-fuchsia-500">
+                <div class="w-2 h-2 rounded-full bg-fuchsia-500 shadow-[0_0_8px_#ff00ff]"></div>
+                <span class="text-fuchsia-200">Epic (Double mixed letter)</span>
+            </div>
+
+            <!-- Legendary -->
             <div class="flex items-center gap-1.5 bg-yellow-900/40 px-2 py-1 rounded border border-yellow-500">
                 <div class="w-2 h-2 rounded-full bg-yellow-400 shadow-[0_0_5px_#eab308] animate-pulse"></div>
                 <span class="text-yellow-200">Legendary (Double end char)</span>
             </div>
-            <!-- NEW: Mythical Legend Item -->
+
+            <!-- Mythical -->
             <div class="flex items-center gap-1.5 bg-slate-100/20 px-2 py-1 rounded border border-slate-300">
                 <div class="w-2 h-2 rounded-full bg-white shadow-[0_0_8px_#ffffff] animate-pulse"></div>
                 <span class="text-white font-bold text-shadow">Mythical (Triple end char)</span>
@@ -1586,12 +1614,19 @@
 
             const isMythical = (lastThree.length === 3 && lastThree[0] === lastThree[1] && lastThree[1] === lastThree[2]);
             const isLegendary = (lastTwo[0] === lastTwo[1]); 
+            
+            // --- NEW: EPIC CHECK (Pure Alpha Gap) ---
+            const isLetter = (c) => c >= 'a' && c <= 'f';
+            // It is Epic if both last chars are letters, AND they are NOT the same (because same would be Legendary)
+            // Note: We don't strictly need to check !== because isLegendary is checked BEFORE this block.
+            // But being explicit helps clarify logic.
+            const isEpic = isLetter(lastTwo[0]) && isLetter(lastTwo[1]);
+
             const isRare = ['b', 'e', '7'].includes(lastChar);
 
             if (isPending) {
                 badgeClass = "bg-yellow-100 text-yellow-800";
             } else if (isMythical) {
-                // NEW: MYTHICAL TIER
                 rarityClass = "card-mythical";
                 badgeText = "Mythical 💎";
                 badgeClass = "badge-mythical";
@@ -1601,6 +1636,12 @@
                 badgeText = "Legendary ✨";
                 badgeClass = "badge-legendary";
                 rarityColor = "#ffd700";
+            } else if (isEpic) {
+                // NEW EPIC BLOCK
+                rarityClass = "card-epic";
+                badgeText = "Epic 🚀";
+                badgeClass = "badge-epic";
+                rarityColor = "#FF00FF"; // Magenta
             } else if (isRare) {
                 rarityClass = "card-rare";
                 badgeText = "Rare 🔮";
