@@ -59,7 +59,7 @@
             box-shadow: 0 0 15px rgba(168, 85, 247, 0.5) !important;
         }
 
-        /* NEW: Epic - Ends in two mixed letters - Magenta Glow */
+        /* NEW: Epic - Ends in 'a' or 'f' - Magenta Glow */
         .card-epic {
             border: 2px solid #FF00FF !important; /* Magenta */
             box-shadow: 0 0 20px rgba(255, 0, 255, 0.6) !important;
@@ -449,7 +449,7 @@
             <!-- NEW: Epic -->
             <div class="flex items-center gap-1.5 bg-fuchsia-900/40 px-2 py-1 rounded border border-fuchsia-500">
                 <div class="w-2 h-2 rounded-full bg-fuchsia-500 shadow-[0_0_8px_#ff00ff]"></div>
-                <span class="text-fuchsia-200">Epic (Double mixed letter)</span>
+                <span class="text-fuchsia-200">Epic (Ends in 'a', 'f')</span>
             </div>
 
             <!-- Legendary -->
@@ -1604,7 +1604,7 @@
             
             let rarityClass = "";
             let rarityColor = "#9ca3af"; // default gray
-            let badgeText = "Common";
+            let badgeText = "Common 🖋️"; // Default to Common with Fountain Pen
             let badgeClass = "badge-common";
 
             const lastChar = hash.slice(-1).toLowerCase();
@@ -1615,12 +1615,10 @@
             const isMythical = (lastThree.length === 3 && lastThree[0] === lastThree[1] && lastThree[1] === lastThree[2]);
             const isLegendary = (lastTwo[0] === lastTwo[1]); 
             
-            // --- NEW: EPIC CHECK (Pure Alpha Gap) ---
-            const isLetter = (c) => c >= 'a' && c <= 'f';
-            // It is Epic if both last chars are letters, AND they are NOT the same (because same would be Legendary)
-            // Note: We don't strictly need to check !== because isLegendary is checked BEFORE this block.
-            // But being explicit helps clarify logic.
-            const isEpic = isLetter(lastTwo[0]) && isLetter(lastTwo[1]);
+            // --- NEW: EPIC CHECK (Ends in 'a' or 'f') ---
+            // Note: Legendary checks (last two same) happen first, so 'aa' or 'ff' become Legendary.
+            // This catches any other 'a' or 'f'.
+            const isEpic = ['a', 'f'].includes(lastChar);
 
             const isRare = ['b', 'e', '7'].includes(lastChar);
 
@@ -1628,18 +1626,18 @@
                 badgeClass = "bg-yellow-100 text-yellow-800";
             } else if (isMythical) {
                 rarityClass = "card-mythical";
-                badgeText = "Mythical 💎";
+                badgeText = "Mythical 🦄";
                 badgeClass = "badge-mythical";
                 rarityColor = "#e2e8f0"; // Platinum
             } else if (isLegendary) {
                 rarityClass = "card-legendary";
-                badgeText = "Legendary ✨";
+                badgeText = "Legendary 🐦‍🔥";
                 badgeClass = "badge-legendary";
                 rarityColor = "#ffd700";
             } else if (isEpic) {
                 // NEW EPIC BLOCK
                 rarityClass = "card-epic";
-                badgeText = "Epic 🚀";
+                badgeText = "Epic 🪄";
                 badgeClass = "badge-epic";
                 rarityColor = "#FF00FF"; // Magenta
             } else if (isRare) {
@@ -1675,7 +1673,7 @@
                      ${!isPending ? 
                         `<button onclick="generateTradingCard('${hash}', '${rarityColor}', '${badgeText}', '${index}', '${sender}', 'modal')" 
                                  class="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide ${badgeClass} hover:opacity-80 transition cursor-pointer" title="Click to View Card">
-                            ${badgeText} 🃏
+                            ${badgeText}
                          </button>` 
                      : ''}
                 </div>
