@@ -54,10 +54,10 @@
         
         /* --- RARITY STYLES --- */
         
-        /* NEW: Uncommon - Ends in 2, 4, 6, 8 - Electric Blue */
+        /* NEW: Uncommon - Ends in 2, 4, 6, 8 - New Blue #0096e4 */
         .card-uncommon {
-            border: 2px solid #00F0FF !important;
-            box-shadow: 0 0 15px rgba(0, 240, 255, 0.5) !important;
+            border: 2px solid #0096e4 !important;
+            box-shadow: 0 0 15px rgba(0, 150, 228, 0.5) !important;
         }
 
         /* Rare: Ends in 'b', 'e', or '7' - Purple Glow */
@@ -107,13 +107,13 @@
         /* Rarity Badge Styles */
         .badge-common { background-color: #f3f4f6; color: #4b5563; }
         
-        /* NEW: Uncommon Badge */
+        /* NEW: Uncommon Badge - New Blue #0096e4 */
         .badge-uncommon {
-            /* Changed to semi-transparent cyan background for consistency */
-            background-color: rgba(0, 240, 255, 0.1); 
-            color: #00F0FF; /* Electric Blue text */
-            border: 1px solid #00F0FF; /* Electric Blue Border */
-            text-shadow: 0 0 5px rgba(0, 240, 255, 0.2);
+            /* Semi-transparent version of #0096e4 */
+            background-color: rgba(0, 150, 228, 0.1); 
+            color: #0096e4; 
+            border: 1px solid #0096e4; 
+            text-shadow: 0 0 5px rgba(0, 150, 228, 0.2);
         }
 
         .badge-rare { background-color: #f3e8ff; color: #7e22ce; border: 1px solid #d8b4fe; }
@@ -457,10 +457,10 @@
                 <span class="text-gray-300">Common</span>
             </div>
 
-            <!-- Uncommon (Updated transparency & weight) -->
-            <div class="flex items-center gap-1.5 bg-[rgba(224,250,255,0.2)] px-2 py-1 rounded border border-[#00F0FF]">
-                <div class="w-2 h-2 rounded-full bg-[#00F0FF]"></div>
-                <span class="text-[#00F0FF]">Uncommon (Ends in 2, 4, 6, 8)</span>
+            <!-- NEW: Uncommon (Updated transparency & weight) -->
+            <div class="flex items-center gap-1.5 bg-[rgba(0,150,228,0.1)] px-2 py-1 rounded border border-[#0096e4]">
+                <div class="w-2 h-2 rounded-full bg-[#0096e4]"></div>
+                <span class="text-[#0096e4]">Uncommon (Ends in 2, 4, 6, 8)</span>
             </div>
             
             <!-- Rare -->
@@ -1146,7 +1146,7 @@
                     rarityColor = "#a855f7";
                 } else if (isUncommon) {
                     rarityName = "Uncommon ⚡"; // NEW
-                    rarityColor = "#00F0FF"; // Electric Blue
+                    rarityColor = "#0096e4"; // New Blue
                 }
 
                 // Get sender from DOM since it's not passed directly to this function
@@ -1757,7 +1757,14 @@
                 
                 const grid = ui.grid;
                 const children = Array.from(grid.children);
-                children.reverse().forEach(child => grid.appendChild(child));
+                // NEW: Sort children explicitly by data-index to fix race condition ordering
+                children.sort((a, b) => {
+                    const idxA = parseInt(a.dataset.index) || 0;
+                    const idxB = parseInt(b.dataset.index) || 0;
+                    // Sort Descending (Newest # at Top)
+                    return idxB - idxA;
+                });
+                children.forEach(child => grid.appendChild(child));
 
 
                 if (ui.grid.children.length === 0) {
@@ -1802,7 +1809,22 @@
                     let content = str;
                     try { content = JSON.parse(str).text; } catch(e){}
                     
-                    createGalleryCard(content, tx.hash, tx.blockNumber || '---', false, index, tx.from); 
+                    // --- NEW: Check Mint Status before rendering ---
+                    let isMinted = false;
+                    // Only check if current user is owner (prevents excessive RPC calls)
+                    if (currentAccount && tx.from && tx.from.toLowerCase() === currentAccount.toLowerCase()) {
+                         try {
+                             // Use minimal ABI to explicitly check the mapping
+                             const minAbi = ["function wrappedHashToTokenId(bytes32) view returns (uint256)"];
+                             const nftChecker = new window.ethers.Contract(NFT_CONTRACT_ADDRESS, minAbi, p);
+                             const pid = await nftChecker.wrappedHashToTokenId(tx.hash);
+                             if (pid > 0) isMinted = true;
+                         } catch (checkErr) {
+                             console.warn("Mint status check failed", checkErr);
+                         }
+                    }
+
+                    createGalleryCard(content, tx.hash, tx.blockNumber || '---', false, index, tx.from, isMinted); 
                     fetchedHashes.add(tx.hash);
                     return true; 
                 }
@@ -1818,7 +1840,7 @@
         }
 
         // *** MODIFIED: Now includes logic for Owner-Only Trading Cards and Mint Button ***
-        function createGalleryCard(art, hash, block, prepend = false, index = '---', sender = null) {
+        function createGalleryCard(art, hash, block, prepend = false, index = '---', sender = null, isMinted = false) {
             const safeArt = (art || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
             const isPending = block === "Pending...";
             
@@ -1836,11 +1858,11 @@
             const isLegendary = (lastTwo[0] === lastTwo[1]); 
             
             // --- NEW: EPIC CHECK (Ends in '0' or 'f') ---
-            // Note: Legendary checks (last two same) happen first, so '00' or 'ff' become Legendary.
-            // This catches any other '0' or 'f'.
             const isEpic = ['0', 'f'].includes(lastChar);
-
             const isRare = ['b', 'e', '7'].includes(lastChar);
+            
+            // NEW: Uncommon Check
+            const isUncommon = ['2', '4', '6', '8'].includes(lastChar);
 
             if (isPending) {
                 badgeClass = "bg-yellow-100 text-yellow-800";
@@ -1855,7 +1877,6 @@
                 badgeClass = "badge-legendary";
                 rarityColor = "#ffd700";
             } else if (isEpic) {
-                // NEW EPIC BLOCK
                 rarityClass = "card-epic";
                 badgeText = "Epic 🪄";
                 badgeClass = "badge-epic";
@@ -1865,12 +1886,16 @@
                 badgeText = "Rare 🔮";
                 badgeClass = "badge-rare";
                 rarityColor = "#a855f7";
+            } else if (isUncommon) {
+                rarityClass = "card-uncommon";
+                badgeText = "Uncommon ⚡";
+                badgeClass = "badge-uncommon";
+                rarityColor = "#0096e4";
             } else {
                 badgeClass = "bg-gray-100 text-gray-600";
             }
 
             window.tempInscriptionContent[hash] = art; 
-            // Store block number for the card generator
             window.tempInscriptionContent[hash + '_block'] = block;
 
             // --- CHECK: IS THE USER THE OWNER? ---
@@ -1878,8 +1903,22 @@
 
             removeGalleryCard(hash); 
 
+            // --- DETERMINE BUTTON HTML ---
+            let buttonHtml = '';
+            if (!isOwner) {
+                buttonHtml = `<button class="flex-1 bg-gray-500 text-white text-xs font-bold py-2 px-2 rounded opacity-50 cursor-not-allowed">Mint (Owner Only) 🔒</button>`;
+            } else if (isMinted) {
+                buttonHtml = `<button class="flex-1 bg-gray-500 text-white text-xs font-bold py-2 px-2 rounded cursor-not-allowed border border-gray-600" disabled>Minted (Final) ✅</button>`;
+            } else {
+                // Shiny active button
+                buttonHtml = `<button onclick="handleOracleMint('${hash}', '${index}')" class="flex-1 text-white text-xs font-bold py-2 px-2 rounded transition bg-gradient-to-r from-fuchsia-600 to-violet-600 hover:from-fuchsia-700 hover:to-violet-700 btn-shine shadow-md">✨ Mint NFT</button>`;
+            }
+
             const div = document.createElement('div');
             div.id = `card-${hash}`; 
+            // FIX: Add data-index for robust sorting
+            div.dataset.index = index;
+
             if (sender) {
                 div.dataset.sender = sender;
             }
@@ -1910,10 +1949,7 @@
                             class="flex-1 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold py-2 px-2 rounded transition">
                         View Raw
                     </button>
-                    <button onclick="handleOracleMint('${hash}', '${index}')" 
-                                 class="flex-1 text-white text-xs font-bold py-2 px-2 rounded transition ${isOwner ? 'bg-gradient-to-r from-fuchsia-600 to-violet-600 hover:from-fuchsia-700 hover:to-violet-700 btn-shine shadow-md' : 'btn-disabled'}" ${!isOwner ? 'disabled' : ''}>
-                            ${isOwner ? '✨ Mint NFT' : 'Mint (Owner Only) 🔒'}
-                    </button>
+                    ${buttonHtml}
                 </div>
             `;
             
@@ -1937,6 +1973,11 @@
                     titleColor = 'text-green-600';
                     bgColor = 'bg-green-50';
                     buttonColor = 'bg-green-600 hover:bg-green-700';
+                    break;
+                case 'warning':
+                    titleColor = 'text-yellow-600';
+                    bgColor = 'bg-yellow-50';
+                    buttonColor = 'bg-yellow-600 hover:bg-yellow-700';
                     break;
                 case 'info':
                 default:
