@@ -79,7 +79,7 @@
         /* Mythical: Ends in triple characters - Platinum/Prismatic Glow */
         .card-mythical {
             border: 2px solid #e2e8f0 !important; /* Platinum base */
-            background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(0,0,0,0.3)) !important;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(0, 0, 0, 0.3)) !important;
             animation: mythicalShine 3s infinite alternate;
         }
         @keyframes mythicalShine {
@@ -115,7 +115,7 @@
             color: #0f172a; 
             border: 1px solid #94a3b8; 
             font-weight: 800;
-            text-shadow: 0 0 2px rgba(255,255,255,0.8);
+            text-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
         }
         /* --------------------- */
 
@@ -360,8 +360,7 @@
             <!-- APPLIED SOLUTION 1: MAXLENGTH="8000" -->
             <textarea id="inscription-input" rows="6" maxlength="8000" placeholder="Etch your lore or paste your ASCII art here..." class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 font-mono text-xs"></textarea>
             
-            <div id="preview-box" class="hidden bg-gray-900 text-purple-400 p-4 rounded overflow-auto ascii-art" style="min-height: 100px;">
-                </div>
+            <div id="preview-box" class="hidden bg-gray-900 text-purple-400 p-4 rounded overflow-auto ascii-art" style="min-height: 100px;"></div>
 
             <div class="flex justify-between items-center text-xs bg-gray-50 p-2 rounded border border-gray-200">
                 <span class="text-gray-600">Size: <span id="byte-count" class="font-bold">0</span> bytes</span>
@@ -376,8 +375,8 @@
                 <div class="group relative flex items-center">
                     <div class="cursor-help text-violet-600 font-bold bg-violet-100 hover:bg-violet-200 rounded-full w-4 h-4 flex items-center justify-center text-[10px] border border-violet-300 transition">?</div>
                     <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 text-left leading-relaxed">
-                        <p class="mb-2"><strong class="text-violet-400">Public:</strong> Your Inkscription and a link to your transaction on the Ink chain will be reflected in the Gallery.</p>
-                        <p><strong class="text-violet-400">Private:</strong> Your Inkscription will not be recorded in the Inkscriptions database and will not be displayed in the Gallery. You can still view your Inkscription privately by entering the tx ID in the "Find Specific Artifact" field.</p>
+                        <p class="mb-2"><strong class="text-violet-400">Public:</strong> Your Inkscription and a link to your transaction will be reflected in the Gallery. It will generate a unique card which the owner can mint as an NFT with a bespoke supply.</p>
+                        <p><strong class="text-violet-400">Private:</strong> Your Inkscription will not be stored in the database, displayed in the public Gallery, or be eligible to be minted as an NFT. You can still view it in its raw form by entering the tx ID in the "Find Specific Artifact" field.</p>
                         <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
                     </div>
                 </div>
@@ -431,6 +430,7 @@
             </div>
         </div>
 
+        <!-- Rarity Legend -->
         <div class="flex flex-wrap gap-3 mb-6 bg-black/20 p-3 rounded-lg border border-white/10 text-xs">
             <span class="text-gray-300 font-bold uppercase tracking-wider mr-2 self-center">Rarity Guide:</span>
             
@@ -474,7 +474,7 @@
         <div id="gallery-empty" class="text-center py-10 text-gray-400 hidden">No inscriptions found.</div>
     </div>
 
-    <!-- NEW: CARD PREVIEW MODAL -->
+    <!-- CARD PREVIEW MODAL -->
     <div id="card-preview-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content text-center" style="max-width: 600px; padding: 20px;">
             <div class="flex justify-between items-center mb-4">
@@ -492,19 +492,20 @@
         </div>
     </div>
 
+    <!-- FAQ MODAL -->
     <div id="faq-modal-overlay" class="modal-overlay">
         <div id="faq-modal-content" class="modal-content">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-2xl font-bold text-violet-600">Bert's Inkscriptions FAQ</h2>
                 <button id="close-faq-btn" class="text-gray-500 hover:text-gray-700 text-2xl font-bold">×</button>
             </div>
-            <div id="faq-body">
-                </div>
+            <div id="faq-body"></div>
             <div class="mt-4 pt-4 border-t border-gray-200">
                 <button onclick="closeFaqModal()" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 rounded transition">Close</button>
             </div>
         </div>
     </div>
+
     <script>
         // Global storage for inscription content
         window.tempInscriptionContent = {};
@@ -593,7 +594,7 @@
             URL.revokeObjectURL(blobUrl);
         }
 
-        // --- NEW: OFFICIAL TRADING CARD GENERATOR (VIEW & DOWNLOAD MODES) ---
+        // --- NEW: OFFICIAL TRADING CARD GENERATOR (VIEW ONLY) ---
         async function generateTradingCard(hash, rarityColor, rarityName, index, sender, mode = 'download') {
             const art = window.tempInscriptionContent[hash];
             if (!art) return;
@@ -843,7 +844,7 @@
                 
                 // Texture lines
                 mCtx.strokeStyle = "rgba(255, 255, 255, 0.5)";
-                mCtx.lineWidth = 1;
+                ctx.lineWidth = 1;
                 mCtx.beginPath();
                 mCtx.moveTo(0, 20); mCtx.lineTo(20, 0);
                 mCtx.stroke();
@@ -930,7 +931,11 @@
             ctx.font = "bold 60px 'Courier New', monospace";
             ctx.fillText("MINTED BY: " + sender.toUpperCase(), cw / 2, ch - 160);
 
-            // --- HANDLE MODE (MODAL vs DOWNLOAD) ---
+            // --- HANDLE MODE (MODAL vs DOWNLOAD vs BASE64) ---
+            if (mode === 'base64') {
+                return canvas.toDataURL('image/png');
+            }
+
             canvas.toBlob(blob => {
                 const url = URL.createObjectURL(blob);
                 
@@ -943,18 +948,8 @@
                         img.style.opacity = '1';
                     };
                     img.src = url;
-                    
-                    // Cleanup previous object URLs to save memory
-                    // (optional, or rely on garbage collection if simple)
                 } else {
-                    // Download logic
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `${hash}.png`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
+                    // This block is now intentionally empty as the download button is removed.
                 }
             }, 'image/png');
         }
@@ -987,7 +982,7 @@
                     <p>Creating an <span style="color: #9333ea;">Inkscription</span> involves four simple steps:</p>
                     <ul>
                         <li><span style="color: #9333ea;">Connect Wallet:</span> Click the "Connect Wallet" button and ensure you have enough <span style="color: #9333ea;">BERT</span> tokens (1000 <span style="color: #9333ea;">BERT</span> per <span style="color: #9333ea;">inkscription</span>) and a small amount of ETH for gas.</li>
-                        <li><span style="color: #9333ea;">Compose Content:</span> Enter your desired text, lore, or ASCII art into the "<span style="color: #000000 !important;">Your Permanent</span> <span style="color: #9333ea;">Inkscription</span>" box. For ASCII Art: We recommend an image-to-ASCII web tool such as <a href="https://www.asciiart.eu/image-to-ascii" target="_blank" class="text-violet-500 hover:text-violet-700 underline">asciiart.eu/image-to-ascii</a> or similar. There you can upload and fine-tune an image to create your perfect <span style="color: #9333ea;">inkscription</span> content.</li>
+                        <li><span style="color: #9333ea;">Compose Content:</span> Enter your desired text, lore, or ASCII art into the "<span style="color: #000000 !important;">Your Permanent</span> <span style="color: #9333ea;">Inkscription</span>" box. For ASCII Art: We recommend an image-to-ASCII web tool suchs as <a href="https://www.asciiart.eu/image-to-ascii" target="_blank" class="text-violet-500 hover:text-violet-700 underline">asciiart.eu/image-to-ascii</a> or similar. There you can upload and fine-tune an image to create your perfect <span style="color: #9333ea;">inkscription</span> content.</li>
                         <li><span style="color: #9333ea;">Check Cost:</span> Review the <span style="color: 000000 !important;">Est. Gas</span> display to see the estimated ETH transaction cost.</li>
                         <li><span style="color: #9333ea;">Mint:</span> Click the <span style="color: #9333ea;">"MINT INKSCRIPTION"</span> button and confirm the transaction (which includes the <span style="color: #9333ea;">BERT</span> token burn and the <span style="color: #9333ea;">inkscription</span> data) in your wallet. Once confirmed, your unique artifact will appear in the Live Gallery. You will also gain exclusive access to your unique Inkscriptions Card.</span></li>
                     </ul>
@@ -1023,6 +1018,7 @@
             NFT_CONTRACT_ADDRESS, 
             BERT_TOKEN_ADDRESS, 
             BERT_ABI_SNIPPET,
+            NFT_ABI_SNIPPET, 
             MINT_FEE_AMOUNT, 
             BURN_ADDRESS
         } from './contract_details.js';
@@ -1034,41 +1030,238 @@
         let currentChainId = null;
         let pendingTxHash = null;
 
-        const CONFIRMED_BERT_ADDRESS = "0x62c99FAc20B33b5423fdf9226179e973A8353e36";
         const COLLECTOR_URL = 'https://loginscription-ozhxovytsq-uc.a.run.app';
-
-        const GUARANTEED_MINTS = [
-            { hash: "0xeb85a7dd5e847e2cb32aec12cf13a87ca33900eadd64c0880db8a6a2224e3a00" }, 
-            { hash: "0x7f6d5341a49dc56706117eed565f2b7f41a71081db92d8ee792b8dcdf11be21b" }
-        ];
         let fetchedHashes = new Set(); 
 
         const $ = (id) => document.getElementById(id);
         const ui = {
-            header: $('wallet-bar'),
-            address: $('address-display'),
-            disconnect: $('disconnect-btn'),
-            balance: $('balance-display'),
-            totalBurn: $('total-burn-display'), 
-            input: $('inscription-input'),
-            preview: $('preview-box'), 
-            byteCount: $('byte-count'),
-            gas: $('gas-display'),
-            btn: $('main-btn'),
-            btnText: $('btn-text'),
-            spinner: $('spinner'),
-            statusBox: $('status-box'),
-            statusMsg: $('status-msg'),
-            manualBtn: $('manual-btn'),
-            manualInput: $('manual-hash'),
-            grid: $('gallery-grid'),
-            loader: $('gallery-loader'),
-            empty: $('gallery-empty'),
-            refresh: $('refresh-btn'),
-            filterCheckbox: $('my-artifacts-filter'),
-            // NEW:
-            wrapToggle: $('wrap-toggle'), 
+            header: $('wallet-bar'), address: $('address-display'), disconnect: $('disconnect-btn'), balance: $('balance-display'), totalBurn: $('total-burn-display'), 
+            input: $('inscription-input'), preview: $('preview-box'), byteCount: $('byte-count'), gas: $('gas-display'),
+            btn: $('main-btn'), btnText: $('btn-text'), spinner: $('spinner'), statusBox: $('status-box'), statusMsg: $('status-msg'),
+            manualBtn: $('manual-btn'), manualInput: $('manual-hash'), grid: $('gallery-grid'), loader: $('gallery-loader'), empty: $('gallery-empty'), refresh: $('refresh-btn'), filterCheckbox: $('my-artifacts-filter'), wrapToggle: $('wrap-toggle'), 
         };
+
+        // --- NEW: Oracle Mint Logic for Anti-Spam ---
+        window.handleOracleMint = async function(originalTxHash, index) {
+            // Check for provider
+            if (!window.ethereum) { 
+                showCustomAlert("Wallet Missing", "Please install Rabby or MetaMask.", "error"); 
+                return; 
+            }
+
+            // Re-check signer status
+            if (!signer) {
+                await rebuildConnection();
+                if (!signer) return;
+            }
+            
+            // Strict Chain ID Check
+            const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+            if (parseInt(chainId) !== parseInt(INK_CHAIN_ID)) {
+                showCustomAlert("Wrong Network", "Please switch to Ink L2 Mainnet.", "error");
+                try {
+                    await window.ethereum.request({
+                        method: 'wallet_switchEthereumChain',
+                        params: [{ chainId: "0x" + INK_CHAIN_ID.toString(16) }],
+                    });
+                } catch (e) { console.error(e); }
+                return;
+            }
+
+            const btn = document.activeElement;
+            if(btn && btn.tagName === 'BUTTON') { 
+                btn.disabled = true; 
+                btn.textContent = "Verifying..."; 
+                btn.classList.add('btn-primary-loading');
+            }
+            
+            // --- SUPPLY INPUT PROMPT ---
+            let supply = prompt("Enter Mint Supply (1 - 1,000,000):", "1");
+            if (supply === null) {
+                 if(btn) { btn.disabled = false; btn.textContent = "✨ Mint NFT"; btn.classList.remove('btn-primary-loading'); }
+                 return;
+            }
+            let supplyAmount = parseInt(supply);
+            if (isNaN(supplyAmount) || supplyAmount < 1 || supplyAmount > 1000000) {
+                 showCustomAlert("Invalid Supply", "Supply must be a number between 1 and 1,000,000.", "error");
+                 if(btn) { btn.disabled = false; btn.textContent = "✨ Mint NFT"; btn.classList.remove('btn-primary-loading'); }
+                 return;
+            }
+
+            let mintTxHash = null; // Store hash for error recovery
+
+            try {
+                showCustomAlert("Generating Artifact", "Rendering high-resolution artwork for decentralized storage...", "info");
+
+                const targetIndex = parseInt(index) || 1;
+
+                // --- 1. RECALCULATE RARITY FOR IMAGE GENERATION ---
+                const lastChar = originalTxHash.slice(-1).toLowerCase();
+                const lastTwo = originalTxHash.slice(-2).toLowerCase();
+                const lastThree = originalTxHash.slice(-3).toLowerCase();
+
+                const isMythical = (lastThree.length === 3 && lastThree[0] === lastThree[1] && lastThree[1] === lastThree[2]);
+                const isLegendary = (lastTwo[0] === lastTwo[1]); 
+                const isEpic = ['0', 'f'].includes(lastChar);
+                const isRare = ['b', 'e', '7'].includes(lastChar);
+
+                let rarityColor = "#9ca3af"; 
+                let rarityName = "Common 🖋️";
+
+                if (isMythical) {
+                    rarityName = "Mythical 🦄";
+                    rarityColor = "#e2e8f0";
+                } else if (isLegendary) {
+                    rarityName = "Legendary 🐦‍🔥";
+                    rarityColor = "#ffd700";
+                } else if (isEpic) {
+                    rarityName = "Epic 🪄";
+                    rarityColor = "#FF00FF";
+                } else if (isRare) {
+                    rarityName = "Rare 🔮";
+                    rarityColor = "#a855f7";
+                }
+
+                // Get sender from DOM since it's not passed directly to this function
+                const cardEl = document.getElementById(`card-${originalTxHash}`);
+                const sender = cardEl ? (cardEl.dataset.sender || currentAccount) : currentAccount;
+
+                // --- 2. GENERATE IMAGE DATA ---
+                // We ask generateTradingCard to return a Base64 string instead of displaying a modal
+                const imageData = await generateTradingCard(originalTxHash, rarityColor, rarityName, index, sender, 'base64');
+
+                showCustomAlert("Initiating Mint", "Uploading artwork to Arweave via secure bridge...", "info");
+
+                const payload = {
+                    txHash: originalTxHash, 
+                    userAddress: currentAccount,
+                    supplyAmount: supplyAmount, 
+                    index: targetIndex,
+                    image: imageData // <--- SEND BASE64 IMAGE TO BACKEND
+                };
+
+                // FOR PRODUCTION (Uncomment when live):
+                // const ORACLE_API_URL = "https://us-central1-inkscriptions-nft-oracle.cloudfunctions.net/prepareMint"; 
+                const ORACLE_API_URL = "http://127.0.0.1:5001/inkscriptions-nft-oracle/us-central1/prepareMint";
+
+                const response = await fetch(ORACLE_API_URL, {
+                    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                
+                if (!response.ok) throw new Error(data.error || "Oracle verification failed.");
+                if (!data.contentHash) throw new Error("Oracle did not return contentHash.");
+
+                if(btn) btn.textContent = "Minting...";
+                showCustomAlert("Oracle Verified!", "Signature received. Artwork pinned. Please confirm in your wallet...", "success");
+
+                const nftContract = new window.ethers.Contract(NFT_CONTRACT_ADDRESS, NFT_ABI_SNIPPET, signer);
+
+                // 2. Mint on Contract
+                const mintTx = await nftContract.wrapEdition(
+                    data.originalTxHash,   
+                    data.contentHash,      
+                    supplyAmount,              
+                    payload.index,         
+                    data.tokenURI,         
+                    data.signature,
+                    { gasLimit: 500000 } // Manual gas limit to prevent simulation errors
+                );
+
+                mintTxHash = mintTx.hash; // Save hash immediately
+                showCustomAlert("Minting...", `Transaction Sent: ${mintTx.hash}`, "info");
+                
+                // Wait for transaction to be mined
+                const receipt = await mintTx.wait();
+
+                if (receipt.status === 1) {
+                    // --- SUCCESS PATH 1: CONFIRMED BY WAIT() ---
+                    const explorerLink = `https://explorer.inkonchain.com/tx/${mintTx.hash}`;
+                    showCustomAlert(
+                        "Mint Successful!", 
+                        `Official NFT Minted Successfully!\n\nTx Hash: ${mintTx.hash}\n\n<a href="${explorerLink}" target="_blank" class="text-violet-600 underline font-bold">View on Explorer ↗</a>`, 
+                        "success"
+                    );
+                    if(btn) {
+                        // LOCK BUTTON PERMANENTLY ON SUCCESS
+                        btn.textContent = "Minted (Final)";
+                        btn.disabled = true;
+                        btn.classList.add('btn-disabled');
+                        btn.classList.remove('btn-primary-loading');
+                        btn.classList.remove('btn-shine'); // Remove animation
+                        btn.classList.remove('bg-gradient-to-r'); // Remove gradient
+                        btn.classList.add('bg-gray-500'); // Set to flat gray
+                    }
+                } else {
+                    throw new Error("Transaction reverted on-chain.");
+                }
+                
+            } catch (txError) {
+                console.error("Contract Call Failed:", txError);
+                
+                // --- FIX: DETECT FALSE NEGATIVE (BAD_DATA) ---
+                if (mintTxHash && (
+                    txError.code === 'BAD_DATA' || 
+                    (txError.message && txError.message.includes("value=null")) ||
+                    (txError.message && txError.message.includes("invalid value for value.index"))
+                )) {
+                    // --- SUCCESS PATH 2: ASSUMED SUCCESS AFTER TIMEOUT ---
+                    const explorerLink = `https://explorer.inkonchain.com/tx/${mintTxHash}`;
+                    showCustomAlert(
+                        "Mint Successful!", 
+                        `Transaction sent successfully!\n\nTx Hash: ${mintTxHash}\n\n<a href="${explorerLink}" target="_blank" class="text-violet-600 underline font-bold">View on Explorer ↗</a>`, 
+                        "success"
+                    );
+                    
+                    if(btn) {
+                        // Assume success and lock
+                        btn.textContent = "Minted (Check Wallet)";
+                        btn.disabled = true;
+                        btn.classList.add('btn-disabled');
+                        btn.classList.remove('btn-primary-loading');
+                        btn.classList.remove('btn-shine');
+                    }
+                    return; // Stop execution, treat as success
+                }
+                // ---------------------------------------------
+
+                let msg = txError.reason || txError.message || "Unknown Contract Error";
+                
+                // --- DETECT "ALREADY MINTED" STATE ---
+                if (msg.includes("Inkscription already wrapped") || msg.includes("already minted")) {
+                    showCustomAlert("Already Minted", "This Inkscription has already been minted as an NFT. The supply is final.", "warning");
+                    if(btn) {
+                        // LOCK BUTTON PERMANENTLY
+                        btn.textContent = "Minted (Final)";
+                        btn.disabled = true;
+                        btn.classList.add('btn-disabled');
+                        btn.classList.remove('btn-primary-loading');
+                        btn.classList.remove('btn-shine');
+                        btn.classList.remove('bg-gradient-to-r');
+                        btn.classList.add('bg-gray-500');
+                    }
+                    return;
+                }
+                // -------------------------------------
+
+                if (msg.includes("Content already minted")) {
+                     msg = "This text content has already been minted by someone else (Anti-Spam).";
+                } else if (msg.includes("Token ID already minted")) {
+                     msg = "This specific Token ID # already exists on the contract.";
+                }
+                
+                showCustomAlert("Mint Failed", msg, "error");
+                
+                // Re-enable for generic errors so they can try again
+                if(btn && btn.tagName === 'BUTTON') { 
+                    btn.disabled = false; 
+                    btn.textContent = "✨ Mint NFT"; 
+                    btn.classList.remove('btn-primary-loading');
+                }
+            }
+        }
+        // --- END NEW ORACLE LOGIC ---
 
         async function rebuildConnection(forcedAccount = null) {
             if (typeof window.ethereum === 'undefined') {
@@ -1537,7 +1730,14 @@
                 
                 const grid = ui.grid;
                 const children = Array.from(grid.children);
-                children.reverse().forEach(child => grid.appendChild(child));
+                // NEW: Sort children explicitly by data-index to fix race condition ordering
+                children.sort((a, b) => {
+                    const idxA = parseInt(a.dataset.index) || 0;
+                    const idxB = parseInt(b.dataset.index) || 0;
+                    // Sort Descending (Newest # at Top)
+                    return idxB - idxA;
+                });
+                children.forEach(child => grid.appendChild(child));
 
 
                 if (ui.grid.children.length === 0) {
@@ -1582,7 +1782,22 @@
                     let content = str;
                     try { content = JSON.parse(str).text; } catch(e){}
                     
-                    createGalleryCard(content, tx.hash, tx.blockNumber || '---', false, index, tx.from); 
+                    // --- NEW: Check Mint Status before rendering ---
+                    let isMinted = false;
+                    // Only check if current user is owner (prevents excessive RPC calls)
+                    if (currentAccount && tx.from && tx.from.toLowerCase() === currentAccount.toLowerCase()) {
+                         try {
+                             // Use minimal ABI to explicitly check the mapping
+                             const minAbi = ["function wrappedHashToTokenId(bytes32) view returns (uint256)"];
+                             const nftChecker = new window.ethers.Contract(NFT_CONTRACT_ADDRESS, minAbi, p);
+                             const pid = await nftChecker.wrappedHashToTokenId(tx.hash);
+                             if (pid > 0) isMinted = true;
+                         } catch (checkErr) {
+                             console.warn("Mint status check failed", checkErr);
+                         }
+                    }
+
+                    createGalleryCard(content, tx.hash, tx.blockNumber || '---', false, index, tx.from, isMinted); 
                     fetchedHashes.add(tx.hash);
                     return true; 
                 }
@@ -1597,8 +1812,8 @@
             if (card) card.remove();
         }
 
-        // *** MODIFIED: Now includes logic for Owner-Only Trading Cards ***
-        function createGalleryCard(art, hash, block, prepend = false, index = '---', sender = null) {
+        // *** MODIFIED: Now includes logic for Owner-Only Trading Cards and Mint Button ***
+        function createGalleryCard(art, hash, block, prepend = false, index = '---', sender = null, isMinted = false) {
             const safeArt = (art || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
             const isPending = block === "Pending...";
             
@@ -1616,10 +1831,7 @@
             const isLegendary = (lastTwo[0] === lastTwo[1]); 
             
             // --- NEW: EPIC CHECK (Ends in '0' or 'f') ---
-            // Note: Legendary checks (last two same) happen first, so '00' or 'ff' become Legendary.
-            // This catches any other '0' or 'f'.
             const isEpic = ['0', 'f'].includes(lastChar);
-
             const isRare = ['b', 'e', '7'].includes(lastChar);
 
             if (isPending) {
@@ -1635,7 +1847,6 @@
                 badgeClass = "badge-legendary";
                 rarityColor = "#ffd700";
             } else if (isEpic) {
-                // NEW EPIC BLOCK
                 rarityClass = "card-epic";
                 badgeText = "Epic 🪄";
                 badgeClass = "badge-epic";
@@ -1650,7 +1861,6 @@
             }
 
             window.tempInscriptionContent[hash] = art; 
-            // Store block number for the card generator
             window.tempInscriptionContent[hash + '_block'] = block;
 
             // --- CHECK: IS THE USER THE OWNER? ---
@@ -1658,8 +1868,22 @@
 
             removeGalleryCard(hash); 
 
+            // --- DETERMINE BUTTON HTML ---
+            let buttonHtml = '';
+            if (!isOwner) {
+                buttonHtml = `<button class="flex-1 bg-gray-500 text-white text-xs font-bold py-2 px-2 rounded opacity-50 cursor-not-allowed">Mint (Owner Only) 🔒</button>`;
+            } else if (isMinted) {
+                buttonHtml = `<button class="flex-1 bg-gray-500 text-white text-xs font-bold py-2 px-2 rounded cursor-not-allowed border border-gray-600" disabled>Minted (Final) ✅</button>`;
+            } else {
+                // Shiny active button
+                buttonHtml = `<button onclick="handleOracleMint('${hash}', '${index}')" class="flex-1 text-white text-xs font-bold py-2 px-2 rounded transition bg-gradient-to-r from-fuchsia-600 to-violet-600 hover:from-fuchsia-700 hover:to-violet-700 btn-shine shadow-md">✨ Mint NFT</button>`;
+            }
+
             const div = document.createElement('div');
             div.id = `card-${hash}`; 
+            // FIX: Add data-index for robust sorting
+            div.dataset.index = index;
+
             if (sender) {
                 div.dataset.sender = sender;
             }
@@ -1690,12 +1914,7 @@
                             class="flex-1 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold py-2 px-2 rounded transition">
                         View Raw
                     </button>
-                    ${!isPending ? 
-                        `<button onclick="generateTradingCard('${hash}', '${rarityColor}', '${badgeText}', '${index}', '${sender}', 'download')" 
-                                 class="flex-1 text-white text-xs font-bold py-2 px-2 rounded transition ${isOwner ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 btn-shine shadow-md' : 'btn-disabled'}" ${!isOwner ? 'disabled' : ''}>
-                            ${isOwner ? '✨ Mint Card' : 'Claim (Owner Only) 🔒'}
-                        </button>` 
-                    : ''}
+                    ${buttonHtml}
                 </div>
             `;
             
@@ -1719,6 +1938,11 @@
                     titleColor = 'text-green-600';
                     bgColor = 'bg-green-50';
                     buttonColor = 'bg-green-600 hover:bg-green-700';
+                    break;
+                case 'warning':
+                    titleColor = 'text-yellow-600';
+                    bgColor = 'bg-yellow-50';
+                    buttonColor = 'bg-yellow-600 hover:bg-yellow-700';
                     break;
                 case 'info':
                 default:
@@ -1749,7 +1973,7 @@
                  return;
             }
             try {
-                const stableReadContract = new window.ethers.Contract(CONFIRMED_BERT_ADDRESS, BERT_ABI_SNIPPET, readProvider);
+                const stableReadContract = new window.ethers.Contract(BERT_TOKEN_ADDRESS, BERT_ABI_SNIPPET, readProvider);
                 const bal = await stableReadContract.balanceOf(currentAccount);
                 
                 if (bal === undefined || bal === null) {
@@ -1846,30 +2070,91 @@
             });
         }
 
+        // --- UPDATED LOOKUP BUTTON LOGIC ---
         ui.manualBtn.addEventListener('click', async () => {
             const hash = ui.manualInput.value.trim();
-            
             const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
+
             if(!hash || !readProvider) {
-                showCustomAlert("Lookup Error", "Network connection issue. Please ensure the dApp loaded correctly.");
+                showCustomAlert("Lookup Error", "Network connection issue or invalid input.");
                 return;
             }
-            
+
+            ui.manualBtn.textContent = "Verifying...";
+
+            // 1. Fetch Public List to check privacy status
+            let isPublic = false;
+            try {
+                const publicMints = await fetchGuaranteedMintsFromAPI();
+                isPublic = publicMints.some(item => item.hash.toLowerCase() === hash.toLowerCase());
+            } catch (err) {
+                console.warn("Could not verify privacy status", err);
+            }
+
+            // 2. Fetch Data (We need this for BOTH Public and Private to show the text)
+            let content = "";
+            let safeArt = "";
+            try {
+                const tx = await readProvider.getTransaction(hash);
+                if(tx && tx.data && tx.data.length > 138) {
+                    const raw = "0x" + tx.data.slice(138); 
+                    let str = "";
+                    try { str = window.ethers.toUtf8String(raw); } catch (err) {}
+                    try { content = JSON.parse(str).text; } catch(e) { content = str; }
+                    
+                    // Sanitize for HTML display
+                    safeArt = (content || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                    
+                    // Store for "View Fullscreen" feature
+                    window.tempInscriptionContent[hash] = content; 
+                }
+            } catch(e) { console.log("Bg fetch failed"); }
+
+            // 3. Gatekeeper Logic (PRIVATE PATH)
+            if (!isPublic) {
+                // It is Private: Render the RAW data, but remove "Card" styling/minting
+                ui.grid.innerHTML = `
+                    <div class="bg-gray-800 p-4 rounded-lg shadow border border-gray-600 flex flex-col col-span-1 md:col-span-2">
+                        <div class="flex justify-between items-center mb-3 border-b border-gray-700 pb-2">
+                            <h3 class="text-red-400 font-bold flex items-center gap-2 text-sm uppercase tracking-wider">
+                                🔒 Private Inkscription
+                            </h3>
+                            <span class="text-xs text-gray-500">Raw Data View Only</span>
+                        </div>
+                        
+                        <!-- RAW DATA DISPLAY (No Rarity Colors) -->
+                        <div class="bg-black text-gray-300 p-4 rounded text-xs overflow-auto ascii-art mb-3 shadow-inner" style="max-height: 300px; min-height: 100px;">${safeArt || "<span class='text-gray-600'>[No readable text data found]</span>"}</div>
+                        
+                        <div class="flex gap-2 mt-2">
+                             <button onclick="viewFullInscription('${hash}')" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-2 px-2 rounded transition border border-gray-600">
+                                View Raw Fullscreen
+                             </button>
+                             <a href="https://explorer.inkonchain.com/tx/${hash}" target="_blank" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-2 px-2 rounded transition border border-gray-600 text-center flex items-center justify-center">
+                                View TX ID ↗
+                             </a>
+                        </div>
+                    </div>
+                `;
+                ui.empty.classList.add('hidden');
+                ui.manualBtn.textContent = "Look Up";
+                return; // STOP HERE. Do not render the official card.
+            }
+
+            // 4. Public Path (Render Official Card)
             ui.manualBtn.textContent = "Searching...";
-            
             try {
                 ui.grid.innerHTML = '';
                 fetchedHashes.clear();
                 ui.empty.classList.add('hidden');
 
-                const success = await decodeAndRenderTx(hash, true, readProvider, '---'); 
-                
+                const success = await decodeAndRenderTx(hash, true, readProvider, '---');
+
                 if (success) {
                      ui.empty.classList.add('hidden');
                 } else {
                      ui.empty.textContent = "No inscription found.";
                      ui.empty.classList.remove('hidden');
-                     showCustomAlert("Lookup Failed", "Transaction not found or a general network error occurred.");
+                     showCustomAlert("Lookup Failed", "Transaction not found or invalid inscription data.");
                 }
             } catch(e) { 
                 console.error(e);
@@ -1880,6 +2165,7 @@
             
             ui.manualBtn.textContent = "Look Up"; 
         });
+        // -------------------------------------
 
         (async function init() {
             await fetchGallery(); 
