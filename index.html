@@ -54,10 +54,10 @@
         
         /* --- RARITY STYLES --- */
         
-        /* NEW: Uncommon - Ends in 2, 4, 6, 8 - New Blue #0096e4 */
+        /* Uncommon - Ends in 2, 4, 6, 8 - New Purple/Blue #731dff */
         .card-uncommon {
-            border: 2px solid #0096e4 !important;
-            box-shadow: 0 0 15px rgba(0, 150, 228, 0.5) !important;
+            border: 2px solid #731dff !important;
+            box-shadow: 0 0 15px rgba(115, 29, 255, 0.5) !important;
         }
 
         /* Rare: Ends in 'b', 'e', or '7' - Purple Glow */
@@ -107,13 +107,12 @@
         /* Rarity Badge Styles */
         .badge-common { background-color: #f3f4f6; color: #4b5563; }
         
-        /* NEW: Uncommon Badge - New Blue #0096e4 */
+        /* Uncommon Badge - New Purple/Blue #731dff */
         .badge-uncommon {
-            /* Semi-transparent version of #0096e4 */
-            background-color: rgba(0, 150, 228, 0.1); 
-            color: #0096e4; 
-            border: 1px solid #0096e4; 
-            text-shadow: 0 0 5px rgba(0, 150, 228, 0.2);
+            background-color: rgba(115, 29, 255, 0.1); 
+            color: #731dff; 
+            border: 1px solid #731dff; 
+            text-shadow: 0 0 5px rgba(115, 29, 255, 0.2);
         }
 
         .badge-rare { background-color: #f3e8ff; color: #7e22ce; border: 1px solid #d8b4fe; }
@@ -121,7 +120,7 @@
         /* Epic Badge */
         .badge-epic { 
             background-color: #fae8ff; 
-            color: #d946ef; /* Fuchsia-600 */
+            color: #d946ef; 
             border: 1px solid #FF00FF; 
             text-shadow: 0 0 5px rgba(255, 0, 255, 0.2);
         }
@@ -245,7 +244,7 @@
             color: #4c1d95;
         }
         
-        /* NEW: Button animation for owner card */
+        /* Button animation for owner card */
         .btn-shine {
             position: relative;
             overflow: hidden;
@@ -283,7 +282,7 @@
             display: none; /* No shine for disabled */
         }
 
-        /* --- UPDATED ZOOM & PAN STYLING --- */
+        /* --- ZOOM & PAN STYLING --- */
         .preview-scroll-container {
             overflow: hidden; /* Hide overflow so we can pan smoothly */
             width: 100%;
@@ -312,13 +311,12 @@
 </head>
 <body class="min-h-screen p-4 flex flex-col items-center">
 
-    <!-- NEW: Force font preloading so Canvas can use them immediately -->
+    <!-- Force font preloading -->
     <div class="font-loader" style="font-family: 'Permanent Marker';">.</div>
     <div class="font-loader" style="font-family: 'Bungee';">.</div>
 
     <div class="w-full max-w-xl mb-8 text-center mt-8">
         <h1 class="text-4xl font-bold graffiti-title">Bert's Inkscriptions 🐔🖋️</h1>
-        <!-- UPDATED: Applied 'Permanent Marker' font with shadow and larger size -->
         <p class="text-white mt-2 text-xl tracking-wide" style="font-family: 'Permanent Marker', cursive; text-shadow: 2px 2px 0px #9333ea;">Permanent artifacts inked on chain.</p>
     </div>
 
@@ -329,7 +327,6 @@
             <div class="flex flex-col items-center justify-center -mt-2 mb-1"> 
                 <img src="burning_chicken.png" onerror="this.onerror=null;this.src='https://placehold.co/40x40/9333ea/ffffff?text=🐔🔥'" alt="Burning Chicken" class="h-10 w-10 mt-1 mb-2"> 
                 <p class="text-sm font-medium text-black flex items-center gap-2">
-                    <!-- MODIFIED: Applied Permanent Marker font here to ensure loading -->
                     <span style="font-family: 'Permanent Marker', cursive; font-size: 1.1rem;">Burn BERT, ink history</span>
                     <button id="faq-btn" class="text-xs text-violet-600 font-bold hover:text-violet-700 transition underline" style="font-family: 'Inter', sans-serif;">FAQ</button>
                 </p>
@@ -349,7 +346,6 @@
             </div>
             <div class="border-t border-gray-200 pt-4">
                 <div class="flex justify-between items-end">
-                    <!-- UPDATED: Added Shadow -->
                     <div><p class="text-sm font-medium text-black" style="font-family: 'Permanent Marker', cursive; font-size: 1.1rem;">Inkscription Cost</p></div>
                     <div class="text-right">
                         <p class="text-sm font-medium text-black">1000 BERT</p>
@@ -364,24 +360,19 @@
         </div>
         
         <div class="space-y-2">
-            <!-- UPDATED LABEL WITH TOGGLE -->
             <div class="flex justify-between items-end">
-                <!-- UPDATED: Added Shadow -->
                 <label class="block text-sm font-medium text-black" style="font-family: 'Permanent Marker', cursive; font-size: 1.1rem;">Your Permanent Inkscription</label>
                 <div class="flex items-center space-x-2">
-                    <!-- UPDATED: Changed text-violet-600 to text-violet-500 for matching purple -->
                     <input type="checkbox" id="wrap-toggle" class="h-4 w-4 text-violet-500 focus:ring-violet-500 border-gray-300 rounded cursor-pointer">
                     <label for="wrap-toggle" class="text-xs text-gray-600 cursor-pointer select-none">Wrap Text</label>
                 </div>
             </div>
-            <!-- APPLIED SOLUTION 1: MAXLENGTH="8000" -->
             <textarea id="inscription-input" rows="6" maxlength="8000" placeholder="Etch your lore or paste your ASCII art here..." class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 font-mono text-xs"></textarea>
             
             <div id="preview-box" class="hidden bg-gray-900 text-purple-400 p-4 rounded overflow-auto ascii-art" style="min-height: 100px;"></div>
 
             <div class="flex justify-between items-center text-xs bg-gray-50 p-2 rounded border border-gray-200">
                 <span class="text-gray-600">Size: <span id="byte-count" class="font-bold">0</span> bytes</span>
-                <!-- UPDATED: Changed text-blue-600 to text-violet-500 for matching purple -->
                 <span class="text-gray-600">Est. Gas: <span id="gas-display" class="font-bold text-violet-500">---</span></span>
             </div>
         </div>
@@ -425,7 +416,6 @@
     </div>
 
     <div class="w-full max-w-4xl mb-8 bg-white p-6 rounded-xl card">
-        <!-- UPDATED: Font and Shadow -->
         <h3 class="font-bold text-gray-800 mb-2" style="font-family: 'Permanent Marker', cursive; font-size: 1.1rem;">🔍 Find Specific Artifact</h3>
         <div class="flex gap-2">
             <input type="text" id="manual-hash" placeholder="0x..." class="text-black flex-grow p-3 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-violet-500 outline-none">
@@ -435,7 +425,6 @@
 
     <div class="w-full max-w-4xl">
         <div class="flex flex-col md:flex-row items-center justify-between mb-4 gap-4">
-            <!-- UPDATED: Font and Shadow -->
             <h2 class="text-2xl font-bold text-white" style="font-family: 'Permanent Marker', cursive; text-shadow: 2px 2px 0px #9333ea;">🏛️ Live Gallery</h2>
             
             <div class="flex items-center gap-4">
@@ -457,10 +446,10 @@
                 <span class="text-gray-300">Common</span>
             </div>
 
-            <!-- NEW: Uncommon (Updated transparency & weight) -->
-            <div class="flex items-center gap-1.5 bg-[rgba(0,150,228,0.1)] px-2 py-1 rounded border border-[#0096e4]">
-                <div class="w-2 h-2 rounded-full bg-[#0096e4]"></div>
-                <span class="text-[#0096e4]">Uncommon (Ends in 2, 4, 6, 8)</span>
+            <!-- Uncommon -->
+            <div class="flex items-center gap-1.5 bg-[rgba(115,29,255,0.1)] px-2 py-1 rounded border border-[#731dff]">
+                <div class="w-2 h-2 rounded-full bg-[#731dff]"></div>
+                <span class="text-[#731dff]">Uncommon (Ends in 2, 4, 6, 8)</span>
             </div>
             
             <!-- Rare -->
@@ -504,8 +493,6 @@
                 <h3 class="text-xl font-bold text-violet-600">Artifact Preview</h3>
                 <button onclick="document.getElementById('card-preview-modal').style.display='none'" class="text-gray-500 hover:text-gray-700 text-2xl font-bold">×</button>
             </div>
-            <!-- UPDATED: preview-scroll-container now handles drag and zoom events via JS -->
-            <!-- 'oncontextmenu' is here to prevent right click menu during panning -->
             <div id="preview-container" class="preview-scroll-container" oncontextmenu="return false;">
                 <img id="card-preview-img" src="" alt="Generating Preview..." class="shadow-lg rounded" draggable="false">
                 <div id="preview-spinner" class="spinner h-8 w-8 border-4 border-violet-500 rounded-full absolute" style="top: 50%; left: 50%; transform: translate(-50%, -50%);"></div>
@@ -532,11 +519,12 @@
     <script>
         // Global storage for inscription content
         window.tempInscriptionContent = {};
+        const GUARANTEED_MINTS = []; // Fallback empty array
         
         // FLAG TO PREVENT DOUBLE WELCOME ALERTS
         let welcomeAlertShown = false;
 
-        // --- NEW FLEXIBLE ZOOM & PAN IMPLEMENTATION ---
+        // --- ZOOM & PAN IMPLEMENTATION ---
         const zmContainer = document.getElementById('preview-container');
         const zmImg = document.getElementById('card-preview-img');
         
@@ -617,100 +605,81 @@
             URL.revokeObjectURL(blobUrl);
         }
 
-        // --- NEW: OFFICIAL TRADING CARD GENERATOR (VIEW ONLY) ---
+        // --- HELPER: PROCEDURAL NEBULA GENERATOR (For Mythical Texture) ---
+        function drawProceduralNebula(context, cw, ch) {
+            context.save();
+            const pCan = document.createElement('canvas');
+            pCan.width = 400; pCan.height = 400;
+            const pCtx = pCan.getContext('2d');
+            for(let i=0; i<40; i++) {
+                const x = Math.random() * 400;
+                const y = Math.random() * 400;
+                const r = Math.random() * 80 + 20;
+                pCtx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.05})`;
+                pCtx.beginPath(); pCtx.arc(x, y, r, 0, Math.PI*2); pCtx.fill();
+            }
+            for(let j=0; j<15; j++) {
+                const x = Math.random() * 400;
+                const y = Math.random() * 400;
+                const s = Math.random() * 2;
+                pCtx.fillStyle = "rgba(255, 255, 255, 0.6)";
+                pCtx.beginPath(); pCtx.arc(x, y, s, 0, Math.PI*2); pCtx.fill();
+            }
+            const pattern = context.createPattern(pCan, 'repeat');
+            context.fillStyle = pattern;
+            context.fillRect(0, 0, cw, ch);
+            context.restore();
+        }
+
+        // --- UPDATED: OFFICIAL TRADING CARD GENERATOR (VIEW ONLY) ---
         async function generateTradingCard(hash, rarityColor, rarityName, index, sender, mode = 'download') {
             const art = window.tempInscriptionContent[hash];
             if (!art) return;
 
-            // Show modal first if in view mode
             if (mode === 'modal') {
                 const modal = document.getElementById('card-preview-modal');
                 const img = document.getElementById('card-preview-img');
                 const spinner = document.getElementById('preview-spinner');
                 
-                // Reset zoom state when opening new modal
                 resetZoom();
-
                 modal.style.display = 'flex';
                 img.style.opacity = '0.3';
                 spinner.style.display = 'block';
             }
 
-            // --- FIX: WAIT FOR FONTS TO LOAD ---
             try {
                 await document.fonts.load("160px 'Bungee'");
                 await document.fonts.load("100px 'Permanent Marker'");
             } catch (e) {
                 console.warn("Fonts possibly not loaded yet, rendering might fallback.", e);
             }
-            // -------------------------------------
 
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
 
-            // --- INCREASED QUALITY: 2X SCALING (2400 x 3600) ---
             const cw = 2400;
             const ch = 3600;
             canvas.width = cw;
             canvas.height = ch;
 
-            // Background
+            // --- 1. BASE BACKGROUND ---
             if (rarityName.includes("Mythical")) {
-                // Mythical Platinum Gradient Background
                 const bgGrad = ctx.createLinearGradient(0, 0, cw, ch);
-                bgGrad.addColorStop(0, "#1e293b"); // Slate 800
-                bgGrad.addColorStop(0.5, "#0f172a"); // Slate 900
-                bgGrad.addColorStop(1, "#334155"); // Slate 700
+                bgGrad.addColorStop(0, "#1e293b"); 
+                bgGrad.addColorStop(0.5, "#0f172a"); 
+                bgGrad.addColorStop(1, "#334155"); 
                 ctx.fillStyle = bgGrad;
+                ctx.fillRect(0, 0, cw, ch);
+
+                // Add Nebula Texture
+                drawProceduralNebula(ctx, cw, ch);
             } else {
                 ctx.fillStyle = "#0f0f0f";
-            }
-            ctx.fillRect(0, 0, cw, ch);
-
-            // --- NEW: Ethereal Nebula Texture for the Dark Margin (Mythical Only) ---
-            if (rarityName.includes("Mythical")) {
-                ctx.save();
-                
-                const patCanvas = document.createElement('canvas');
-                const patCtx = patCanvas.getContext('2d');
-                patCanvas.width = 200;
-                patCanvas.height = 200;
-                
-                // Create random nebulous clouds
-                for(let i=0; i<20; i++) {
-                    const x = Math.random() * 200;
-                    const y = Math.random() * 200;
-                    const r = Math.random() * 40 + 10;
-                    // Low opacity white circles to simulate soft light clouds
-                    patCtx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.03})`;
-                    patCtx.beginPath();
-                    patCtx.arc(x, y, r, 0, Math.PI * 2);
-                    patCtx.fill();
-                }
-                
-                // Add tiny faint sparkles
-                for(let j=0; j<5; j++) {
-                    const x = Math.random() * 200;
-                    const y = Math.random() * 200;
-                    const size = Math.random() * 1.5;
-                    patCtx.fillStyle = "rgba(255, 255, 255, 0.4)";
-                    patCtx.beginPath();
-                    patCtx.arc(x, y, size, 0, Math.PI * 2);
-                    patCtx.fill();
-                }
-
-                const pattern = ctx.createPattern(patCanvas, 'repeat');
-                ctx.fillStyle = pattern;
-                // Fill the entire background with this subtle texture 
                 ctx.fillRect(0, 0, cw, ch);
-                
-                ctx.restore();
             }
-            // ------------------------------------------------------------------------
 
-            // Dynamic Border based on rarity
+            // --- 2. BORDERS ---
             if (rarityName.includes("Mythical")) {
-                // Special Platinum/Holographic Gradient Border
                 const gradient = ctx.createLinearGradient(0, 0, cw, ch);
                 gradient.addColorStop(0, "#e2e8f0");
                 gradient.addColorStop(0.2, "#cbd5e1");
@@ -723,149 +692,157 @@
                 ctx.strokeStyle = rarityColor;
             }
             
-            ctx.lineWidth = 80; // Scaled x2
+            ctx.lineWidth = 80; 
             ctx.strokeRect(0, 0, cw, ch);
 
-            // NEW: Add "Premium" pinstripes to the Platinum Border for Mythical
             if (rarityName.includes("Mythical")) {
                 ctx.save();
                 ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
                 ctx.lineWidth = 2;
-                
-                // Outer pinstripe (inset slightly from the physical canvas edge)
                 ctx.strokeRect(10, 10, cw - 20, ch - 20);
-                
-                // Inner pinstripe (near the seam with the background)
                 ctx.strokeRect(30, 30, cw - 60, ch - 60);
-                
                 ctx.restore();
             }
 
-            // Inner Glow
+            // --- 3. INNER GLOW BOX ---
             if (rarityName.includes("Mythical")) {
                  ctx.shadowColor = "#ffffff";
+                 ctx.shadowBlur = 100; 
             } else {
                  ctx.shadowColor = rarityColor;
+                 ctx.shadowBlur = 100; 
             }
-            ctx.shadowBlur = 100; // Scaled x2
+            
             ctx.fillStyle = "#1a1a1a";
-            ctx.fillRect(100, 100, cw - 200, ch - 200); // Scaled x2
-            ctx.shadowBlur = 0; // Reset
+            ctx.fillRect(100, 100, cw - 200, ch - 200); 
+            ctx.shadowBlur = 0; 
 
-            // --- NEW: Add Unique Background Image Overlay for Mythical (Layer behind text) ---
+            // --- 4. IMAGE OVERLAY (Mythical Only) ---
+            // LOADED AFTER THE BOX TO ENSURE VISIBILITY
             if (rarityName.includes("Mythical")) {
-                const img = new Image();
-                img.src = 'mbg.jpg';
-                await new Promise(r => img.onload = r); // Wait for image to load
+                try {
+                    const img = new Image();
+                    img.src = 'mbg.jpg';
+                    await new Promise((resolve) => {
+                        img.onload = () => resolve();
+                        img.onerror = () => { console.warn("Background image not found, using nebula only."); resolve(); };
+                    });
+                    
+                    if (img.complete && img.naturalHeight !== 0) {
+                        ctx.save();
+                        const x = 100, y = 100, w = cw - 200, h = ch - 200;
+                        ctx.beginPath();
+                        ctx.rect(x, y, w, h);
+                        ctx.clip();
 
+                        // Set Opacity to 0.50 as requested
+                        ctx.globalAlpha = 0.50; 
+
+                        const imgRatio = img.width / img.height;
+                        const targetRatio = w / h;
+                        let renderW, renderH, renderX, renderY;
+
+                        if (imgRatio > targetRatio) {
+                            renderH = h;
+                            renderW = h * imgRatio;
+                            renderY = y;
+                            renderX = x + (w - renderW) / 2; 
+                        } else {
+                            renderW = w;
+                            renderH = w / imgRatio;
+                            renderX = x;
+                            renderY = y + (h - renderH) / 2; 
+                        }
+
+                        ctx.drawImage(img, renderX, renderY, renderW, renderH);
+                        ctx.restore();
+                    }
+                } catch(e) { console.error("Image gen error", e); }
+            }
+
+            // --- 5. CORNER FLOURISHES (Mythical Only) ---
+            if (rarityName.includes("Mythical")) {
                 ctx.save();
+                ctx.strokeStyle = "#cbd5e1"; // Platinum
+                ctx.lineWidth = 5;
+                const size = 150;
+                const margin = 120;
                 
-                // Define the drawing area
-                const x = 100;
-                const y = 100;
-                const w = cw - 200;
-                const h = ch - 200;
-
-                // Clip to ensure the image doesn't bleed onto the border
-                ctx.beginPath();
-                ctx.rect(x, y, w, h);
-                ctx.clip();
-
-                ctx.globalAlpha = 0.25; 
-
-                // Calculate aspect ratios
-                const imgRatio = img.width / img.height;
-                const targetRatio = w / h;
-                
-                let renderW, renderH, renderX, renderY;
-
-                // Logic for "background-size: cover"
-                if (imgRatio > targetRatio) {
-                    // Image is wider than container: constrain height, scale width
-                    renderH = h;
-                    renderW = h * imgRatio;
-                    renderY = y;
-                    renderX = x + (w - renderW) / 2; // Center horizontally
-                } else {
-                    // Image is taller than container: constrain width, scale height
-                    renderW = w;
-                    renderH = w / imgRatio;
-                    renderX = x;
-                    renderY = y + (h - renderH) / 2; // Center vertically
-                }
-
-                ctx.drawImage(img, renderX, renderY, renderW, renderH);
+                // Top Left
+                ctx.beginPath(); ctx.moveTo(margin, margin + size); ctx.lineTo(margin, margin); ctx.lineTo(margin + size, margin); ctx.stroke();
+                // Top Right
+                ctx.beginPath(); ctx.moveTo(cw - margin - size, margin); ctx.lineTo(cw - margin, margin); ctx.lineTo(cw - margin, margin + size); ctx.stroke();
+                // Bottom Right
+                ctx.beginPath(); ctx.moveTo(cw - margin, ch - margin - size); ctx.lineTo(cw - margin, ch - margin); ctx.lineTo(cw - margin - size, ch - margin); ctx.stroke();
+                // Bottom Left
+                ctx.beginPath(); ctx.moveTo(margin + size, ch - margin); ctx.lineTo(margin, ch - margin); ctx.lineTo(margin, ch - margin - size); ctx.stroke();
                 ctx.restore();
             }
-            // ------------------------------------------------------------------------
 
-            // Header Area
+            // --- 6. TEXT RESET ---
+            ctx.textAlign = "center";
+            ctx.textBaseline = "alphabetic";
+
+            // --- 7. HEADER ---
             if (rarityName.includes("Mythical")) {
-                 ctx.fillStyle = "#ffffff"; // White text for Mythical
+                 ctx.fillStyle = "#ffffff"; 
             } else {
                  ctx.fillStyle = rarityColor;
             }
-            // CHANGED: Use Bungee Graffiti font for the Header (Scaled x2)
+            
             ctx.font = "160px 'Bungee', cursive";
             ctx.textAlign = "center";
             ctx.fillText(`INKSCRIPTION #` + index, cw / 2, 320);
 
-            // Rarity Badge on Card (COOLER STYLE: Glow + Graffiti Font)
+            // Rarity Badge
             ctx.save();
             if (rarityName.includes("Mythical")) {
                 ctx.shadowColor = "#ffffff";
-                ctx.shadowBlur = 60; // Stronger glow
+                ctx.shadowBlur = 60; 
                 ctx.fillStyle = "#ffffff"; 
             } else {
                 ctx.shadowColor = rarityColor;
-                ctx.shadowBlur = 40; // Neon glow effect Scaled x2
+                ctx.shadowBlur = 40; 
                 ctx.fillStyle = "#ffffff";
             }
             
-            // CHANGED: Uses 'Permanent Marker' for graffiti style
             ctx.font = "100px 'Permanent Marker', cursive";
-            ctx.textAlign = "center"; // Ensure center logic in case it was affected
+            ctx.textAlign = "center"; 
             ctx.fillText(rarityName.toUpperCase(), cw / 2, 440);
             ctx.restore();
             
-            // TX HASH Underneath (In Rarity Color)
+            // TX HASH
             if (rarityName.includes("Mythical")) {
                 ctx.fillStyle = "#cbd5e1";
             } else {
                 ctx.fillStyle = rarityColor;
             }
             ctx.font = "bold 48px 'Courier New', monospace";
-            ctx.textAlign = "center"; // Explicitly set center for the hash too
+            ctx.textAlign = "center";
             ctx.fillText(hash, cw / 2, 520);
 
-            // --- ASCII ART DRAWING (SCALED TO FIT) ---
+            // --- 8. ART BOX ---
             const artBoxX = 200;
             const artBoxY = 600;
             const artBoxW = cw - 400;
             const artBoxH = ch - 1200;
 
-            // Draw Art Box Background
             ctx.fillStyle = "#000000";
             ctx.fillRect(artBoxX, artBoxY, artBoxW, artBoxH);
 
             if (rarityName.includes("Mythical")) {
-                // Special Glowing Border for Mythical Art Box
                 ctx.save();
-                
-                // Create a metallic mesh pattern for the border
                 const meshCanvas = document.createElement('canvas');
                 meshCanvas.width = 20;
                 meshCanvas.height = 20;
                 const mCtx = meshCanvas.getContext('2d');
                 
-                // Base
                 const grad = mCtx.createLinearGradient(0,0,20,20);
                 grad.addColorStop(0, '#94a3b8');
                 grad.addColorStop(1, '#e2e8f0');
                 mCtx.fillStyle = grad;
                 mCtx.fillRect(0,0,20,20);
                 
-                // Texture lines
                 mCtx.strokeStyle = "rgba(255, 255, 255, 0.5)";
                 ctx.lineWidth = 1;
                 mCtx.beginPath();
@@ -886,20 +863,21 @@
                 ctx.strokeRect(artBoxX, artBoxY, artBoxW, artBoxH);
             }
 
-            // Calculate Scale
+            // --- 9. ASCII ART RENDERING ---
+            // SAVE STATE BEFORE TEXT TRANSFORMATIONS
+            ctx.save(); 
+
             const lines = art.split('\n');
-            ctx.font = "bold 200px 'Courier New', monospace"; // Start huge to measure
+            ctx.font = "bold 200px 'Courier New', monospace"; 
             
-            // Find widest line
             let maxLineW = 0;
             lines.forEach(l => {
                 const w = ctx.measureText(l).width;
                 if (w > maxLineW) maxLineW = w;
             });
 
-            // Calculate scaling factor to fit width and height
-            const scaleX = (artBoxW - 160) / maxLineW; // 160px padding
-            const totalTextHeight = lines.length * 200 * 1.1; // 1.1 lineHeight
+            const scaleX = (artBoxW - 160) / maxLineW; 
+            const totalTextHeight = lines.length * 200 * 1.1; 
             const scaleY = (artBoxH - 160) / totalTextHeight;
 
             const finalScale = Math.min(scaleX, scaleY);
@@ -909,43 +887,45 @@
             ctx.font = `bold ${finalFontSize}px 'Courier New', monospace`;
             
             if (rarityName.includes("Mythical")) {
-                ctx.fillStyle = "#ffffff"; // White text for Mythical
+                // METALLIC GRADIENT FOR TEXT
+                const textGrad = ctx.createLinearGradient(artBoxX, artBoxY, artBoxX + artBoxW, artBoxY + artBoxH);
+                textGrad.addColorStop(0, "#ffffff");
+                textGrad.addColorStop(0.3, "#94a3b8");
+                textGrad.addColorStop(0.5, "#ffffff");
+                textGrad.addColorStop(0.7, "#94a3b8");
+                textGrad.addColorStop(1, "#ffffff");
+                ctx.fillStyle = textGrad;
             } else {
-                ctx.fillStyle = rarityColor; // Art matches rarity color
+                ctx.fillStyle = rarityColor; 
             }
             
-            ctx.textAlign = "left"; // Reset to left for art
+            ctx.textAlign = "left"; 
             ctx.textBaseline = "top";
 
-            // Center vertically/horizontally in the box
             const actualTextH = lines.length * lineHeight;
             const startY = artBoxY + (artBoxH - actualTextH) / 2;
-            
-            // Simple horizontal centering (approximate for monospaced)
-            const actualTextW = maxLineW * finalScale; // Approximate
             
             lines.forEach((line, i) => {
                 ctx.fillText(line, artBoxX + 80, startY + (i * lineHeight));
             });
+            
+            ctx.restore(); // RESTORE TEXT DEFAULTS
 
-            // --- FOOTER ---
-            // Verified Logo area - CHANGED TO BUNGEE FONT WITH GLOW
+            // --- 10. FOOTER ---
             ctx.save();
             ctx.shadowColor = "#ffffff";
-            ctx.shadowBlur = 30; // White glow
+            ctx.shadowBlur = 30; 
             ctx.fillStyle = "#ffffff";
             ctx.font = "80px 'Bungee', cursive";
             ctx.textAlign = "center";
             ctx.fillText("VERIFIED INKSCRIPTION", cw / 2, ch - 440);
             ctx.restore();
             
-            // FIX: Explicitly set center alignment again as drawing art set it to 'left'
             ctx.textAlign = "center"; 
             ctx.fillStyle = "#666";
             ctx.font = "60px 'Inter', sans-serif";
             ctx.fillText("Block: " + window.tempInscriptionContent[hash + '_block'], cw / 2, ch - 340);
 
-            // SIGNATURE (The Anti-Theft Feature)
             if (rarityName.includes("Mythical")) {
                 ctx.fillStyle = "#cbd5e1";
             } else {
@@ -954,7 +934,7 @@
             ctx.font = "bold 60px 'Courier New', monospace";
             ctx.fillText("MINTED BY: " + sender.toUpperCase(), cw / 2, ch - 160);
 
-            // --- HANDLE MODE (MODAL vs DOWNLOAD vs BASE64) ---
+            // --- 11. OUTPUT ---
             if (mode === 'base64') {
                 return canvas.toDataURL('image/png');
             }
@@ -971,8 +951,6 @@
                         img.style.opacity = '1';
                     };
                     img.src = url;
-                } else {
-                    // This block is now intentionally empty as the download button is removed.
                 }
             }, 'image/png');
         }
@@ -993,7 +971,6 @@
             const overlay = document.getElementById('faq-modal-overlay');
             const faqBody = document.getElementById('faq-body');
 
-            // --- FAQ CONTENT STRING (FINAL STYLING APPLIED) ---
             const faqContent = `
                 <h3 class="faq-heading">Q1: What exactly is an Inkscription?</h3>
                 <div class="faq-answer">
@@ -1023,7 +1000,6 @@
                 </div>
             `;
             
-            // Inject content and set up listeners
             faqBody.innerHTML = faqContent;
 
             if (faqBtn) faqBtn.addEventListener('click', openFaqModal);
@@ -1064,21 +1040,18 @@
             manualBtn: $('manual-btn'), manualInput: $('manual-hash'), grid: $('gallery-grid'), loader: $('gallery-loader'), empty: $('gallery-empty'), refresh: $('refresh-btn'), filterCheckbox: $('my-artifacts-filter'), wrapToggle: $('wrap-toggle'), 
         };
 
-        // --- NEW: Oracle Mint Logic for Anti-Spam ---
+        // --- ORACLE MINT LOGIC ---
         window.handleOracleMint = async function(originalTxHash, index) {
-            // Check for provider
             if (!window.ethereum) { 
                 showCustomAlert("Wallet Missing", "Please install Rabby or MetaMask.", "error"); 
                 return; 
             }
 
-            // Re-check signer status
             if (!signer) {
                 await rebuildConnection();
                 if (!signer) return;
             }
             
-            // Strict Chain ID Check
             const chainId = await window.ethereum.request({ method: 'eth_chainId' });
             if (parseInt(chainId) !== parseInt(INK_CHAIN_ID)) {
                 showCustomAlert("Wrong Network", "Please switch to Ink L2 Mainnet.", "error");
@@ -1098,7 +1071,6 @@
                 btn.classList.add('btn-primary-loading');
             }
             
-            // --- SUPPLY INPUT PROMPT ---
             let supply = prompt("Enter Mint Supply (1 - 1,000,000):", "1");
             if (supply === null) {
                  if(btn) { btn.disabled = false; btn.textContent = "✨ Mint NFT"; btn.classList.remove('btn-primary-loading'); }
@@ -1111,14 +1083,13 @@
                  return;
             }
 
-            let mintTxHash = null; // Store hash for error recovery
+            let mintTxHash = null; 
 
             try {
                 showCustomAlert("Generating Artifact", "Rendering high-resolution artwork for decentralized storage...", "info");
 
                 const targetIndex = parseInt(index) || 1;
 
-                // --- 1. RECALCULATE RARITY FOR IMAGE GENERATION ---
                 const lastChar = originalTxHash.slice(-1).toLowerCase();
                 const lastTwo = originalTxHash.slice(-2).toLowerCase();
                 const lastThree = originalTxHash.slice(-3).toLowerCase();
@@ -1127,7 +1098,7 @@
                 const isLegendary = (lastTwo[0] === lastTwo[1]); 
                 const isEpic = ['0', 'f'].includes(lastChar);
                 const isRare = ['b', 'e', '7'].includes(lastChar);
-                const isUncommon = ['2', '4', '6', '8'].includes(lastChar); // NEW
+                const isUncommon = ['2', '4', '6', '8'].includes(lastChar);
 
                 let rarityColor = "#9ca3af"; 
                 let rarityName = "Common 🖋️";
@@ -1145,16 +1116,14 @@
                     rarityName = "Rare 🔮";
                     rarityColor = "#a855f7";
                 } else if (isUncommon) {
-                    rarityName = "Uncommon ⚡"; // NEW
-                    rarityColor = "#0096e4"; // New Blue
+                    rarityName = "Uncommon ⚡"; 
+                    rarityColor = "#731dff"; 
                 }
 
-                // Get sender from DOM since it's not passed directly to this function
                 const cardEl = document.getElementById(`card-${originalTxHash}`);
                 const sender = cardEl ? (cardEl.dataset.sender || currentAccount) : currentAccount;
 
-                // --- 2. GENERATE IMAGE DATA ---
-                // We ask generateTradingCard to return a Base64 string instead of displaying a modal
+                // 2. GENERATE IMAGE DATA (Base64)
                 const imageData = await generateTradingCard(originalTxHash, rarityColor, rarityName, index, sender, 'base64');
 
                 showCustomAlert("Initiating Mint", "Uploading artwork to Arweave via secure bridge...", "info");
@@ -1164,10 +1133,9 @@
                     userAddress: currentAccount,
                     supplyAmount: supplyAmount, 
                     index: targetIndex,
-                    image: imageData // <--- SEND BASE64 IMAGE TO BACKEND
+                    image: imageData 
                 };
 
-                // FOR PRODUCTION (Uncomment when live):
                 // const ORACLE_API_URL = "https://us-central1-inkscriptions-nft-oracle.cloudfunctions.net/prepareMint"; 
                 const ORACLE_API_URL = "http://127.0.0.1:5001/inkscriptions-nft-oracle/us-central1/prepareMint";
 
@@ -1185,7 +1153,6 @@
 
                 const nftContract = new window.ethers.Contract(NFT_CONTRACT_ADDRESS, NFT_ABI_SNIPPET, signer);
 
-                // 2. Mint on Contract
                 const mintTx = await nftContract.wrapEdition(
                     data.originalTxHash,   
                     data.contentHash,      
@@ -1193,17 +1160,15 @@
                     payload.index,         
                     data.tokenURI,         
                     data.signature,
-                    { gasLimit: 500000 } // Manual gas limit to prevent simulation errors
+                    { gasLimit: 500000 } 
                 );
 
-                mintTxHash = mintTx.hash; // Save hash immediately
+                mintTxHash = mintTx.hash; 
                 showCustomAlert("Minting...", `Transaction Sent: ${mintTx.hash}`, "info");
                 
-                // Wait for transaction to be mined
                 const receipt = await mintTx.wait();
 
                 if (receipt.status === 1) {
-                    // --- SUCCESS PATH 1: CONFIRMED BY WAIT() ---
                     const explorerLink = `https://explorer.inkonchain.com/tx/${mintTx.hash}`;
                     showCustomAlert(
                         "Mint Successful!", 
@@ -1211,14 +1176,13 @@
                         "success"
                     );
                     if(btn) {
-                        // LOCK BUTTON PERMANENTLY ON SUCCESS
                         btn.textContent = "Minted (Final)";
                         btn.disabled = true;
                         btn.classList.add('btn-disabled');
                         btn.classList.remove('btn-primary-loading');
-                        btn.classList.remove('btn-shine'); // Remove animation
-                        btn.classList.remove('bg-gradient-to-r'); // Remove gradient
-                        btn.classList.add('bg-gray-500'); // Set to flat gray
+                        btn.classList.remove('btn-shine'); 
+                        btn.classList.remove('bg-gradient-to-r'); 
+                        btn.classList.add('bg-gray-500'); 
                     }
                 } else {
                     throw new Error("Transaction reverted on-chain.");
@@ -1227,13 +1191,11 @@
             } catch (txError) {
                 console.error("Contract Call Failed:", txError);
                 
-                // --- FIX: DETECT FALSE NEGATIVE (BAD_DATA) ---
                 if (mintTxHash && (
                     txError.code === 'BAD_DATA' || 
                     (txError.message && txError.message.includes("value=null")) ||
                     (txError.message && txError.message.includes("invalid value for value.index"))
                 )) {
-                    // --- SUCCESS PATH 2: ASSUMED SUCCESS AFTER TIMEOUT ---
                     const explorerLink = `https://explorer.inkonchain.com/tx/${mintTxHash}`;
                     showCustomAlert(
                         "Mint Successful!", 
@@ -1242,24 +1204,20 @@
                     );
                     
                     if(btn) {
-                        // Assume success and lock
                         btn.textContent = "Minted (Check Wallet)";
                         btn.disabled = true;
                         btn.classList.add('btn-disabled');
                         btn.classList.remove('btn-primary-loading');
                         btn.classList.remove('btn-shine');
                     }
-                    return; // Stop execution, treat as success
+                    return; 
                 }
-                // ---------------------------------------------
 
                 let msg = txError.reason || txError.message || "Unknown Contract Error";
                 
-                // --- DETECT "ALREADY MINTED" STATE ---
                 if (msg.includes("Inkscription already wrapped") || msg.includes("already minted")) {
                     showCustomAlert("Already Minted", "This Inkscription has already been minted as an NFT. The supply is final.", "warning");
                     if(btn) {
-                        // LOCK BUTTON PERMANENTLY
                         btn.textContent = "Minted (Final)";
                         btn.disabled = true;
                         btn.classList.add('btn-disabled');
@@ -1270,7 +1228,6 @@
                     }
                     return;
                 }
-                // -------------------------------------
 
                 if (msg.includes("Content already minted")) {
                      msg = "This text content has already been minted by someone else (Anti-Spam).";
@@ -1280,7 +1237,6 @@
                 
                 showCustomAlert("Mint Failed", msg, "error");
                 
-                // Re-enable for generic errors so they can try again
                 if(btn && btn.tagName === 'BUTTON') { 
                     btn.disabled = false; 
                     btn.textContent = "✨ Mint NFT"; 
@@ -1288,7 +1244,7 @@
                 }
             }
         }
-        // --- END NEW ORACLE LOGIC ---
+        // --- END ORACLE MINT LOGIC ---
 
         async function rebuildConnection(forcedAccount = null) {
             if (typeof window.ethereum === 'undefined') {
@@ -1336,12 +1292,9 @@
                 ui.btn.classList.remove('btn-primary-loading');
 
                 await fetchBalance();
-                // We re-fetch the gallery here. This is crucial because it triggers 'createGalleryCard'
-                // which now contains the logic to show the "Mint Card" button for owned items.
                 await fetchGallery(); 
                 calcGas();
                 
-                // Alert the user about the new feature (Check Flag first)
                 if (!welcomeAlertShown) {
                     showCustomAlert("Welcome Back!", "You can now mint official Trading Cards for your artifacts. Look for the '✨ Mint Card' button on your own inscriptions!", "success");
                     welcomeAlertShown = true;
@@ -1361,7 +1314,7 @@
             pendingTxHash = null;
             currentChainId = null;
             fetchedHashes.clear(); 
-            welcomeAlertShown = false; // Reset flag on disconnect
+            welcomeAlertShown = false; 
             
             ui.header.classList.add('hidden');
             ui.balance.textContent = "---";
@@ -1402,7 +1355,6 @@
 
         if (window.ethereum) {
             window.ethereum.on('accountsChanged', async (accounts) => {
-                console.log("Wallet accountsChanged event fired:", accounts);
                 if (!accounts || accounts.length === 0) {
                     handleDisconnect();
                     return;
@@ -1580,7 +1532,6 @@
                 ui.btnText.textContent = `MINT INSCRIPTION (${MINT_FEE_AMOUNT} BERT)`;
 
                 let msg = e.reason || e.message || "Unknown Error";
-                // Serialize full error for deep searching of error codes
                 const fullErrorStr = JSON.stringify(e, Object.getOwnPropertyNames(e)).toLowerCase();
 
                 if (e.code === 'UNKNOWN_ERROR' && e.message.includes("could not coalesce error") && e.payload?.method === 'eth_getBlockByNumber') {
@@ -1627,7 +1578,7 @@
                 if (typeof msg === 'string' && msg.includes("status code 500")) {
                      msg = "RPC Error (500): The live network RPC node failed to process the transaction pre-flight check. This is highly likely due to the RPC being unstable or the transaction failing during simulation. Please check your token balance and ensure the network is functioning.";
                 } else if (
-                    fullErrorStr.includes("0xe450d38c") || // Custom Error: InsufficientBalance
+                    fullErrorStr.includes("0xe450d38c") || 
                     fullErrorStr.includes("insufficient") || 
                     fullErrorStr.includes("exceeds balance")
                 ) {
@@ -1686,13 +1637,8 @@
         async function fetchGuaranteedMintsFromAPI() {
             try {
                 const response = await fetch(COLLECTOR_URL);
-                
-                if (!response.ok) {
-                    throw new Error(`Server status: ${response.status}`);
-                }
-
-                const data = await response.json();
-                return data; 
+                if (!response.ok) throw new Error(`Server status: ${response.status}`);
+                return await response.json(); 
             } catch (error) {
                 console.error("Failed to fetch from Firebase API:", error);
                 return GUARANTEED_MINTS;
@@ -1709,9 +1655,7 @@
                 const stableContract = new window.ethers.Contract(BERT_TOKEN_ADDRESS, BERT_ABI_SNIPPET, readProvider);
                 
                 const externalGuaranteedMints = await fetchGuaranteedMintsFromAPI();
-                
                 const allItems = [];
-                
                 externalGuaranteedMints.forEach(item => {
                     allItems.push({ hash: item.hash, block: Number(item.block) });
                 });
@@ -1733,7 +1677,6 @@
                     const formattedBurn = parseFloat(window.ethers.formatUnits(burnBalance, 18));
                     ui.totalBurn.textContent = `${formattedBurn.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})} BERT 🔥`;
                 } catch (burnErr) {
-                    console.warn("Failed to fetch burn balance, falling back to list count:", burnErr);
                     const totalInscriptions = uniqueItems.length;
                     const totalBurned = totalInscriptions * MINT_FEE_AMOUNT;
                     ui.totalBurn.textContent = `${totalBurned.toLocaleString()} BERT 🔥`;
@@ -1757,15 +1700,12 @@
                 
                 const grid = ui.grid;
                 const children = Array.from(grid.children);
-                // NEW: Sort children explicitly by data-index to fix race condition ordering
                 children.sort((a, b) => {
                     const idxA = parseInt(a.dataset.index) || 0;
                     const idxB = parseInt(b.dataset.index) || 0;
-                    // Sort Descending (Newest # at Top)
                     return idxB - idxA;
                 });
                 children.forEach(child => grid.appendChild(child));
-
 
                 if (ui.grid.children.length === 0) {
                     ui.empty.classList.remove('hidden');
@@ -1801,36 +1741,25 @@
                 if(tx && tx.data && tx.data.length > 138) {
                     const raw = "0x" + tx.data.slice(138); 
                     let str = "";
-                    try {
-                        str = window.ethers.toUtf8String(raw);
-                    } catch (err) {
-                        return;
-                    }
+                    try { str = window.ethers.toUtf8String(raw); } catch (err) { return; }
                     let content = str;
                     try { content = JSON.parse(str).text; } catch(e){}
                     
-                    // --- NEW: Check Mint Status before rendering ---
                     let isMinted = false;
-                    // Only check if current user is owner (prevents excessive RPC calls)
                     if (currentAccount && tx.from && tx.from.toLowerCase() === currentAccount.toLowerCase()) {
                          try {
-                             // Use minimal ABI to explicitly check the mapping
                              const minAbi = ["function wrappedHashToTokenId(bytes32) view returns (uint256)"];
                              const nftChecker = new window.ethers.Contract(NFT_CONTRACT_ADDRESS, minAbi, p);
                              const pid = await nftChecker.wrappedHashToTokenId(tx.hash);
                              if (pid > 0) isMinted = true;
-                         } catch (checkErr) {
-                             console.warn("Mint status check failed", checkErr);
-                         }
+                         } catch (checkErr) { }
                     }
 
                     createGalleryCard(content, tx.hash, tx.blockNumber || '---', false, index, tx.from, isMinted); 
                     fetchedHashes.add(tx.hash);
                     return true; 
                 }
-            } catch (e) {
-                console.warn("Could not decode TX for hash:", hash, e);
-            }
+            } catch (e) { }
             return false;
         }
 
@@ -1839,29 +1768,23 @@
             if (card) card.remove();
         }
 
-        // *** MODIFIED: Now includes logic for Owner-Only Trading Cards and Mint Button ***
         function createGalleryCard(art, hash, block, prepend = false, index = '---', sender = null, isMinted = false) {
             const safeArt = (art || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
             const isPending = block === "Pending...";
             
             let rarityClass = "";
-            let rarityColor = "#9ca3af"; // default gray
-            let badgeText = "Common 🖋️"; // Default to Common with Fountain Pen
+            let rarityColor = "#9ca3af"; 
+            let badgeText = "Common 🖋️"; 
             let badgeClass = "badge-common";
 
             const lastChar = hash.slice(-1).toLowerCase();
             const lastTwo = hash.slice(-2).toLowerCase();
-            // NEW: Mythical Check (last 3 chars)
             const lastThree = hash.slice(-3).toLowerCase();
 
             const isMythical = (lastThree.length === 3 && lastThree[0] === lastThree[1] && lastThree[1] === lastThree[2]);
             const isLegendary = (lastTwo[0] === lastTwo[1]); 
-            
-            // --- NEW: EPIC CHECK (Ends in '0' or 'f') ---
             const isEpic = ['0', 'f'].includes(lastChar);
             const isRare = ['b', 'e', '7'].includes(lastChar);
-            
-            // NEW: Uncommon Check
             const isUncommon = ['2', '4', '6', '8'].includes(lastChar);
 
             if (isPending) {
@@ -1870,7 +1793,7 @@
                 rarityClass = "card-mythical";
                 badgeText = "Mythical 🦄";
                 badgeClass = "badge-mythical";
-                rarityColor = "#e2e8f0"; // Platinum
+                rarityColor = "#e2e8f0"; 
             } else if (isLegendary) {
                 rarityClass = "card-legendary";
                 badgeText = "Legendary 🐦‍🔥";
@@ -1880,7 +1803,7 @@
                 rarityClass = "card-epic";
                 badgeText = "Epic 🪄";
                 badgeClass = "badge-epic";
-                rarityColor = "#FF00FF"; // Magenta
+                rarityColor = "#FF00FF"; 
             } else if (isRare) {
                 rarityClass = "card-rare";
                 badgeText = "Rare 🔮";
@@ -1890,7 +1813,7 @@
                 rarityClass = "card-uncommon";
                 badgeText = "Uncommon ⚡";
                 badgeClass = "badge-uncommon";
-                rarityColor = "#0096e4";
+                rarityColor = "#731dff"; 
             } else {
                 badgeClass = "bg-gray-100 text-gray-600";
             }
@@ -1898,30 +1821,22 @@
             window.tempInscriptionContent[hash] = art; 
             window.tempInscriptionContent[hash + '_block'] = block;
 
-            // --- CHECK: IS THE USER THE OWNER? ---
             const isOwner = currentAccount && sender && (currentAccount.toLowerCase() === sender.toLowerCase());
-
             removeGalleryCard(hash); 
 
-            // --- DETERMINE BUTTON HTML ---
             let buttonHtml = '';
             if (!isOwner) {
                 buttonHtml = `<button class="flex-1 bg-gray-500 text-white text-xs font-bold py-2 px-2 rounded opacity-50 cursor-not-allowed">Mint (Owner Only) 🔒</button>`;
             } else if (isMinted) {
                 buttonHtml = `<button class="flex-1 bg-gray-500 text-white text-xs font-bold py-2 px-2 rounded cursor-not-allowed border border-gray-600" disabled>Minted (Final) ✅</button>`;
             } else {
-                // Shiny active button
                 buttonHtml = `<button onclick="handleOracleMint('${hash}', '${index}')" class="flex-1 text-white text-xs font-bold py-2 px-2 rounded transition bg-gradient-to-r from-fuchsia-600 to-violet-600 hover:from-fuchsia-700 hover:to-violet-700 btn-shine shadow-md">✨ Mint NFT</button>`;
             }
 
             const div = document.createElement('div');
             div.id = `card-${hash}`; 
-            // FIX: Add data-index for robust sorting
             div.dataset.index = index;
-
-            if (sender) {
-                div.dataset.sender = sender;
-            }
+            if (sender) div.dataset.sender = sender;
             
             div.className = `bg-white p-4 rounded-lg shadow border border-gray-200 flex flex-col animate-fade-in ${isPending ? 'pending-card' : ''} card-hover ${rarityClass}`; 
             div.innerHTML = `
@@ -2080,9 +1995,7 @@
 
             } catch (err) {
                 console.warn("Live Gas estimation failed, falling back to approximation:", err);
-                
                 const approxGas = BigInt(65000) + BigInt(bytes.length * 16); 
-
                 try {
                     const feeData = await readProvider.getFeeData();
                     const gasPrice = feeData.maxFeePerGas || feeData.gasPrice || BigInt(0);
@@ -2094,7 +2007,6 @@
             }
         }
 
-        // NEW: Toggle Logic
         if (ui.wrapToggle) {
             ui.wrapToggle.addEventListener('change', (e) => {
                 if (e.target.checked) {
@@ -2105,7 +2017,6 @@
             });
         }
 
-        // --- UPDATED LOOKUP BUTTON LOGIC ---
         ui.manualBtn.addEventListener('click', async () => {
             const hash = ui.manualInput.value.trim();
             const readProvider = new window.ethers.JsonRpcProvider(INK_RPC_URL);
@@ -2117,16 +2028,12 @@
 
             ui.manualBtn.textContent = "Verifying...";
 
-            // 1. Fetch Public List to check privacy status
             let isPublic = false;
             try {
                 const publicMints = await fetchGuaranteedMintsFromAPI();
                 isPublic = publicMints.some(item => item.hash.toLowerCase() === hash.toLowerCase());
-            } catch (err) {
-                console.warn("Could not verify privacy status", err);
-            }
+            } catch (err) {}
 
-            // 2. Fetch Data (We need this for BOTH Public and Private to show the text)
             let content = "";
             let safeArt = "";
             try {
@@ -2136,18 +2043,12 @@
                     let str = "";
                     try { str = window.ethers.toUtf8String(raw); } catch (err) {}
                     try { content = JSON.parse(str).text; } catch(e) { content = str; }
-                    
-                    // Sanitize for HTML display
                     safeArt = (content || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-                    
-                    // Store for "View Fullscreen" feature
                     window.tempInscriptionContent[hash] = content; 
                 }
-            } catch(e) { console.log("Bg fetch failed"); }
+            } catch(e) {}
 
-            // 3. Gatekeeper Logic (PRIVATE PATH)
             if (!isPublic) {
-                // It is Private: Render the RAW data, but remove "Card" styling/minting
                 ui.grid.innerHTML = `
                     <div class="bg-gray-800 p-4 rounded-lg shadow border border-gray-600 flex flex-col col-span-1 md:col-span-2">
                         <div class="flex justify-between items-center mb-3 border-b border-gray-700 pb-2">
@@ -2156,10 +2057,7 @@
                             </h3>
                             <span class="text-xs text-gray-500">Raw Data View Only</span>
                         </div>
-                        
-                        <!-- RAW DATA DISPLAY (No Rarity Colors) -->
                         <div class="bg-black text-gray-300 p-4 rounded text-xs overflow-auto ascii-art mb-3 shadow-inner" style="max-height: 300px; min-height: 100px;">${safeArt || "<span class='text-gray-600'>[No readable text data found]</span>"}</div>
-                        
                         <div class="flex gap-2 mt-2">
                              <button onclick="viewFullInscription('${hash}')" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-2 px-2 rounded transition border border-gray-600">
                                 View Raw Fullscreen
@@ -2172,10 +2070,9 @@
                 `;
                 ui.empty.classList.add('hidden');
                 ui.manualBtn.textContent = "Look Up";
-                return; // STOP HERE. Do not render the official card.
+                return; 
             }
 
-            // 4. Public Path (Render Official Card)
             ui.manualBtn.textContent = "Searching...";
             try {
                 ui.grid.innerHTML = '';
@@ -2200,7 +2097,6 @@
             
             ui.manualBtn.textContent = "Look Up"; 
         });
-        // -------------------------------------
 
         (async function init() {
             await fetchGallery(); 
