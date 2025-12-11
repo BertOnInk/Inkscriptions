@@ -1040,7 +1040,7 @@
             manualBtn: $('manual-btn'), manualInput: $('manual-hash'), grid: $('gallery-grid'), loader: $('gallery-loader'), empty: $('gallery-empty'), refresh: $('refresh-btn'), filterCheckbox: $('my-artifacts-filter'), wrapToggle: $('wrap-toggle'), 
         };
 
-        // --- ORACLE MINT LOGIC ---
+        // --- ORACLE MINT LOGIC (UPDATED WITH TWO-STEP FINALIZATION) ---
         window.handleOracleMint = async function(originalTxHash, index) {
             if (!window.ethereum) { 
                 showCustomAlert("Wallet Missing", "Please install Rabby or MetaMask.", "error"); 
@@ -1169,6 +1169,31 @@
                 const receipt = await mintTx.wait();
 
                 if (receipt.status === 1) {
+                    
+                    // --- STEP 2: FINALIZE MINT (RECORD TO DB FOR COOLDOWN) ---
+                    try {
+                        console.log("Finalizing mint in DB...");
+                        const FINALIZE_URL = "https://us-central1-inkscriptions-nft-oracle.cloudfunctions.net/finalizeMint";
+                        // const FINALIZE_URL = "http://127.0.0.1:5001/inkscriptions-nft-oracle/us-central1/finalizeMint";
+                        
+                        await fetch(FINALIZE_URL, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                txHash: data.originalTxHash,
+                                userAddress: currentAccount,
+                                index: targetIndex,
+                                tokenURI: data.tokenURI,
+                                imageUrl: data.imageUrl,
+                                contentHash: data.contentHash
+                            })
+                        });
+                        console.log("Mint finalized.");
+                    } catch (finErr) {
+                        console.warn("DB Finalize Error (Mint still valid on chain):", finErr);
+                    }
+                    // ---------------------------------------------------------
+
                     const explorerLink = `https://explorer.inkonchain.com/tx/${mintTx.hash}`;
                     showCustomAlert(
                         "Mint Successful!", 
@@ -1196,6 +1221,7 @@
                     (txError.message && txError.message.includes("value=null")) ||
                     (txError.message && txError.message.includes("invalid value for value.index"))
                 )) {
+                    // (Error handling logic same as before)
                     const explorerLink = `https://explorer.inkonchain.com/tx/${mintTxHash}`;
                     showCustomAlert(
                         "Mint Successful!", 
@@ -1203,6 +1229,16 @@
                         "success"
                     );
                     
+                    // We also try to finalize here if we think it succeeded despite the error
+                     try {
+                        const FINALIZE_URL = "https://us-central1-inkscriptions-nft-oracle.cloudfunctions.net/finalizeMint";
+                        // const FINALIZE_URL = "http://127.0.0.1:5001/inkscriptions-nft-oracle/us-central1/finalizeMint";
+                         await fetch(FINALIZE_URL, {
+                            method: "POST", headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ txHash: originalTxHash, userAddress: currentAccount, index: parseInt(index), contentHash: "unknown-recovery", tokenURI: "", imageUrl: "" })
+                        });
+                    } catch (e) {}
+
                     if(btn) {
                         btn.textContent = "Minted (Check Wallet)";
                         btn.disabled = true;
@@ -1296,7 +1332,7 @@
                 calcGas();
                 
                 if (!welcomeAlertShown) {
-                    showCustomAlert("Welcome Back!", "You can now mint official Trading Cards for your artifacts. Look for the '✨ Mint Card' button on your own inscriptions!", "success");
+                    showCustomAlert("Welcome Back!", "You can now mint official NFT's for your artifacts. Look for the '✨ Mint Card' button on your own Inscriptions!", "success");
                     welcomeAlertShown = true;
                 }
 
