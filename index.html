@@ -1136,7 +1136,8 @@
                     image: imageData 
                 };
 
-                const ORACLE_API_URL = "https://us-central1-inkscriptions-nft-oracle.cloudfunctions.net/prepareMint";
+                const ORACLE_API_URL = "https://us-central1-inkscriptions-nft-oracle.cloudfunctions.net/prepareMint"; 
+                // const ORACLE_API_URL = "http://127.0.0.1:5001/inkscriptions-nft-oracle/us-central1/prepareMint";
 
                 const response = await fetch(ORACLE_API_URL, {
                     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload)
