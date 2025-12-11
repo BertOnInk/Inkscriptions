@@ -383,7 +383,7 @@
                 <div class="group relative flex items-center">
                     <div class="cursor-help text-violet-600 font-bold bg-violet-100 hover:bg-violet-200 rounded-full w-4 h-4 flex items-center justify-center text-[10px] border border-violet-300 transition">?</div>
                     <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 text-left leading-relaxed">
-                        <p class="mb-2"><strong class="text-violet-400">Public:</strong> Your Inkscription and a link to your transaction will be reflected in the Gallery. It will generate a unique card which the owner can mint as an NFT with a bespoke supply.</p>
+                        <p class="mb-2"><strong class="text-violet-400">Public:</strong> Your Inkscription and a link to your transaction will be reflected in the Gallery. You will be able to mint an Inkscription ERC-1155 NFT with a bespoke supply.</p>
                         <p><strong class="text-violet-400">Private:</strong> Your Inkscription will not be stored in the database, displayed in the public Gallery, or be eligible to be minted as an NFT. You can still view it in its raw form by entering the tx ID in the "Find Specific Artifact" field.</p>
                         <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
                     </div>
@@ -982,7 +982,7 @@
                     <p>Creating an <span style="color: #9333ea;">Inkscription</span> involves four simple steps:</p>
                     <ul>
                         <li><span style="color: #9333ea;">Connect Wallet:</span> Click the "Connect Wallet" button and ensure you have enough <span style="color: #9333ea;">BERT</span> tokens (1000 <span style="color: #9333ea;">BERT</span> per <span style="color: #9333ea;">inkscription</span>) and a small amount of ETH for gas.</li>
-                        <li><span style="color: #9333ea;">Compose Content:</span> Enter your desired text, lore, or ASCII art into the "<span style="color: #000000 !important;">Your Permanent</span> <span style="color: #9333ea;">Inkscription</span>" box. For ASCII Art: We recommend an image-to-ASCII web tool suchs as <a href="https://www.asciiart.eu/image-to-ascii" target="_blank" class="text-violet-500 hover:text-violet-700 underline">asciiart.eu/image-to-ascii</a> or similar. There you can upload and fine-tune an image to create your perfect <span style="color: #9333ea;">inkscription</span> content.</li>
+                        <li><span style="color: #9333ea;">Compose Content:</span> Enter your desired text, lore, or ASCII art into the "<span style="color: #000000 !important;">Your Permanent</span> <span style="color: #9333ea;">Inkscription</span>" box. For ASCII Art: We recommend an image-to-ASCII web tool such as <a href="https://www.asciiart.eu/image-to-ascii" target="_blank" class="text-violet-500 hover:text-violet-700 underline">asciiart.eu/image-to-ascii</a>. There you can upload and fine-tune an image to create your perfect <span style="color: #9333ea;">Inkscription</span> content.</li>
                         <li><span style="color: #9333ea;">Check Cost:</span> Review the <span style="color: 000000 !important;">Est. Gas</span> display to see the estimated ETH transaction cost.</li>
                         <li><span style="color: #9333ea;">Mint:</span> Click the <span style="color: #9333ea;">"MINT INKSCRIPTION"</span> button and confirm the transaction (which includes the <span style="color: #9333ea;">BERT</span> token burn and the <span style="color: #9333ea;">inkscription</span> data) in your wallet. Once confirmed, your unique artifact will appear in the Live Gallery. You will also gain exclusive access to your unique Inkscriptions Card.</span></li>
                     </ul>
@@ -1136,8 +1136,7 @@
                     image: imageData 
                 };
 
-                // const ORACLE_API_URL = "https://us-central1-inkscriptions-nft-oracle.cloudfunctions.net/prepareMint"; 
-                const ORACLE_API_URL = "http://127.0.0.1:5001/inkscriptions-nft-oracle/us-central1/prepareMint";
+                // const ORACLE_API_URL = "https://us-central1-inkscriptions-nft-oracle.cloudfunctions.net/prepareMint";
 
                 const response = await fetch(ORACLE_API_URL, {
                     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload)
@@ -1601,7 +1600,7 @@
             
             if (isChecked && !currentAccount) {
                 e.target.checked = false;
-                showCustomAlert("Wallet Required", "Please connect your wallet to filter by your inscriptions.");
+                showCustomAlert("Wallet Required", "Please connect your wallet to filter by your Inkscriptions.");
                 return;
             }
 
