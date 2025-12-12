@@ -572,7 +572,7 @@
 
                 <div class="flex items-center gap-2">
                     <input type="checkbox" id="ascii-invert" class="w-4 h-4 text-violet-600 bg-gray-200 border-gray-300 rounded focus:ring-violet-500">
-                    <label for="ascii-invert" class="text-sm text-gray-700">Invert Colors (For Dark Backgrounds)</label>
+                    <label for="ascii-invert" class="text-sm text-gray-700">Invert Colors</label>
                 </div>
 
                 <div>
@@ -1178,7 +1178,7 @@
                     ui.btn.disabled = true; ui.btnText.textContent = `SWITCH TO CHAIN ${expectedChainId}`;
                     showCustomAlert("Wrong Network", `Switch to Ink L2 Mainnet (ID: ${expectedChainId}).`, "error");
                 } else {
-                    ui.btn.disabled = false; ui.btnText.textContent = `MINT INKSCRIPTION (BURN ${MINT_FEE_AMOUNT} BERT)`;
+                    ui.btn.disabled = false; ui.btnText.textContent = `ETCH INKSCRIPTION (BURN ${MINT_FEE_AMOUNT} BERT)`;
                 }
                 ui.spinner.classList.add('hidden'); ui.btn.classList.remove('btn-primary-loading');
                 await fetchBalance(); await fetchGallery(); calcGas();
@@ -1267,7 +1267,7 @@
                 }
                 
                 await fetchBalance(); await fetchGallery(); 
-                ui.btn.disabled = false; ui.spinner.classList.add('hidden'); ui.btn.classList.remove('btn-primary-loading'); ui.btnText.textContent = `MINT INKSCRIPTION (BURN ${MINT_FEE_AMOUNT} BERT)`; ui.input.value = ''; calcGas();
+                ui.btn.disabled = false; ui.spinner.classList.add('hidden'); ui.btn.classList.remove('btn-primary-loading'); ui.btnText.textContent = `ETCH INKSCRIPTION (BURN ${MINT_FEE_AMOUNT} BERT)`; ui.input.value = ''; calcGas();
 
             } catch (e) {
                 console.error('Minting Error:', e); if (pendingTxHash) removeGalleryCard(pendingTxHash);
