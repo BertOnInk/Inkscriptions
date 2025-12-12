@@ -572,7 +572,7 @@
 
                 <div class="flex items-center gap-2">
                     <input type="checkbox" id="ascii-invert" class="w-4 h-4 text-violet-600 bg-gray-200 border-gray-300 rounded focus:ring-violet-500">
-                    <label for="ascii-invert" class="text-sm text-gray-700">Invert Colors</label>
+                    <label for="ascii-invert" class="text-sm text-gray-700">Invert Colors (For Dark Backgrounds)</label>
                 </div>
 
                 <div>
@@ -821,9 +821,32 @@
 
             const faqContent = `
                 <h3 class="faq-heading">Q1: What exactly is an Inkscription?</h3>
-                <div class="faq-answer"><p>An <span style="color: #9333ea;">Inkscription</span> is a permanent artifact etched onto the blockchain.</p></div>
+                <div class="faq-answer"><p>An <span style="color: #9333ea;">Inkscription</span> is a permanent, immutable artifact etched onto the Ink blockchain.</p></div>
                 <h3 class="faq-heading">Q2: How do I create an Inkscription?</h3>
-                <div class="faq-answer"><ul><li>Connect Wallet.</li><li>Compose Content (Text or ASCII).</li><li>Mint by burning BERT.</li></ul></div>
+                <div class="faq-answer"><ul><li>Connect your wallet to the Ink L2 network.</li><li>Compose your message or ASCII art in the text box.</li><li>Click "Etch Inkscription" and confirm the transaction (burning 1000 BERT tokens).</li></ul></div>
+                <h3 class="faq-heading">Q3: Is this an NFT?</h3>
+                <div class="faq-answer"><p>Initially, it is a raw data inscription on the transaction. However, you can turn your Inkscription into a verified ERC-1155 NFT by using the "Mint NFT" button on your Inkscription in the gallery and setting a custom supply from 1 to 1,000,000. Then it will become a part of the <a href="https://explorer.inkonchain.com/token/0x86d5cd3150Bbf93b179166dCd0A060e3B6b0CE01" target="_blank" style="color: #9333ea; text-decoration: underline;">Inkscriptions (INKS) NFT Collection</a>.</p></div>
+                <h3 class="faq-heading">Q4: What are the Inkscription Rarity Tiers?</h3>
+                <div class="faq-answer"><p>Inksription rarity is determined by the last characters of the transaction hash:</p>
+                <ul>
+                    <li><strong>Common:</strong> Standard transaction hash.</li>
+                    <li><strong>Uncommon:</strong> Ends in 2, 4, 6, or 8.</li>
+                    <li><strong>Rare:</strong> Ends in 'b', 'e', or '7'.</li>
+                    <li><strong>Epic:</strong> Ends in '0' or 'f'.</li>
+                    <li><strong>Legendary:</strong> Ends in double characters (e.g., 'aa', '88').</li>
+                    <li><strong>Mythical:</strong> Ends in triple characters (e.g., 'bbb', '777').</li>
+                </ul></div>
+                <h3 class="faq-heading">Q5: What are the usecases of Inkscriptions?</h3>
+                <div class="faq-answer">
+                    <p>Inkscriptions are versatile on-chain artifacts. Common usecases include:</p>
+                    <ul>
+                        <li><strong>Permanent Messages:</strong> Etch love letters, manifestos, or historical notes that can never be deleted.</li>
+                        <li><strong>On-Chain Art:</strong> Store ASCII art and creative text compositions directly on the blockchain.</li>
+                        <li><strong>Proof of Existence:</strong> Timestamp an idea, prediction, or hash to prove you knew it at a specific block height.</li>
+                        <li><strong>Code Storage:</strong> Save small snippets of critical code or logic.</li>
+                    </ul>
+                    <p><strong>Why Mint the NFT?</strong> While the raw inscription is permanent, minting it as an NFT "wraps" it into a tradable asset. This gives it a visual identity (the Trading Card), assigns it Rarity Traits based on its unique transaction hash, and makes it viewable and tradable on all major NFT marketplaces.</p>
+                </div>
             `;
             faqBody.innerHTML = faqContent;
 
@@ -1155,11 +1178,10 @@
                     ui.btn.disabled = true; ui.btnText.textContent = `SWITCH TO CHAIN ${expectedChainId}`;
                     showCustomAlert("Wrong Network", `Switch to Ink L2 Mainnet (ID: ${expectedChainId}).`, "error");
                 } else {
-                    ui.btn.disabled = false; ui.btnText.textContent = `ETCH INKSCRIPTION (BURN ${MINT_FEE_AMOUNT} BERT)`;
+                    ui.btn.disabled = false; ui.btnText.textContent = `MINT INKSCRIPTION (BURN ${MINT_FEE_AMOUNT} BERT)`;
                 }
                 ui.spinner.classList.add('hidden'); ui.btn.classList.remove('btn-primary-loading');
                 await fetchBalance(); await fetchGallery(); calcGas();
-                if (!welcomeAlertShown) { welcomeAlertShown = true; } // Removed Welcome Alert as requested
             } catch (err) { handleDisconnect(); }
         }
 
@@ -1170,7 +1192,7 @@
 
         async function connectWallet() {
             if (typeof window.ethereum === 'undefined') {
-                showCustomAlert("No Wallet Found", "Please install MetaMask, Rabby, or another Web3 wallet to use this dApp.", "error");
+                showCustomAlert("No Wallet Found", "Please install Rabby or another Web3 wallet to use this dApp.", "error");
                 return;
             }
             try {
@@ -1245,7 +1267,7 @@
                 }
                 
                 await fetchBalance(); await fetchGallery(); 
-                ui.btn.disabled = false; ui.spinner.classList.add('hidden'); ui.btn.classList.remove('btn-primary-loading'); ui.btnText.textContent = `ETCH INKSCRIPTION (BURN ${MINT_FEE_AMOUNT} BERT)`; ui.input.value = ''; calcGas();
+                ui.btn.disabled = false; ui.spinner.classList.add('hidden'); ui.btn.classList.remove('btn-primary-loading'); ui.btnText.textContent = `MINT INKSCRIPTION (BURN ${MINT_FEE_AMOUNT} BERT)`; ui.input.value = ''; calcGas();
 
             } catch (e) {
                 console.error('Minting Error:', e); if (pendingTxHash) removeGalleryCard(pendingTxHash);
@@ -1352,7 +1374,7 @@
                 <div class="bg-gray-900 text-purple-400 p-4 rounded text-xs overflow-auto ascii-art mb-3 flex-grow" style="max-height: 300px;">${safeArt}</div>
                 <div class="flex justify-between items-center mb-2"> <div class="text-xl font-extrabold text-violet-500">#${index}</div> ${!isPending ? `<button onclick="generateTradingCard('${hash}', '${rarityColor}', '${badgeText}', '${index}', '${sender}', 'modal')" class="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide ${badgeClass} hover:opacity-80 transition cursor-pointer" title="Click to View Card">${badgeText}</button>` : ''} </div>
                 <div class="pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500 mb-2"> <span class="px-2 py-1 rounded ${isPending ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-50 text-gray-500'}">Block: ${block}</span> <div class="flex gap-2 items-center"> <a href="https://explorer.inkonchain.com/tx/${hash}" target="_blank" class="text-violet-500 hover:text-violet-700 hover:underline font-bold transition">View TX ↗</a> </div> </div>
-                <div class="flex gap-2 mt-2"> <button onclick="viewFullInscription('${hash}')" class="flex-1 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold py-2 px-2 rounded transition">View Raw</button> ${buttonHtml} </div>
+                <div class="flex gap-2 mt-2"> <button onclick="viewFullInscription('${hash}')" class="flex-1 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold py-2 px-2 rounded transition">View Raw Fullscreen</button> ${buttonHtml} </div>
             `;
             if (prepend) ui.grid.prepend(div); else ui.grid.appendChild(div);
         }
