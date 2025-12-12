@@ -4,13 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Bert's Inkscriptions 🐔🖋️</title>
-    <!-- Font Imports: Bungee (Titles) and Permanent Marker (Handwritten/Graffiti) -->
-    <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Permanent+Marker&display=swap" rel="stylesheet">
+    <!-- Font Imports: Bungee (Titles), Permanent Marker (Handwritten), Fredoka (Body) -->
+    <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Permanent+Marker&family=Fredoka:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
     <style>
         body { 
-            font-family: 'Inter', sans-serif; 
+            font-family: 'Fredoka', sans-serif; /* Changed to Fredoka as requested */
             background-image: 
                 url('bg.png'),
                 linear-gradient(135deg, #a855f7, #c084fc);
@@ -19,7 +19,7 @@
             background-repeat: no-repeat;
             background-attachment: fixed;
             background-color: #a855f7; 
-            color: #e0e0e0; 
+            color: #333; 
             position: relative;
             overflow-x: hidden; 
         }
@@ -28,22 +28,19 @@
             color: #ffffff !important; 
             text-shadow: 2px 2px #9333ea, 4px 4px #7c3aed; 
         }
-        .graffiti-font {
-            font-family: 'Bungee', cursive;
+        /* Only used for specific accents now */
+        .handwritten-font {
+            font-family: 'Permanent Marker', cursive;
         }
-        /* Hidden font loader to ensure Bungee is ready for Canvas */
-        .font-loader {
-            position: absolute;
-            opacity: 0;
-            pointer-events: none;
-            z-index: -1;
-        }
-        .card { 
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-            background-color: rgba(255, 255, 255, 0.05);
+        
+        /* Glassmorphism Card Style */
+        .glass-card { 
+            background-color: rgba(255, 255, 255, 0.95); /* 95% opacity white */
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.4);
         }
+        
         .card-hover { 
             transition: transform 0.3s ease, box-shadow 0.3s ease; 
         }
@@ -135,8 +132,21 @@
         }
         /* --------------------- */
 
-        .btn-primary { background-color: #9333ea; transition: background-color 0.3s; }
-        .btn-primary:hover { background-color: #7c3aed; }
+        /* Updated Button Styling: Gradient & Glow */
+        .btn-gradient { 
+            background: linear-gradient(135deg, #9333ea 0%, #d946ef 100%);
+            box-shadow: 0 4px 15px rgba(147, 51, 234, 0.4);
+            transition: all 0.3s ease;
+        }
+        .btn-gradient:hover { 
+            background: linear-gradient(135deg, #7c3aed 0%, #c026d3 100%);
+            box-shadow: 0 6px 20px rgba(147, 51, 234, 0.6);
+            transform: translateY(-1px);
+        }
+        .btn-gradient:active {
+            transform: translateY(1px);
+        }
+
         .spinner { border-top-color: #fff; border-right-color: transparent; -webkit-animation: spin 1s linear infinite; animation: spin 1s linear infinite; }
         .btn-primary-loading { opacity: 0.7; cursor: not-allowed; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -159,29 +169,31 @@
         }
 
         .pending-card { opacity: 0.6; filter: grayscale(1); transition: opacity 0.5s; }
-        .text-gray-800 { color: #e0e0e0; }
-        .text-gray-600 { color: #b0b0b0; }
-        .text-gray-700 { color: #d0d0d0; }
-        .text-gray-500 { color: #a0a0a0; }
-        .border-gray-200 { border-color: rgba(255, 255, 255, 0.15); }
-        .bg-gray-50 { background-color: rgba(255, 255, 255, 0.08); }
-        .border-gray-300 { border-color: rgba(255, 255, 255, 0.25); }
-        .bg-gray-100 { background-color: rgba(255, 255, 255, 0.1); }
-        .text-violet-800 { color: #d8b4fe; } 
-        .bg-violet-50 { background-color: rgba(138, 43, 226, 0.2); } 
-        .border-violet-200 { border-color: rgba(138, 43, 226, 0.4); }
-        .text-violet-600 { color: #c084fc; } 
-        .focus\:ring-violet-500:focus { --tw-ring-color: #c084fc; }
-        .border-violet-500 { border-color: #c084fc; }
+        .text-gray-800 { color: #1f2937; } /* Updated for visibility on white */
+        .text-gray-600 { color: #4b5563; }
+        .text-gray-700 { color: #374151; }
+        .text-gray-500 { color: #6b7280; }
+        .border-gray-200 { border-color: #e5e7eb; }
+        .bg-gray-50 { background-color: #f9fafb; }
+        .border-gray-300 { border-color: #d1d5db; }
+        .bg-gray-100 { background-color: #f3f4f6; }
+        
+        .text-violet-800 { color: #5b21b6; } 
+        .bg-violet-50 { background-color: #f5f3ff; } 
+        .border-violet-200 { border-color: #ddd6fe; }
+        .text-violet-600 { color: #7c3aed; } 
+        .focus\:ring-violet-500:focus { --tw-ring-color: #8b5cf6; }
+        .border-violet-500 { border-color: #8b5cf6; }
         .text-purple-400 { color: #c084fc; } 
-        .text-violet-500 { color: #a855f7; } 
+        .text-violet-500 { color: #8b5cf6; } 
         .text-black { color: #000000 !important; }
+        
         input, textarea {
-            background-color: rgba(255, 255, 255, 0.1);
-            color: #e0e0e0;
+            background-color: #ffffff;
+            color: #1f2937;
         }
         input::placeholder, textarea::placeholder {
-            color: #b0b0b0;
+            color: #9ca3af;
         }
         #inscription-input {
             background-color: #ffffff; 
@@ -192,7 +204,7 @@
             line-height: 1.2; 
         }
         #inscription-input::placeholder {
-             color: #4b5563;
+             color: #6b7280;
         }
         .modal-overlay {
             position: fixed;
@@ -220,30 +232,6 @@
             box-shadow: 0 10px 20px rgba(147, 51, 234, 0.4);
             animation: fadeIn 0.3s;
         }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .faq-heading {
-            font-size: 1.25rem;
-            font-weight: bold;
-            color: #9333ea;
-            margin-top: 1rem;
-            border-bottom: 1px solid #d8b4fe;
-            padding-bottom: 0.25rem;
-        }
-        .faq-answer p {
-            margin-top: 0.5rem;
-            margin-bottom: 1rem;
-        }
-        .faq-answer ul {
-            list-style: disc;
-            margin-left: 20px;
-        }
-        .faq-answer strong {
-            color: #4c1d95;
-        }
-        
         /* Button animation for owner card */
         .btn-shine {
             position: relative;
@@ -307,6 +295,50 @@
             user-select: none;
             -webkit-user-drag: none;
         }
+        
+        /* Hidden font loader */
+        .font-loader {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* FAQ STYLES */
+        .faq-heading {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #7c3aed; /* Brand Purple */
+            margin-top: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        .faq-heading:first-of-type {
+            margin-top: 0;
+        }
+        .faq-answer {
+            font-size: 0.95rem;
+            color: #4b5563;
+            line-height: 1.6;
+        }
+        .faq-answer strong {
+            color: #5b21b6;
+        }
+        .faq-answer ul {
+            list-style-type: disc;
+            margin-left: 1.5rem;
+            margin-top: 0.5rem;
+        }
+        .faq-answer li {
+            margin-bottom: 0.25rem;
+        }
+        .faq-link {
+            color: #7c3aed;
+            font-weight: 600;
+            text-decoration: underline;
+        }
+        .faq-link:hover {
+            color: #6d28d9;
+        }
     </style>
 </head>
 <body class="min-h-screen p-4 flex flex-col items-center">
@@ -317,25 +349,27 @@
 
     <div class="w-full max-w-xl mb-8 text-center mt-8">
         <h1 class="text-4xl font-bold graffiti-title">Bert's Inkscriptions 🐔🖋️</h1>
-        <p class="text-white mt-2 text-xl tracking-wide" style="font-family: 'Permanent Marker', cursive; text-shadow: 2px 2px 0px #9333ea;">Permanent artifacts inked on chain.</p>
+        <p class="text-white mt-2 text-xl tracking-wide handwritten-font" style="text-shadow: 2px 2px 0px #9333ea;">Permanent artifacts inked on chain.</p>
     </div>
 
-    <div class="w-full max-w-xl bg-white p-6 md:p-8 rounded-xl card space-y-6 mb-12">
+    <!-- Replaced card class with glass-card and removed bg-white -->
+    <div class="w-full max-w-xl glass-card p-6 md:p-8 rounded-xl space-y-6 mb-12">
         
         <div class="pt-0 space-y-4">
             
             <div class="flex flex-col items-center justify-center -mt-2 mb-1"> 
                 <img src="burning_chicken.png" onerror="this.onerror=null;this.src='https://placehold.co/40x40/9333ea/ffffff?text=🐔🔥'" alt="Burning Chicken" class="h-10 w-10 mt-1 mb-2"> 
                 <p class="text-sm font-medium text-black flex items-center gap-2">
-                    <span style="font-family: 'Permanent Marker', cursive; font-size: 1.1rem;">Burn BERT, ink history</span>
-                    <button id="faq-btn" class="text-xs text-violet-600 font-bold hover:text-violet-700 transition underline" style="font-family: 'Inter', sans-serif;">FAQ</button>
+                    <span class="handwritten-font" style="font-size: 1.1rem;">Burn BERT, ink history</span>
+                    <button id="faq-btn" class="text-xs text-violet-600 font-bold hover:text-violet-700 transition underline">FAQ</button>
                 </p>
             </div>
 
-            <p class="text-lg font-extrabold text-gray-700 flex justify-between items-center pb-2">
-                <span class="graffiti-font text-violet-500">Cumulative Tendie Count 🍗:</span>
-                <span id="total-burn-display" class="graffiti-font font-extrabold text-red-500">0 BERT 🔥</span>
-            </p>
+            <!-- VISUAL HIERARCHY UPDATE: Tendie Count -->
+            <div class="flex flex-col items-center justify-center pb-2 bg-gray-50 rounded-lg p-3 border border-gray-200">
+                <span class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Cumulative Tendie Count 🍗</span>
+                <span id="total-burn-display" class="text-3xl font-extrabold text-violet-600 tracking-tight">0 BERT 🔥</span>
+            </div>
 
             <div id="wallet-bar" class="hidden flex justify-between items-center bg-violet-50 border border-violet-200 px-4 py-3 rounded-lg">
                 <div>
@@ -344,11 +378,13 @@
                 </div>
                 <button id="disconnect-btn" class="bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold px-3 py-1.5 rounded transition">Disconnect</button>
             </div>
+            
+            <!-- VISUAL HIERARCHY UPDATE: Cost Section -->
             <div class="border-t border-gray-200 pt-4">
-                <div class="flex justify-between items-end">
-                    <div><p class="text-sm font-medium text-black" style="font-family: 'Permanent Marker', cursive; font-size: 1.1rem;">Inkscription Cost</p></div>
+                <div class="flex justify-between items-center">
+                    <div><p class="text-sm font-medium text-gray-500">Inkscription Cost</p></div>
                     <div class="text-right">
-                        <p class="text-sm font-medium text-black">1000 BERT</p>
+                        <p class="text-lg font-bold text-black">1000 BERT</p>
                     </div>
                 </div>
             </div>
@@ -361,7 +397,8 @@
         
         <div class="space-y-2">
             <div class="flex justify-between items-end">
-                <label class="block text-sm font-medium text-black" style="font-family: 'Permanent Marker', cursive; font-size: 1.1rem;">Your Permanent Inkscription</label>
+                <!-- Removed display font here for cleaner look -->
+                <label class="block text-sm font-bold text-gray-800">Your Permanent Inkscription</label>
                 <div class="flex items-center space-x-2">
                     <!-- NEW IMAGE TO ASCII BUTTON -->
                     <button id="img-to-ascii-btn" class="text-xs bg-violet-100 hover:bg-violet-200 text-violet-700 font-bold px-2 py-1 rounded border border-violet-200 transition flex items-center gap-1">
@@ -371,7 +408,7 @@
                     <label for="wrap-toggle" class="text-xs text-gray-600 cursor-pointer select-none">Wrap Text</label>
                 </div>
             </div>
-            <textarea id="inscription-input" rows="6" maxlength="8000" placeholder="Etch your lore or paste your ASCII art here..." class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 font-mono text-xs"></textarea>
+            <textarea id="inscription-input" rows="6" maxlength="8000" placeholder="Etch your lore or paste your ASCII art here..." class="w-full p-3 border-2 border-violet-200 rounded-lg focus:ring-2 focus:ring-violet-500 font-mono text-xs focus:border-violet-500 transition-colors"></textarea>
             
             <div id="preview-box" class="hidden bg-gray-900 text-white p-4 rounded overflow-auto ascii-art" style="min-height: 100px;"></div>
 
@@ -383,7 +420,7 @@
 
         <div class="space-y-2">
             <div class="flex items-center gap-2">
-                <label class="block text-sm font-medium text-black">Gallery Visibility:</label>
+                <label class="block text-sm font-bold text-gray-800">Gallery Visibility:</label>
                 <div class="group relative flex items-center">
                     <div class="cursor-help text-violet-600 font-bold bg-violet-100 hover:bg-violet-200 rounded-full w-4 h-4 flex items-center justify-center text-[10px] border border-violet-300 transition">?</div>
                     <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 text-left leading-relaxed">
@@ -398,18 +435,19 @@
                 <div class="flex items-center">
                     <input id="visibility-public" type="radio" name="gallery-visibility" value="public" checked
                            class="h-4 w-4 text-violet-600 border-gray-300 focus:ring-violet-500">
-                    <label for="visibility-public" class="ml-2 text-sm font-medium text-black">Public (Show in Gallery)</label>
+                    <label for="visibility-public" class="ml-2 text-sm font-medium text-gray-700">Public (Show in Gallery)</label>
                 </div>
                 
                 <div class="flex items-center">
                     <input id="visibility-private" type="radio" name="gallery-visibility" value="private"
                            class="h-4 w-4 text-violet-600 border-gray-300 focus:ring-violet-500">
-                    <label for="visibility-private" class="ml-2 text-sm font-medium text-black">Private (Do Not Show)</label>
+                    <label for="visibility-private" class="ml-2 text-sm font-medium text-gray-700">Private (Do Not Show)</label>
                 </div>
             </div>
         </div>
         
-        <button id="main-btn" class="bg-violet-600 hover:bg-violet-700 w-full text-white font-bold py-3 rounded-lg flex items-center justify-center transition-all">
+        <!-- Updated Button Style -->
+        <button id="main-btn" class="btn-gradient w-full text-white font-bold py-3.5 rounded-lg flex items-center justify-center text-lg tracking-wide">
             <div id="spinner" class="spinner h-5 w-5 border-4 rounded-full mr-2 hidden"></div>
             <span id="btn-text">Connect Wallet</span>
         </button>
@@ -419,17 +457,17 @@
         </div>
     </div>
 
-    <div class="w-full max-w-4xl mb-8 bg-white p-6 rounded-xl card">
-        <h3 class="font-bold text-gray-800 mb-2" style="font-family: 'Permanent Marker', cursive; font-size: 1.1rem;">🔍 Find Specific Artifact</h3>
+    <div class="w-full max-w-4xl mb-8 glass-card p-6 rounded-xl">
+        <h3 class="font-bold text-gray-800 mb-2 handwritten-font" style="font-size: 1.1rem;">🔍 Find Specific Artifact</h3>
         <div class="flex gap-2">
-            <input type="text" id="manual-hash" placeholder="0x..." class="text-black flex-grow p-3 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-violet-500 outline-none">
-            <button id="manual-btn" class="bg-violet-600 hover:bg-violet-700 text-white font-bold px-6 rounded-lg transition">Look Up</button>
+            <input type="text" id="manual-hash" placeholder="0x..." class="text-black flex-grow p-3 border-2 border-gray-200 rounded-lg font-mono text-sm focus:ring-2 focus:ring-violet-500 outline-none focus:border-violet-500 transition-colors">
+            <button id="manual-btn" class="bg-violet-600 hover:bg-violet-700 text-white font-bold px-6 rounded-lg transition shadow-md">Look Up</button>
         </div>
     </div>
 
     <div class="w-full max-w-4xl">
         <div class="flex flex-col md:flex-row items-center justify-between mb-4 gap-4">
-            <h2 class="text-2xl font-bold text-white" style="font-family: 'Permanent Marker', cursive; text-shadow: 2px 2px 0px #9333ea;">🏛️ Live Gallery</h2>
+            <h2 class="text-2xl font-bold text-white handwritten-font" style="text-shadow: 2px 2px 0px #9333ea;">🏛️ Live Gallery</h2>
             
             <div class="flex items-center gap-4">
                 <label class="flex items-center space-x-2 bg-white px-3 py-1.5 rounded cursor-pointer hover:bg-gray-50 border border-gray-300 transition shadow-sm">
@@ -494,7 +532,7 @@
     <div id="card-preview-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content text-center" style="max-width: 600px; padding: 20px;">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-violet-600">Artifact Preview</h3>
+                <h3 class="text-xl font-bold text-violet-600">NFT Preview</h3>
                 <button onclick="document.getElementById('card-preview-modal').style.display='none'" class="text-gray-500 hover:text-gray-700 text-2xl font-bold">×</button>
             </div>
             <div id="preview-container" class="preview-scroll-container" oncontextmenu="return false;">
@@ -524,8 +562,8 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-bold text-gray-600 mb-1">Width (Columns)</label>
-                        <!-- Default width set to 100 -->
-                        <input type="range" id="ascii-width" min="20" max="100" value="100" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                        <!-- Default width set to 100, MAX ADJUSTED TO 125 to strictly stay under 8000 chars for square images -->
+                        <input type="range" id="ascii-width" min="20" max="125" value="100" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
                         <div class="text-right text-xs text-violet-600" id="width-val">100 chars</div>
                     </div>
                     <div>
@@ -561,11 +599,13 @@
                     <label class="block text-xs font-bold text-gray-600 mb-1">Character Set</label>
                     <select id="ascii-gradient" class="w-full bg-white text-gray-900 text-xs rounded p-2 border border-gray-300 focus:ring-2 focus:ring-violet-500 outline-none">
                         <option value="normal" selected>Normal (Standard)</option>
+                        <option value="extended">Extended High (Detailed)</option>
                         <option value="alphabetical">Alphabetical (A-Z)</option>
                         <option value="numerical">Numerical (0-9)</option>
                         <option value="alphanumeric">Alphanumeric (Mix)</option>
                         <option value="math">Math Symbols</option>
                         <option value="cp437">Code Page 437 (Blocky)</option>
+                        <option value="cp437_mixed">Retro Mixed (Blocks + Text)</option>
                         <option value="minimalist">Minimalist (Dots)</option>
                     </select>
                 </div>
@@ -653,8 +693,29 @@
             const art = window.tempInscriptionContent[hash];
             if (!art) { showCustomAlert("Lookup Error", 'Could not find inscription content.', 'error'); return; }
 
+            // Calculate Rarity Color for Fullscreen View
+            let rarityColor = "#9ca3af"; // Default Common Gray
+            
+            if (hash) {
+                const lastChar = hash.slice(-1).toLowerCase(); 
+                const lastTwo = hash.slice(-2).toLowerCase(); 
+                const lastThree = hash.slice(-3).toLowerCase();
+                
+                const isMythical = (lastThree.length === 3 && lastThree[0] === lastThree[1] && lastThree[1] === lastThree[2]);
+                const isLegendary = (lastTwo[0] === lastTwo[1]); 
+                const isEpic = ['0', 'f'].includes(lastChar);
+                const isRare = ['b', 'e', '7'].includes(lastChar); 
+                const isUncommon = ['2', '4', '6', '8'].includes(lastChar);
+
+                if (isMythical) rarityColor = "#e2e8f0";
+                else if (isLegendary) rarityColor = "#ffd700";
+                else if (isEpic) rarityColor = "#FF00FF";
+                else if (isRare) rarityColor = "#a855f7";
+                else if (isUncommon) rarityColor = "#731dff";
+            }
+
             const htmlContent = '<!DOCTYPE html><html><head><title>Full Inscription View: ' + hash.substring(0, 10) + '...' +
-                '</title><style>body { background-color: #000000; color: #c084fc; font-family: \'Courier New\', Courier, monospace; ' +
+                '</title><style>body { background-color: #000000; color: ' + rarityColor + '; font-family: \'Courier New\', Courier, monospace; ' +
                 'white-space: pre-wrap; padding: 20px; font-size: 13px; letter-spacing: normal; line-height: 1.2; }</style></head><body>' +
                 art.replace(/</g, "&lt;").replace(/>/g, "&gt;") +
                 '</body></html>';
@@ -821,11 +882,14 @@
 
             const faqContent = `
                 <h3 class="faq-heading">Q1: What exactly is an Inkscription?</h3>
-                <div class="faq-answer"><p>An <span style="color: #9333ea;">Inkscription</span> is a permanent, immutable artifact etched onto the Ink blockchain.</p></div>
+                <div class="faq-answer"><p>An <span style="color: #7c3aed; font-weight: bold;">Inkscription</span> is a permanent, immutable artifact etched onto the Ink blockchain.</p></div>
+                
                 <h3 class="faq-heading">Q2: How do I create an Inkscription?</h3>
                 <div class="faq-answer"><ul><li>Connect your wallet to the Ink L2 network.</li><li>Compose your message or ASCII art in the text box.</li><li>Click "Etch Inkscription" and confirm the transaction (burning 1000 BERT tokens).</li></ul></div>
+                
                 <h3 class="faq-heading">Q3: Is this an NFT?</h3>
-                <div class="faq-answer"><p>Initially, it is a raw data inscription on the transaction. However, you can turn your Inkscription into a verified ERC-1155 NFT by using the "Mint NFT" button on your Inkscription in the gallery and setting a custom supply from 1 to 1,000,000. Then it will become a part of the <a href="https://explorer.inkonchain.com/token/0x86d5cd3150Bbf93b179166dCd0A060e3B6b0CE01" target="_blank" style="color: #9333ea; text-decoration: underline;">Inkscriptions (INKS) NFT Collection</a>.</p></div>
+                <div class="faq-answer"><p>Initially, it is a raw data inscription on the transaction. However, you can turn your Inkscription into a verified ERC-1155 NFT by using the "Mint NFT" button on your Inkscription in the gallery and setting a custom supply from 1 to 1,000,000. Then it will become a part of the <a href="https://explorer.inkonchain.com/token/0x86d5cd3150Bbf93b179166dCd0A060e3B6b0CE01" target="_blank" class="faq-link">Inkscriptions (INKS) NFT Collection</a>.</p></div>
+                
                 <h3 class="faq-heading">Q4: What are the Inkscription Rarity Tiers?</h3>
                 <div class="faq-answer"><p>Inksription rarity is determined by the last characters of the transaction hash:</p>
                 <ul>
@@ -836,6 +900,7 @@
                     <li><strong>Legendary:</strong> Ends in double characters (e.g., 'aa', '88').</li>
                     <li><strong>Mythical:</strong> Ends in triple characters (e.g., 'bbb', '777').</li>
                 </ul></div>
+                
                 <h3 class="faq-heading">Q5: What are the usecases of Inkscriptions?</h3>
                 <div class="faq-answer">
                     <p>Inkscriptions are versatile on-chain artifacts. Common usecases include:</p>
@@ -845,7 +910,11 @@
                         <li><strong>Proof of Existence:</strong> Timestamp an idea, prediction, or hash to prove you knew it at a specific block height.</li>
                         <li><strong>Code Storage:</strong> Save small snippets of critical code or logic.</li>
                     </ul>
-                    <p><strong>Why Mint the NFT?</strong> While the raw inscription is permanent, minting it as an NFT "wraps" it into a tradable asset. This gives it a visual identity (the Trading Card), assigns it Rarity Traits based on its unique transaction hash, and makes it viewable and tradable on all major NFT marketplaces.</p>
+                </div>
+
+                <h3 class="faq-heading">Q6: Why Mint the NFT?</h3>
+                <div class="faq-answer">
+                    <p>While the raw inscription is permanent, minting it as an NFT "wraps" it into a tradable asset. This gives it a visual identity (the Trading Card), assigns it Rarity Traits based on its unique transaction hash, and makes it viewable and tradable on all major NFT marketplaces.</p>
                 </div>
             `;
             faqBody.innerHTML = faqContent;
@@ -881,11 +950,13 @@
             // Character Sets
             const GRADIENTS = {
                 normal: " .:-=+*#%@", 
+                extended: " .'`^\\\",:;Il!i><~+_-?][}{1)(|\\\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$",
                 alphabetical: " abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
                 numerical: " .1234567890",
                 alphanumeric: " .1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
-                math: " +-=≈≠∞∫π∑√µ∂", // NEW
+                math: " +-=≈≠∞∫π∑√µ∂", 
                 cp437: " ░▒▓█", 
+                cp437_mixed: " .:-=+*#%@░▒▓█", 
                 minimalist: " .·*"
             };
 
@@ -1371,7 +1442,7 @@
             const div = document.createElement('div'); div.id = `card-${hash}`; div.dataset.index = index; if (sender) div.dataset.sender = sender;
             div.className = `bg-white p-4 rounded-lg shadow border border-gray-200 flex flex-col animate-fade-in ${isPending ? 'pending-card' : ''} card-hover ${rarityClass}`; 
             div.innerHTML = `
-                <div class="bg-gray-900 text-purple-400 p-4 rounded text-xs overflow-auto ascii-art mb-3 flex-grow" style="max-height: 300px;">${safeArt}</div>
+                <div class="bg-gray-900 p-4 rounded text-xs overflow-auto ascii-art mb-3 flex-grow" style="color: ${rarityColor}; max-height: 300px;">${safeArt}</div>
                 <div class="flex justify-between items-center mb-2"> <div class="text-xl font-extrabold text-violet-500">#${index}</div> ${!isPending ? `<button onclick="generateTradingCard('${hash}', '${rarityColor}', '${badgeText}', '${index}', '${sender}', 'modal')" class="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide ${badgeClass} hover:opacity-80 transition cursor-pointer" title="Click to View Card">${badgeText}</button>` : ''} </div>
                 <div class="pt-2 border-t border-gray-100 flex justify-between items-center text-xs text-gray-500 mb-2"> <span class="px-2 py-1 rounded ${isPending ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-50 text-gray-500'}">Block: ${block}</span> <div class="flex gap-2 items-center"> <a href="https://explorer.inkonchain.com/tx/${hash}" target="_blank" class="text-violet-500 hover:text-violet-700 hover:underline font-bold transition">View TX ↗</a> </div> </div>
                 <div class="flex gap-2 mt-2"> <button onclick="viewFullInscription('${hash}')" class="flex-1 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold py-2 px-2 rounded transition">View Raw Fullscreen</button> ${buttonHtml} </div>
