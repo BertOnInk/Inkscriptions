@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Inkscriptions</title>
     
-    <link rel="icon" href="/favicon.ico" />
+    <!-- Updated favicon link: Removed leading slash and added type for better Chrome compatibility -->
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
 
     <!-- Font Imports: Bungee (Titles), Permanent Marker (Handwritten), Fredoka (Body) -->
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Permanent+Marker&family=Fredoka:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -1494,11 +1495,17 @@
                 const calldata = tempContract.interface.encodeFunctionData("transfer", [BURN_ADDRESS, amount]);
                 const payloadBytes = window.ethers.toUtf8Bytes(json); const finalCalldata = window.ethers.concat([calldata, payloadBytes]);
                 const gasLimit = await readProvider.estimateGas({ to: BERT_TOKEN_ADDRESS, data: finalCalldata, value: 0 });
-                const feeData = await readProvider.getFeeData(); const cost = gasLimit * (feeData.maxFeePerGas || feeData.gasPrice || BigInt(0)); 
-                ui.gas.textContent = `~${parseFloat(window.ethers.formatEther(cost)).toFixed(6)} ETH`;
+                const feeData = await readProvider.getFeeData(); 
+                
+                // FIX: Use 'gasPrice' (current market rate) instead of 'maxFeePerGas' (cap) for a realistic estimate
+                // On L2s, maxFeePerGas is often set high as a safety buffer, but actual cost is much lower.
+                const effectivePrice = feeData.gasPrice || feeData.maxFeePerGas || BigInt(0);
+                const cost = gasLimit * effectivePrice; 
+                
+                ui.gas.textContent = `~${parseFloat(window.ethers.formatEther(cost)).toFixed(8)} ETH`; // Increased precision to 8 decimals for low L2 fees
             } catch (err) {
                 const approxGas = BigInt(65000) + BigInt(bytes.length * 16); 
-                try { const feeData = await readProvider.getFeeData(); const cost = approxGas * (feeData.maxFeePerGas || feeData.gasPrice || BigInt(0)); ui.gas.textContent = `~${parseFloat(window.ethers.formatEther(cost)).toFixed(6)} ETH (approx)`; } catch (innerErr) { ui.gas.textContent = `Error/High Fee`; }
+                try { const feeData = await readProvider.getFeeData(); const cost = approxGas * (feeData.gasPrice || BigInt(0)); ui.gas.textContent = `~${parseFloat(window.ethers.formatEther(cost)).toFixed(8)} ETH (approx)`; } catch (innerErr) { ui.gas.textContent = `Error/High Fee`; }
             }
         }
 
