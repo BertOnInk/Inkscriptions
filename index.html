@@ -3,14 +3,17 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Bert's Inkscriptions 🐔🖋️</title>
+    <title>Inkscriptions</title>
+    
+    <link rel="icon" href="/favicon.ico" />
+
     <!-- Font Imports: Bungee (Titles), Permanent Marker (Handwritten), Fredoka (Body) -->
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Permanent+Marker&family=Fredoka:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
     <style>
         body { 
-            font-family: 'Fredoka', sans-serif; /* Changed to Fredoka as requested */
+            font-family: 'Fredoka', sans-serif; 
             background-image: 
                 url('bg.png'),
                 linear-gradient(135deg, #a855f7, #c084fc);
@@ -348,7 +351,10 @@
     <div class="font-loader" style="font-family: 'Bungee';">.</div>
 
     <div class="w-full max-w-xl mb-8 text-center mt-8">
-        <h1 class="text-4xl font-bold graffiti-title">Bert's Inkscriptions 🐔🖋️</h1>
+        <div class="flex items-center justify-center gap-4 mb-2">
+            <h1 class="text-5xl font-bold graffiti-title tracking-wider">Inkscriptions</h1>
+            <img src="inkscript.jpg" onerror="this.onerror=null;this.src='https://placehold.co/64x64/9333ea/ffffff?text=🐔'" alt="Inkscriptions Logo" class="h-16 w-16 rounded-full border-2 border-white/20 shadow-lg object-cover">
+        </div>
         <p class="text-white mt-2 text-xl tracking-wide handwritten-font" style="text-shadow: 2px 2px 0px #9333ea;">Permanent artifacts inked on chain.</p>
     </div>
 
@@ -357,18 +363,13 @@
         
         <div class="pt-0 space-y-4">
             
-            <div class="flex flex-col items-center justify-center -mt-2 mb-1"> 
-                <img src="burning_chicken.png" onerror="this.onerror=null;this.src='https://placehold.co/40x40/9333ea/ffffff?text=🐔🔥'" alt="Burning Chicken" class="h-10 w-10 mt-1 mb-2"> 
-                <p class="text-sm font-medium text-black flex items-center gap-2">
-                    <span class="handwritten-font" style="font-size: 1.1rem;">Burn BERT, ink history</span>
-                    <button id="faq-btn" class="text-xs text-violet-600 font-bold hover:text-violet-700 transition underline">FAQ</button>
-                </p>
-            </div>
-
             <!-- VISUAL HIERARCHY UPDATE: Tendie Count -->
             <div class="flex flex-col items-center justify-center pb-2 bg-gray-50 rounded-lg p-3 border border-gray-200">
-                <span class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Cumulative Tendie Count 🍗</span>
-                <span id="total-burn-display" class="text-3xl font-extrabold text-violet-600 tracking-tight">0 BERT 🔥</span>
+                <span class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">BURN BERT, INK HISTORY</span>
+                <span id="total-burn-display" class="text-3xl font-extrabold text-violet-600 tracking-tight mb-1">0 BERT 🔥</span>
+                
+                <!-- FAQ button moved here, underneath the number -->
+                <button id="faq-btn" class="text-[10px] text-violet-400 font-bold hover:text-violet-600 transition underline">(What is this?)</button>
             </div>
 
             <div id="wallet-bar" class="hidden flex justify-between items-center bg-violet-50 border border-violet-200 px-4 py-3 rounded-lg">
@@ -458,7 +459,8 @@
     </div>
 
     <div class="w-full max-w-4xl mb-8 glass-card p-6 rounded-xl">
-        <h3 class="font-bold text-gray-800 mb-2 handwritten-font" style="font-size: 1.1rem;">🔍 Find Specific Artifact</h3>
+        <!-- Changed font to Fredoka by removing 'handwritten-font' class -->
+        <h3 class="font-bold text-gray-800 mb-2">🔍 Find Specific Artifact</h3>
         <div class="flex gap-2">
             <input type="text" id="manual-hash" placeholder="0x..." class="text-black flex-grow p-3 border-2 border-gray-200 rounded-lg font-mono text-sm focus:ring-2 focus:ring-violet-500 outline-none focus:border-violet-500 transition-colors">
             <button id="manual-btn" class="bg-violet-600 hover:bg-violet-700 text-white font-bold px-6 rounded-lg transition shadow-md">Look Up</button>
@@ -532,7 +534,7 @@
     <div id="card-preview-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content text-center" style="max-width: 600px; padding: 20px;">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-violet-600">NFT Preview</h3>
+                <h3 class="text-xl font-bold text-violet-600">Artifact Preview</h3>
                 <button onclick="document.getElementById('card-preview-modal').style.display='none'" class="text-gray-500 hover:text-gray-700 text-2xl font-bold">×</button>
             </div>
             <div id="preview-container" class="preview-scroll-container" oncontextmenu="return false;">
@@ -636,7 +638,7 @@
     <div id="faq-modal-overlay" class="modal-overlay">
         <div id="faq-modal-content" class="modal-content">
             <div class="flex justify-between items-center mb-4">
-                <h2 class="text-2xl font-bold text-violet-600">Bert's Inkscriptions FAQ</h2>
+                <h2 class="text-2xl font-bold text-violet-600">Inkscriptions FAQ</h2>
                 <button id="close-faq-btn" class="text-gray-500 hover:text-gray-700 text-2xl font-bold">×</button>
             </div>
             <div id="faq-body"></div>
@@ -888,7 +890,7 @@
                 <div class="faq-answer"><ul><li>Connect your wallet to the Ink L2 network.</li><li>Compose your message or ASCII art in the text box.</li><li>Click "Etch Inkscription" and confirm the transaction (burning 1000 BERT tokens).</li></ul></div>
                 
                 <h3 class="faq-heading">Q3: Is this an NFT?</h3>
-                <div class="faq-answer"><p>Initially, it is a raw data inscription on the transaction. However, you can turn your Inkscription into a verified ERC-1155 NFT by using the "Mint NFT" button on your Inkscription in the gallery and setting a custom supply from 1 to 1,000,000. Then it will become a part of the <a href="https://explorer.inkonchain.com/token/0x86d5cd3150Bbf93b179166dCd0A060e3B6b0CE01" target="_blank" class="faq-link">Inkscriptions (INKS) NFT Collection</a>.</p></div>
+                <div class="faq-answer"><p>Initially, it is a raw data inscription embedded in the transaction. However, you can turn your Inkscription into a verified ERC-1155 NFT by using the "Mint NFT" button on your Inkscription in the gallery and setting a custom supply from 1 to 1,000,000. Then it will become a part of the <a href="https://explorer.inkonchain.com/token/0x86d5cd3150Bbf93b179166dCd0A060e3B6b0CE01" target="_blank" class="faq-link">Inkscriptions (INKS) NFT Collection</a>.</p></div>
                 
                 <h3 class="faq-heading">Q4: What are the Inkscription Rarity Tiers?</h3>
                 <div class="faq-answer"><p>Inksription rarity is determined by the last characters of the transaction hash:</p>
