@@ -466,6 +466,13 @@
             <input type="text" id="manual-hash" placeholder="0x..." class="text-black flex-grow p-3 border-2 border-gray-200 rounded-lg font-mono text-sm focus:ring-2 focus:ring-violet-500 outline-none focus:border-violet-500 transition-colors">
             <button id="manual-btn" class="bg-violet-600 hover:bg-violet-700 text-white font-bold px-6 rounded-lg transition shadow-md">Look Up</button>
         </div>
+        
+        <!-- BERTDROPPER LINK -->
+        <div class="mt-4 pt-3 border-t border-gray-200 text-center">
+            <p class="text-xs md:text-sm font-medium text-gray-500">
+                Airdrop your Inkscription NFT via <a href="https://dropper.bertonink.com" target="_blank" class="text-violet-600 font-bold hover:text-violet-800 hover:underline transition">Bertdropper</a> 🪂
+            </p>
+        </div>
     </div>
 
     <div class="w-full max-w-4xl">
@@ -1198,14 +1205,19 @@
                             method: "POST", headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({
                                 txHash: data.originalTxHash, userAddress: currentAccount, index: targetIndex, 
-                                tokenURI: data.tokenURI, imageUrl: data.imageUrl, contentHash: data.contentHash
+                                tokenURI: data.tokenURI, imageUrl: data.imageUrl, contentHash: data.contentHash,
+                                supply: supplyAmount // ADDED: Send supply to backend for storage
                             })
                         });
                     } catch (finErr) { console.warn("DB Finalize Error", finErr); }
 
                     const explorerLink = `https://explorer.inkonchain.com/tx/${mintTx.hash}`;
                     showCustomAlert("Mint Successful!", `Official NFT Minted Successfully!\n\nTx Hash: ${mintTx.hash}\n\n<a href="${explorerLink}" target="_blank" class="text-violet-600 underline font-bold">View on Explorer ↗</a>`, "success");
-                    if(btn) { btn.textContent = "Minted (Final)"; btn.disabled = true; btn.classList.add('btn-disabled'); btn.classList.remove('btn-primary-loading'); btn.classList.remove('btn-shine'); btn.classList.remove('bg-gradient-to-r'); btn.classList.add('bg-gray-500'); }
+                    
+                    if(btn) { 
+                        // Directly transform the button to a link for the current session
+                        btn.outerHTML = `<a href="${explorerLink}" target="_blank" class="flex-1 bg-violet-100 text-violet-700 border border-violet-200 text-xs font-bold py-2 px-2 rounded cursor-pointer shadow-sm text-center flex items-center justify-center hover:bg-violet-200 transition" title="View Verified Supply on Explorer">Supply: ${supplyAmount} 💎</a>`;
+                    }
                 } else { throw new Error("Transaction reverted on-chain."); }
                 
             } catch (txError) {
@@ -1217,7 +1229,7 @@
                         const FINALIZE_URL = "https://us-central1-inkscriptions-nft-oracle.cloudfunctions.net/finalizeMint";
                          await fetch(FINALIZE_URL, {
                             method: "POST", headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ txHash: originalTxHash, userAddress: currentAccount, index: parseInt(index), contentHash: "unknown-recovery" })
+                            body: JSON.stringify({ txHash: originalTxHash, userAddress: currentAccount, index: parseInt(index), contentHash: "unknown-recovery", supply: supplyAmount })
                         });
                     } catch (e) {}
                     if(btn) { btn.textContent = "Minted"; btn.disabled = true; btn.classList.add('btn-disabled'); }
@@ -1409,17 +1421,35 @@
                     let content = str; try { content = JSON.parse(str).text; } catch(e){}
                     
                     let isMinted = false;
-                    if (currentAccount && tx.from && tx.from.toLowerCase() === currentAccount.toLowerCase()) {
-                         try { const minAbi = ["function wrappedHashToTokenId(bytes32) view returns (uint256)"]; const nftChecker = new window.ethers.Contract(NFT_CONTRACT_ADDRESS, minAbi, p); if ((await nftChecker.wrappedHashToTokenId(tx.hash)) > 0) isMinted = true; } catch (checkErr) { }
+                    let supply = 0;
+                    let tokenId = null;
+                    
+                    try { 
+                        const minAbi = [
+                            "function wrappedHashToTokenId(bytes32) view returns (uint256)",
+                            "function totalSupply(uint256) view returns (uint256)"
+                        ]; 
+                        const nftChecker = new window.ethers.Contract(NFT_CONTRACT_ADDRESS, minAbi, p); 
+                        const tId = await nftChecker.wrappedHashToTokenId(tx.hash);
+                        
+                        if (tId > 0) {
+                            isMinted = true;
+                            tokenId = tId;
+                            // Fetch supply
+                            supply = await nftChecker.totalSupply(tokenId);
+                        }
+                    } catch (checkErr) { 
+                        // console.warn("Mint check failed", checkErr); 
                     }
-                    createGalleryCard(content, tx.hash, tx.blockNumber || '---', false, index, tx.from, isMinted); fetchedHashes.add(tx.hash); return true; 
+
+                    createGalleryCard(content, tx.hash, tx.blockNumber || '---', false, index, tx.from, isMinted, supply, tokenId); fetchedHashes.add(tx.hash); return true; 
                 }
             } catch (e) { } return false;
         }
 
         function removeGalleryCard(hash) { const card = document.getElementById(`card-${hash}`); if (card) card.remove(); }
 
-        function createGalleryCard(art, hash, block, prepend = false, index = '---', sender = null, isMinted = false) {
+        function createGalleryCard(art, hash, block, prepend = false, index = '---', sender = null, isMinted = false, supply = 0, tokenId = null, mintTxHash = null) {
             const safeArt = (art || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
             const isPending = block === "Pending...";
             let rarityClass = "", rarityColor = "#9ca3af", badgeText = "Common 🖋️", badgeClass = "badge-common";
@@ -1440,7 +1470,21 @@
             const isOwner = currentAccount && sender && (currentAccount.toLowerCase() === sender.toLowerCase());
             removeGalleryCard(hash); 
 
-            let buttonHtml = !isOwner ? `<button class="flex-1 bg-gray-500 text-white text-xs font-bold py-2 px-2 rounded opacity-50 cursor-not-allowed">Mint (Owner Only) 🔒</button>` : isMinted ? `<button class="flex-1 bg-gray-500 text-white text-xs font-bold py-2 px-2 rounded cursor-not-allowed border border-gray-600" disabled>Minted (Final) ✅</button>` : `<button onclick="handleOracleMint('${hash}', '${index}')" class="flex-1 text-white text-xs font-bold py-2 px-2 rounded transition bg-gradient-to-r from-fuchsia-600 to-violet-600 hover:from-fuchsia-700 hover:to-violet-700 btn-shine shadow-md">✨ Mint NFT</button>`;
+            let buttonHtml;
+            if (isMinted) {
+                // Link to Mint TX if available (newly minted session), otherwise link to Token Instance page (historical)
+                const explorerUrl = mintTxHash 
+                    ? `https://explorer.inkonchain.com/tx/${mintTxHash}` 
+                    : `https://explorer.inkonchain.com/token/${NFT_CONTRACT_ADDRESS}/instance/${tokenId}`;
+                
+                buttonHtml = `<a href="${explorerUrl}" target="_blank" class="flex-1 bg-violet-100 text-violet-700 border border-violet-200 text-xs font-bold py-2 px-2 rounded cursor-pointer shadow-sm text-center flex items-center justify-center hover:bg-violet-200 transition" title="View Verified Supply on Explorer">Supply: ${supply} 💎</a>`;
+            } else if (isOwner) {
+                // Not minted, and owner is viewing -> Show Mint Button
+                buttonHtml = `<button onclick="handleOracleMint('${hash}', '${index}')" class="flex-1 text-white text-xs font-bold py-2 px-2 rounded transition bg-gradient-to-r from-fuchsia-600 to-violet-600 hover:from-fuchsia-700 hover:to-violet-700 btn-shine shadow-md">✨ Mint NFT</button>`;
+            } else {
+                // Not minted, owner not viewing -> Disabled button
+                buttonHtml = `<button class="flex-1 bg-gray-500 text-white text-xs font-bold py-2 px-2 rounded opacity-50 cursor-not-allowed">Mint (Owner Only) 🔒</button>`;
+            }
 
             const div = document.createElement('div'); div.id = `card-${hash}`; div.dataset.index = index; if (sender) div.dataset.sender = sender;
             div.className = `bg-white p-4 rounded-lg shadow border border-gray-200 flex flex-col animate-fade-in ${isPending ? 'pending-card' : ''} card-hover ${rarityClass}`; 
