@@ -105,6 +105,18 @@
             }
         }
         
+        /* CHRISTMAS SPECIAL STYLE */
+        .card-christmas {
+            border: 2px solid #dc2626 !important; /* Red */
+            background: linear-gradient(135deg, rgba(220, 38, 38, 0.05), rgba(21, 128, 61, 0.05)) !important;
+            animation: christmasGlow 3s infinite alternate;
+        }
+        @keyframes christmasGlow {
+            0% { box-shadow: 0 0 15px rgba(220, 38, 38, 0.5); border-color: #dc2626; } /* Red */
+            50% { box-shadow: 0 0 25px rgba(251, 191, 36, 0.7); border-color: #fbbf24; } /* Gold */
+            100% { box-shadow: 0 0 15px rgba(22, 163, 74, 0.5); border-color: #16a34a; } /* Green */
+        }
+
         /* Rarity Badge Styles */
         .badge-common { background-color: #f3f4f6; color: #4b5563; }
         
@@ -133,6 +145,12 @@
             border: 1px solid #94a3b8; 
             font-weight: 800;
             text-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
+        }
+        .badge-christmas {
+            background: linear-gradient(90deg, #fee2e2, #fef3c7, #dcfce7);
+            color: #991b1b;
+            border: 1px solid #dc2626;
+            font-weight: 800;
         }
         /* --------------------- */
 
@@ -468,7 +486,7 @@
         </div>
         
         <!-- BERTDROPPER LINK -->
-        <div class="mt-4 pt-3 border-t border-gray-200 text-center">
+        <div class="mt-4 pt-3 border-t border-gray-200 text-center flex flex-col gap-2">
             <p class="text-xs md:text-sm font-medium text-gray-500">
                 Airdrop your Inkscription NFT via <a href="https://dropper.bertonink.com" target="_blank" class="text-violet-600 font-bold hover:text-violet-800 hover:underline transition">Bertdropper</a> 🪂
             </p>
@@ -642,20 +660,6 @@
         </div>
     </div>
 
-    <!-- FAQ MODAL -->
-    <div id="faq-modal-overlay" class="modal-overlay">
-        <div id="faq-modal-content" class="modal-content">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-2xl font-bold text-violet-600">Inkscriptions FAQ</h2>
-                <button id="close-faq-btn" class="text-gray-500 hover:text-gray-700 text-2xl font-bold">×</button>
-            </div>
-            <div id="faq-body"></div>
-            <div class="mt-4 pt-4 border-t border-gray-200">
-                <button onclick="closeFaqModal()" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 rounded transition">Close</button>
-            </div>
-        </div>
-    </div>
-
     <script>
         // Global storage for inscription content
         window.tempInscriptionContent = {};
@@ -706,7 +710,11 @@
             // Calculate Rarity Color for Fullscreen View
             let rarityColor = "#9ca3af"; // Default Common Gray
             
-            if (hash) {
+            // NEW LOGIC: Check if it's the Christmas special to force white text
+            if (window.tempInscriptionContent[hash + '_isChristmas']) {
+                rarityColor = "#ffffff";
+            }
+            else if (hash) {
                 const lastChar = hash.slice(-1).toLowerCase(); 
                 const lastTwo = hash.slice(-2).toLowerCase(); 
                 const lastThree = hash.slice(-3).toLowerCase();
@@ -724,7 +732,8 @@
                 else if (isUncommon) rarityColor = "#731dff";
             }
 
-            const htmlContent = '<!DOCTYPE html><html><head><title>Full Inscription View: ' + hash.substring(0, 10) + '...' +
+            // ADDED: <meta charset="UTF-8"> to fix ASCII/Block characters display
+            const htmlContent = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Full Inscription View: ' + hash.substring(0, 10) + '...' +
                 '</title><style>body { background-color: #000000; color: ' + rarityColor + '; font-family: \'Courier New\', Courier, monospace; ' +
                 'white-space: pre-wrap; padding: 20px; font-size: 13px; letter-spacing: normal; line-height: 1.2; }</style></head><body>' +
                 art.replace(/</g, "&lt;").replace(/>/g, "&gt;") +
@@ -754,6 +763,15 @@
         // --- TRADING CARD GENERATOR ---
         async function generateTradingCard(hash, rarityColor, rarityName, index, sender, mode = 'download') {
             const art = window.tempInscriptionContent[hash]; if (!art) return;
+            
+            // Check for Special Christmas Edition (Index #4 from specific sender)
+            // Added explicit sender check to ensure it's the correct one
+            const isChristmasSpecial = String(index) === '4' && sender.toLowerCase() === '0xA0Fd515f7528801E9B978DDed3aAff8125872714'.toLowerCase();
+            
+            if (isChristmasSpecial) {
+                rarityName = "Christmas Special 🎄";
+                rarityColor = "#dc2626"; // Festive Red
+            }
 
             if (mode === 'modal') {
                 const modal = document.getElementById('card-preview-modal'); const img = document.getElementById('card-preview-img'); const spinner = document.getElementById('preview-spinner');
@@ -765,13 +783,21 @@
             const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d');
             const cw = 2400, ch = 3600; canvas.width = cw; canvas.height = ch;
 
-            if (rarityName.includes("Mythical")) {
+            if (isChristmasSpecial) {
+                // Christmas Background - Dark Grey/Blue Base (Outer edge)
+                ctx.fillStyle = "#1e293b"; 
+                ctx.fillRect(0, 0, cw, ch);
+            } else if (rarityName.includes("Mythical")) {
                 const bgGrad = ctx.createLinearGradient(0, 0, cw, ch);
                 bgGrad.addColorStop(0, "#1e293b"); bgGrad.addColorStop(0.5, "#0f172a"); bgGrad.addColorStop(1, "#334155"); 
                 ctx.fillStyle = bgGrad; ctx.fillRect(0, 0, cw, ch); drawProceduralNebula(ctx, cw, ch);
             } else { ctx.fillStyle = "#0f0f0f"; ctx.fillRect(0, 0, cw, ch); }
 
-            if (rarityName.includes("Mythical")) {
+            // Border Logic
+            if (isChristmasSpecial) {
+                // Solid Red Border
+                ctx.strokeStyle = "#dc2626"; 
+            } else if (rarityName.includes("Mythical")) {
                 const gradient = ctx.createLinearGradient(0, 0, cw, ch);
                 gradient.addColorStop(0, "#e2e8f0"); gradient.addColorStop(0.2, "#cbd5e1"); gradient.addColorStop(0.4, "#ffffff");
                 gradient.addColorStop(0.6, "#e2e8f0"); gradient.addColorStop(0.8, "#94a3b8"); gradient.addColorStop(1, "#f8fafc");
@@ -785,14 +811,77 @@
                 ctx.strokeRect(10, 10, cw - 20, ch - 20); ctx.strokeRect(30, 30, cw - 60, ch - 60); ctx.restore();
             }
 
-            if (rarityName.includes("Mythical")) { ctx.shadowColor = "#ffffff"; ctx.shadowBlur = 100; } 
+            // Inner Star Border for Christmas (On the outer rim)
+            if (isChristmasSpecial) {
+                ctx.save();
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "100px sans-serif";
+                ctx.textAlign = "center"; 
+                ctx.textBaseline = "middle";
+                const star = "★";
+                const spacing = 150;
+                const margin = 120;
+                
+                // Draw stars along top and bottom
+                for (let x = margin; x <= cw - margin; x += spacing) {
+                    ctx.fillText(star, x, margin);
+                    ctx.fillText(star, x, ch - margin);
+                }
+                // Draw stars along left and right
+                for (let y = margin; y <= ch - margin; y += spacing) {
+                    ctx.fillText(star, margin, y);
+                    ctx.fillText(star, cw - margin, y);
+                }
+                ctx.restore();
+            }
+
+            if (isChristmasSpecial) {
+                ctx.shadowColor = "#16a34a"; // Green Glow
+                ctx.shadowBlur = 60;
+            } else if (rarityName.includes("Mythical")) { ctx.shadowColor = "#ffffff"; ctx.shadowBlur = 100; } 
             else { ctx.shadowColor = rarityColor; ctx.shadowBlur = 100; }
             
+            // Draw Main Inner Card Background
             ctx.fillStyle = "#1a1a1a"; ctx.fillRect(100, 100, cw - 200, ch - 200); ctx.shadowBlur = 0; 
 
+            // --- PROCEDURAL SNOW/STAR PATTERN (Applied AFTER inner fill) ---
+            if (isChristmasSpecial) {
+                ctx.save();
+                // Clip to the inner card area so snowflakes don't draw on the red border
+                ctx.beginPath();
+                ctx.rect(100, 100, cw - 200, ch - 200);
+                ctx.clip();
+
+                ctx.fillStyle = "#ffffff";
+                // Random snow dots
+                for(let i=0; i<300; i++) {
+                    const x = 100 + Math.random() * (cw - 200);
+                    const y = 100 + Math.random() * (ch - 200);
+                    const r = Math.random() * 4 + 2; 
+                    ctx.globalAlpha = Math.random() * 0.5 + 0.1; 
+                    ctx.beginPath();
+                    ctx.arc(x, y, r, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                // Larger sparkles
+                for(let i=0; i<25; i++) {
+                    const x = 100 + Math.random() * (cw - 200);
+                    const y = 100 + Math.random() * (ch - 200);
+                    ctx.globalAlpha = Math.random() * 0.6 + 0.2;
+                    ctx.font = `${Math.floor(Math.random() * 50 + 30)}px sans-serif`;
+                    ctx.fillText("✦", x, y);
+                }
+                ctx.restore();
+            }
+            // -------------------------------------------------------------
+
+            // Image Loader (Mythical ONLY now - removed Xmas bg loader)
             if (rarityName.includes("Mythical")) {
                 try {
-                    const img = new Image(); img.src = 'mbg.jpg';
+                    const img = new Image(); 
+                    // Use mbg.jpg
+                    img.src = 'mbg.jpg';
+                    
                     await new Promise((resolve) => { img.onload = () => resolve(); img.onerror = () => { resolve(); }; });
                     
                     if (img.complete && img.naturalHeight !== 0) {
@@ -817,23 +906,37 @@
             }
 
             ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
-            ctx.fillStyle = rarityName.includes("Mythical") ? "#ffffff" : rarityColor;
+            if (isChristmasSpecial) {
+                ctx.fillStyle = "#ffffff"; // White text for title
+            } else {
+                ctx.fillStyle = rarityName.includes("Mythical") ? "#ffffff" : rarityColor;
+            }
             ctx.font = "160px 'Bungee', cursive"; ctx.textAlign = "center"; ctx.fillText(`INKSCRIPTION #` + index, cw / 2, 320);
 
             ctx.save();
-            ctx.shadowColor = rarityName.includes("Mythical") ? "#ffffff" : rarityColor;
-            ctx.shadowBlur = rarityName.includes("Mythical") ? 60 : 40; 
-            ctx.fillStyle = "#ffffff";
+            if (isChristmasSpecial) {
+                ctx.shadowColor = "#dc2626"; ctx.shadowBlur = 60; // Red Glow
+                ctx.fillStyle = "#ffffff"; // White Text
+            } else {
+                ctx.shadowColor = rarityName.includes("Mythical") ? "#ffffff" : rarityColor;
+                ctx.shadowBlur = rarityName.includes("Mythical") ? 60 : 40; 
+                ctx.fillStyle = "#ffffff";
+            }
             ctx.font = "100px 'Permanent Marker', cursive"; ctx.textAlign = "center"; ctx.fillText(rarityName.toUpperCase(), cw / 2, 440);
             ctx.restore();
             
-            ctx.fillStyle = rarityName.includes("Mythical") ? "#cbd5e1" : rarityColor;
+            ctx.fillStyle = rarityName.includes("Mythical") ? "#cbd5e1" : (isChristmasSpecial ? "#16a34a" : rarityColor);
             ctx.font = "bold 48px 'Courier New', monospace"; ctx.textAlign = "center"; ctx.fillText(hash, cw / 2, 520);
 
             const artBoxX = 200, artBoxY = 600, artBoxW = cw - 400, artBoxH = ch - 1200;
             ctx.fillStyle = "#000000"; ctx.fillRect(artBoxX, artBoxY, artBoxW, artBoxH);
 
-            if (rarityName.includes("Mythical")) {
+            if (isChristmasSpecial) {
+                // Solid Green border for art box
+                ctx.strokeStyle = "#16a34a";
+                ctx.lineWidth = 15;
+                ctx.strokeRect(artBoxX, artBoxY, artBoxW, artBoxH);
+            } else if (rarityName.includes("Mythical")) {
                 ctx.save(); const meshCanvas = document.createElement('canvas'); meshCanvas.width = 20; meshCanvas.height = 20;
                 const mCtx = meshCanvas.getContext('2d'); const grad = mCtx.createLinearGradient(0,0,20,20);
                 grad.addColorStop(0, '#94a3b8'); grad.addColorStop(1, '#e2e8f0'); mCtx.fillStyle = grad; mCtx.fillRect(0,0,20,20);
@@ -848,7 +951,9 @@
             const finalScale = Math.min(scaleX, scaleY); const finalFontSize = Math.floor(200 * finalScale); const lineHeight = Math.floor(finalFontSize * 1.1);
             ctx.font = `bold ${finalFontSize}px 'Courier New', monospace`;
             
-            if (rarityName.includes("Mythical")) {
+            if (isChristmasSpecial) {
+                 ctx.fillStyle = "#ffffff"; // White text for ASCII
+            } else if (rarityName.includes("Mythical")) {
                 const textGrad = ctx.createLinearGradient(artBoxX, artBoxY, artBoxX + artBoxW, artBoxY + artBoxH);
                 textGrad.addColorStop(0, "#ffffff"); textGrad.addColorStop(0.3, "#94a3b8"); textGrad.addColorStop(0.5, "#ffffff");
                 textGrad.addColorStop(0.7, "#94a3b8"); textGrad.addColorStop(1, "#ffffff");
@@ -866,7 +971,7 @@
             ctx.textAlign = "center"; ctx.fillStyle = "#666"; ctx.font = "60px 'Inter', sans-serif";
             ctx.fillText("Block: " + window.tempInscriptionContent[hash + '_block'], cw / 2, ch - 340);
 
-            ctx.fillStyle = rarityName.includes("Mythical") ? "#cbd5e1" : rarityColor;
+            ctx.fillStyle = rarityName.includes("Mythical") ? "#cbd5e1" : (isChristmasSpecial ? "#ffffff" : rarityColor);
             ctx.font = "bold 60px 'Courier New', monospace"; ctx.fillText("MINTED BY: " + sender.toUpperCase(), cw / 2, ch - 160);
 
             if (mode === 'base64') { return canvas.toDataURL('image/png'); }
@@ -1325,12 +1430,13 @@
         }
 
         async function mintInscription() {
-            const text = ui.input.value.trim();
-            if (!text) { showCustomAlert("Input Required", "Enter text or ASCII art."); return; }
+            const val = ui.input.value;
+            if (!val.trim()) { showCustomAlert("Input Required", "Enter text or ASCII art."); return; }
+            const text = val; // Preserve leading spaces for ASCII art alignment
             if (currentChainId !== parseInt(INK_CHAIN_ID)) { switchNetwork(); return; }
             
             try {
-                ui.btn.disabled = true; ui.spinner.classList.remove('hidden'); ui.btn.classList.add('btn-primary-loading'); ui.btnText.textContent = "Sign in Wallet..."; ui.statusBox.classList.add('hidden'); pendingTxHash = null; 
+                ui.btn.disabled = true; ui.spinner.classList.remove('hidden'); ui.btn.classList.add('btn-primary-loading'); ui.btnText.textContent = "Sign in Wallet..."; ui.statusBox.classList.add('hidden'); ui.statusBox.classList.remove('bg-green-100', 'bg-red-100'); ui.statusBox.classList.add('bg-gray-100'); pendingTxHash = null; 
 
                 const amount = window.ethers.parseUnits(MINT_FEE_AMOUNT.toString(), 18);
                 const json = JSON.stringify({ text: text });
@@ -1345,19 +1451,55 @@
                 ui.empty.classList.add('hidden');
                 ui.statusMsg.textContent = `⏳ TRANSACTION PENDING\nHash: ${tx.hash}`; ui.statusBox.classList.remove('hidden');
 
-                await tx.wait(); 
+                // --- ROBUST WAIT LOGIC START ---
+                let receipt;
+                try {
+                    receipt = await tx.wait(); 
+                } catch (waitErr) {
+                    console.warn("Transaction wait error (RPC issue). Waiting 2s then checking receipt manually...", waitErr);
+                    
+                    // Added 2-second delay to allow node indexing catch-up
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+
+                    // Fallback: If wait() throws (e.g. RPC 400 error), try fetching the receipt manually
+                    try {
+                        if (provider) {
+                            receipt = await provider.getTransactionReceipt(tx.hash);
+                        }
+                    } catch (innerErr) {
+                        console.error("Manual receipt fetch failed", innerErr);
+                    }
+                    
+                    // If we still don't have a receipt, rethrow the original error to alert the user
+                    if (!receipt) throw waitErr;
+                }
+
+                // Ethers v6 tx.wait() usually throws on revert, but manual getTransactionReceipt does not.
+                // We must check status explicitly (1 = success, 0 = revert).
+                if (receipt && receipt.status === 0) {
+                    throw new Error("Transaction reverted on-chain.");
+                }
+                // --- ROBUST WAIT LOGIC END ---
+
+                // SUCCESS STATE
+                ui.statusBox.classList.remove('bg-gray-100'); ui.statusBox.classList.add('bg-green-100');
+                ui.statusMsg.innerHTML = `✅ <strong>Transaction Confirmed!</strong><br><a href="https://explorer.inkonchain.com/tx/${tx.hash}" target="_blank" class="underline text-green-800 break-all">View TX: ${tx.hash}</a>`;
 
                 const visibility = document.querySelector('input[name="gallery-visibility"]:checked').value;
                 if (visibility === 'public') {
-                    try { await fetch(COLLECTOR_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hash: tx.hash, block: 0, timestamp: Date.now() }) }); } catch (e) {}
+                    try { await fetch(COLLECTOR_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hash: tx.hash, block: receipt.blockNumber || 0, timestamp: Date.now() }) }); } catch (e) {}
                 }
+                
+                // Wait a moment for indexers to catch up before refreshing gallery
+                await new Promise(r => setTimeout(r, 2000));
                 
                 await fetchBalance(); await fetchGallery(); 
                 ui.btn.disabled = false; ui.spinner.classList.add('hidden'); ui.btn.classList.remove('btn-primary-loading'); ui.btnText.textContent = `ETCH INKSCRIPTION (BURN ${MINT_FEE_AMOUNT} BERT)`; ui.input.value = ''; calcGas();
 
             } catch (e) {
                 console.error('Minting Error:', e); if (pendingTxHash) removeGalleryCard(pendingTxHash);
-                ui.btn.disabled = false; ui.spinner.classList.add('hidden'); ui.btn.classList.remove('btn-primary-loading'); ui.btnText.textContent = `MINT INSCRIPTION (${MINT_FEE_AMOUNT} BERT)`;
+                ui.btn.disabled = false; ui.spinner.classList.add('hidden'); ui.btn.classList.remove('btn-primary-loading'); ui.btnText.textContent = `ETCH INKSCRIPTION (BURN ${MINT_FEE_AMOUNT} BERT)`;
+                ui.statusBox.classList.remove('bg-gray-100', 'bg-green-100'); ui.statusBox.classList.add('bg-red-100');
                 ui.statusMsg.textContent = `❌ ${e.message || "Unknown Error"}`; ui.statusBox.classList.remove('hidden');
             } finally { pendingTxHash = null; }
         }
@@ -1458,7 +1600,16 @@
             const isLegendary = (lastTwo[0] === lastTwo[1]); const isEpic = ['0', 'f'].includes(lastChar);
             const isRare = ['b', 'e', '7'].includes(lastChar); const isUncommon = ['2', '4', '6', '8'].includes(lastChar);
 
+            // Special Christmas Logic for Index #4 and specific sender
+            const isChristmasSpecial = String(index) === '4' && sender && sender.toLowerCase() === '0xA0Fd515f7528801E9B978DDed3aAff8125872714'.toLowerCase();
+
             if (isPending) badgeClass = "bg-yellow-100 text-yellow-800";
+            else if (isChristmasSpecial) {
+                rarityClass = "card-christmas";
+                badgeText = "Christmas 🎄";
+                badgeClass = "badge-christmas";
+                rarityColor = "#ffffff"; // Festive White for Text (Changed from Red)
+            }
             else if (isMythical) { rarityClass = "card-mythical"; badgeText = "Mythical 🦄"; badgeClass = "badge-mythical"; rarityColor = "#e2e8f0"; } 
             else if (isLegendary) { rarityClass = "card-legendary"; badgeText = "Legendary 🐦‍🔥"; badgeClass = "badge-legendary"; rarityColor = "#ffd700"; } 
             else if (isEpic) { rarityClass = "card-epic"; badgeText = "Epic 🪄"; badgeClass = "badge-epic"; rarityColor = "#FF00FF"; } 
@@ -1467,6 +1618,10 @@
             else badgeClass = "bg-gray-100 text-gray-600";
 
             window.tempInscriptionContent[hash] = art; window.tempInscriptionContent[hash + '_block'] = block;
+            
+            // SAVE LOGIC FOR FULLSCREEN VIEW
+            window.tempInscriptionContent[hash + '_isChristmas'] = isChristmasSpecial;
+
             const isOwner = currentAccount && sender && (currentAccount.toLowerCase() === sender.toLowerCase());
             removeGalleryCard(hash); 
 
